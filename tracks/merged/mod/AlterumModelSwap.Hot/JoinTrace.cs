@@ -64,8 +64,15 @@ internal static class JoinTrace
 
         Patch(typeof(PlayersAppearanceManager), "SetBaseModelIndex", new[] { typeof(ulong), typeof(ushort) },
               null, nameof(PostSetBaseModelIndex));
-        Patch(typeof(WardrobeController), "OnModelSelectedServerRpc", new[] { typeof(ulong), typeof(ushort) },
-              nameof(PreWardrobeRpc), null);
+        // 2026-11-18 build (26735461): the manual pick enters through the local OnModelSelected and
+        // the server RPC only carries (index, RpcParams). Patch whichever entry this build has.
+        if (AccessTools.Method(typeof(WardrobeController), "OnModelSelected",
+                               new[] { typeof(ulong), typeof(ushort) }) != null)
+            Patch(typeof(WardrobeController), "OnModelSelected", new[] { typeof(ulong), typeof(ushort) },
+                  nameof(PreWardrobeRpc), null);
+        else
+            Patch(typeof(WardrobeController), "OnModelSelectedServerRpc", new[] { typeof(ulong), typeof(ushort) },
+                  nameof(PreWardrobeRpc), null);
         Patch(typeof(PlayersModelSetuper), "SpawnPlayerModelOnServer", new[] { typeof(ulong) },
               null, nameof(PostSpawnOnServer));
         Patch(typeof(PlayersModelSetuper), "SpawnPlayerModelOnClient", new[] { typeof(ulong) },
@@ -110,7 +117,7 @@ internal static class JoinTrace
     {
         try
         {
-            _log?.LogInfo($"{Tag} WardrobeController.OnModelSelectedServerRpc(client={localClientId}, index={chosenModelIndex}) " +
+            _log?.LogInfo($"{Tag} WardrobeController manual pick (client={localClientId}, index={chosenModelIndex}) " +
                           "= MANUAL wardrobe pick");
         }
         catch { }

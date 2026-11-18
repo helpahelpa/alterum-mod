@@ -756,7 +756,6 @@ internal static class SahurWardrobe
     private static string _lobbyAssertKey = "";
     private static int _lobbyAssertCount;
     private static float _lobbyAssertAt;
-    private static MethodInfo _selectRpc;
     private static bool _nativeReleaseLogged;
     private static string _wantPath = "(not resolved)";
 
@@ -3452,18 +3451,47 @@ internal static class SahurWardrobe
         catch (Exception e) { log.LogError($"[sahur:wardrobe] command failed: {e}"); }
     }
 
-    // The game's own guest selection RPC. Cached: the same private method the wardrobe's Select
-    // button calls, and the one RandomModelOnJoin's manual-pick hook is attached to.
-    private static MethodInfo SelectRpc()
+    // The game's own guest selection entry point, in either shape this build ships:
+    //   * 26735461+: `WardrobeController.OnModelSelected(ulong,ushort)` - the LOCAL entry the
+    //     wardrobe tab calls, which then sends the server RPC. Preferred: it takes the client id
+    //     and needs no RpcParams.
+    //   * 26735461+ RPC only: `OnModelSelectedServerRpc(ushort,RpcParams)` - transport form; a
+    //     guest invocation sends the index and Netcode fills in the sender.
+    //   * older builds: `OnModelSelectedServerRpc(ulong,ushort)`.
+    private static bool TryGuestSelect(IHostContext log, WardrobeController wc, ulong clientId, ushort index,
+                                       out string how)
     {
-        if (_selectRpc != null) return _selectRpc;
+        how = null;
         try
         {
-            _selectRpc = AccessTools.DeclaredMethod(typeof(WardrobeController), "OnModelSelectedServerRpc",
+            var local = AccessTools.Method(typeof(WardrobeController), "OnModelSelected",
+                                           new[] { typeof(ulong), typeof(ushort) });
+            if (local != null)
+            {
+                local.Invoke(wc, new object[] { clientId, index });
+                how = "WardrobeController.OnModelSelected";
+                return true;
+            }
+            var rpc = AccessTools.DeclaredMethod(typeof(WardrobeController), "OnModelSelectedServerRpc",
+                                                new[] { typeof(ushort), typeof(Unity.Netcode.RpcParams) });
+            if (rpc != null)
+            {
+                object rpcParams = Activator.CreateInstance(typeof(Unity.Netcode.RpcParams));
+                rpc.Invoke(wc, new[] { (object)index, rpcParams });
+                how = "WardrobeController.OnModelSelectedServerRpc(ushort,RpcParams)";
+                return true;
+            }
+            var legacy = AccessTools.DeclaredMethod(typeof(WardrobeController), "OnModelSelectedServerRpc",
                                                    new[] { typeof(ulong), typeof(ushort) });
+            if (legacy != null)
+            {
+                legacy.Invoke(wc, new object[] { clientId, index });
+                how = "WardrobeController.OnModelSelectedServerRpc(ulong,ushort)";
+                return true;
+            }
         }
-        catch { }
-        return _selectRpc;
+        catch (Exception e) { log?.LogWarning($"[sahur:wardrobe] guest selection call failed: {e.Message}"); }
+        return false;
     }
 
     // Any label (or its squashed form, or the model slug) resolves, so an unattended run can select
@@ -3592,17 +3620,21 @@ internal static class SahurWardrobe
                     if (string.IsNullOrEmpty(c.gameObject.scene.name)) continue;   // prefab asset
                     wc = c; break;
                 }
-                var rpc = SelectRpc();
-                if (wc == null || rpc == null)
+                var rpc = true;
+                if (wc == null)
                 {
-                    log.LogWarning($"[sahur:wardrobe] apply {what}: guest has no wardrobe controller/RPC " +
-                                   $"(controller={(wc != null)} rpc={(rpc != null)}) - the game's row stays as the join " +
-                                   "spawned it; the body module still follows the wanted entry");
+                    log.LogWarning($"[sahur:wardrobe] apply {what}: guest has no wardrobe controller " +
+                                   "- the game's row stays as the join spawned it; the body module still follows the wanted entry");
                     return false;
                 }
-                rpc.Invoke(wc, new object[] { clientId, (ushort)target });
-                log.LogInfo($"[sahur:wardrobe] apply {what}: WardrobeController.OnModelSelectedServerRpc(client={clientId}, {target}) " +
-                            $"on '{PathOf(wc.transform)}' (the game's own guest selection RPC; the host owns the row)");
+                if (!TryGuestSelect(log, wc, clientId, (ushort)target, out string how))
+                {
+                    log.LogWarning($"[sahur:wardrobe] apply {what}: guest has no selection entry point " +
+                                   "- the game's row stays as the join spawned it; the body module still follows the wanted entry");
+                    return false;
+                }
+                log.LogInfo($"[sahur:wardrobe] apply {what}: {how}(client={clientId}, {target}) " +
+                            $"on '{PathOf(wc.transform)}' (the game's own guest selection path; the host owns the row)");
                 return true;
             }
 

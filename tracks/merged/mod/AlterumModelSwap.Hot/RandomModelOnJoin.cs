@@ -89,21 +89,25 @@ internal static class RandomModelOnJoin
         catch { }
         Load();
 
-        // The manual signal: the game's own RPC is only reachable from the wardrobe's Select
-        // button (WardrobeController.OnModelSelectedServerRpc), which is unambiguous. It is also
-        // where a local pick becomes the wanted entry - provenance the applied-row heuristic could
-        // never establish (SahurWardrobe.NoteLocalWardrobePick).
+        // The manual signal: the game's own selection entry point. In the 2026-11-18 game build
+        // (26735461) the private RPC was split: `WardrobeController.OnModelSelected(ulong,ushort)`
+        // is the local entry the wardrobe tab calls (same two arguments the old RPC took), and
+        // `OnModelSelectedServerRpc(ushort,RpcParams)` is only the transport from there to the host.
+        // Hooking the local entry keeps the client id argument - the RPC's new form would need
+        // RpcParams.Receive.SenderClientId, which is unavailable on the host's own pick.
         try
         {
-            var m = AccessTools.DeclaredMethod(typeof(WardrobeController), "OnModelSelectedServerRpc",
-                                               new[] { typeof(ulong), typeof(ushort) });
+            var m = AccessTools.Method(typeof(WardrobeController), "OnModelSelected",
+                                       new[] { typeof(ulong), typeof(ushort) })
+                 ?? AccessTools.Method(typeof(WardrobeController), "OnModelSelectedServerRpc",
+                                       new[] { typeof(ulong), typeof(ushort) });
             if (m != null)
             {
                 _harmony = new Harmony("com.user0.alterum.randomjoin." + Guid.NewGuid().ToString("N"));
                 _harmony.Patch(m, prefix: new HarmonyMethod(typeof(RandomModelOnJoin), nameof(ManualPickPrefix)));
-                log?.LogInfo($"{Tag} manual-pick hook on WardrobeController.OnModelSelectedServerRpc");
+                log?.LogInfo($"{Tag} manual-pick hook on WardrobeController.{m.Name}");
             }
-            else log?.LogWarning($"{Tag} WardrobeController.OnModelSelectedServerRpc not found; " +
+            else log?.LogWarning($"{Tag} WardrobeController.OnModelSelected not found; " +
                                  "a manual pick before the roll cannot be detected");
         }
         catch (Exception e) { log?.LogWarning($"{Tag} manual-pick hook failed: {e.Message}"); }
