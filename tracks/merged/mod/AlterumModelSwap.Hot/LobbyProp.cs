@@ -2290,7 +2290,7 @@ internal sealed class LobbyPropRuntime : IDisposable
                 log?.LogInfo($"[reel] pull rejected reason=out-of-range scene='{scene}' dist={dist:F2} limit=2.80");
                 return;
             }
-            if (!ReelLogic.TryBeginPull(log, out pull))
+            if (!ReelLogic.TryBeginPull(log, LookCentre, out pull))
                 return;                                  // no held item / refused take: no spin
         }
         else if (!string.IsNullOrEmpty(forceType))
@@ -2410,7 +2410,7 @@ internal sealed class LobbyPropRuntime : IDisposable
         _spinActive = true;
         _lastTickCell = s.StartCell;
         UpdatePreview();   // an accepted spin removes the preview and restores the strip at once
-        ReelAudio.Cue(log, ReelCue.Lever);
+        ReelAudio.Cue(log, ReelCue.Lever, LookCentre);
         log?.LogInfo($"[reel:net] spin {spinId} animate machine='{MachineId}' actor={actor}{( _pendingMine ? " (you)" : "")} " +
                      $"fromCell={s.StartCell} target={s.TargetCell} " +
                      $"type={ReelArt.CardTypeName(Cards, s.TargetCell)} code={ReelArt.CardCode(Cards, s.TargetCell)} " +
@@ -2449,7 +2449,7 @@ internal sealed class LobbyPropRuntime : IDisposable
             FlushRemoteText();
             return;
         }
-        if (pull != null) ReelLogic.Resolve(log, pull, cell, card);
+        if (pull != null) ReelLogic.Resolve(log, pull, cell, card, LookCentre);
         if (_spinId != 0 && ReelNet.Broadcasting)
             ReelNet.OnHostSettled(log, _spinId, _requestId, _spinActor, ReelLogic.LastOutcome);
     }
@@ -2559,7 +2559,7 @@ internal sealed class LobbyPropRuntime : IDisposable
             _spins++;
             _lastTickCell = s.StartCell;
             UpdatePreview();   // an accepted spin removes the preview and restores the strip at once
-            ReelAudio.Cue(log, ReelCue.Lever);
+            ReelAudio.Cue(log, ReelCue.Lever, LookCentre);
             log?.LogInfo($"[reel] spin start trigger={trigger} spins={_spins} machine='{MachineId}' spinId={_spinId} " +
                          $"actor={_spinActor} fromCell={s.StartCell} " +
                          $"targetCell={s.TargetCell} targetType={ReelArt.CardTypeName(Cards, s.TargetCell)} " +
@@ -2645,7 +2645,7 @@ internal sealed class LobbyPropRuntime : IDisposable
         if (cell != _lastTickCell)
         {
             _lastTickCell = cell;
-            if (Mathf.Abs(v) > 0.20f) ReelAudio.Tick(log, v);
+            if (Mathf.Abs(v) > 0.20f) ReelAudio.Tick(log, v, LookCentre);
         }
         log?.LogInfo($"[reel:scroll] t={Inv(_spinT)} u={Inv(s.UOffset, 5)} travel={Inv(travelled)}cards " +
                      $"cell={cell} type={ReelArt.CardTypeName(Cards, cell)} code={ReelArt.CardCode(Cards, cell)} " +
@@ -2657,7 +2657,7 @@ internal sealed class LobbyPropRuntime : IDisposable
         s.UOffset = LobbyPropFactory.ScrollOffsetForCell(s.TargetCell);   // canonical small offset
         s.Phase = 3;
         ApplyOffsets();
-        ReelAudio.Cue(log, ReelCue.Settle);
+        ReelAudio.Cue(log, ReelCue.Settle, LookCentre);
         int settledCell = LobbyPropFactory.ScrollCellAt(s.UOffset);
         var settledCard = ReelArt.CardAt(Cards, settledCell);
         float proximity = LobbyPropFactory.ScrollCentreProximity(s.UOffset);

@@ -63,7 +63,7 @@ switch ($Action) {
             exit 3
         }
 
-        $gameArgs = "-screen-fullscreen 0 -screen-width $ScreenWidth -screen-height $ScreenHeight"
+        $gameArgs = "-screen-fullscreen 0 -screen-width $ScreenWidth -screen-height $ScreenHeight -alterumDevMode"
         if ($Instance) { $gameArgs += " -alterumInstance=$Instance" }
 
         $root = Get-TaskRoot

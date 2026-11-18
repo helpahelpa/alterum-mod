@@ -18,6 +18,7 @@ public class HotModule : IHotModule
 {
     private ModelSwapRuntime _runtime;
     private IHostContext _host;
+    private bool _reelPatchAttempted;
 
     public void Initialize(IHostContext host, bool firstActivation)
     {
@@ -35,9 +36,7 @@ public class HotModule : IHotModule
         // Temporary diagnostic for the game console's runtime disable (remove before shipping).
         try { QcGate.Install(host); }
         catch (Exception e) { host.LogError($"[gate] install threw: {e.Message}"); }
-        // Join/appearance trace (diagnostic, read-only) and the random-on-join policy. The trace is
-        // installed from Initialize so the join path is covered even when no wardrobe view exists;
-        // the policy needs its manual-pick prefix before the first lobby.
+        // Read-only join/appearance trace; model assignment belongs entirely to the game.
         try { JoinTrace.Install(host); }
         catch (Exception e) { host.LogError($"[join:trace] install threw: {e.Message}"); }
         // `[mapbody]`: the read-only map-run body trace (SetupModel postfix + 1 Hz census).
@@ -46,18 +45,26 @@ public class HotModule : IHotModule
         // `[scenesync]`: the read-only lobby -> map handoff trace (loader calls on both peers).
         try { SceneSyncTrace.Install(host); }
         catch (Exception e) { host.LogError($"[scenesync] install threw: {e.Message}"); }
-        try { RandomModelOnJoin.Install(host); }
-        catch (Exception e) { host.LogError($"[random:join] install threw: {e.Message}"); }
         // Menu lifecycle: the pause/settings state every UI lookup keys off. Installed from the
         // host start so the first Pauser the game creates is captured, not discovered by a scan.
         try { MenuScope.Install(host); }
         catch (Exception e) { host.LogError($"[menu:scope] install threw: {e.Message}"); }
+        try { SahurWardrobe.Install(host); }
+        catch (Exception e) { host.LogError($"[sahur:wardrobe] install threw: {e.Message}"); }
         _runtime = new ModelSwapRuntime(host, firstActivation);
         host.LogInfo($"[hot] module initialized (firstActivation={firstActivation})");
     }
 
     public void Update(float unscaledDeltaTime)
     {
+        // HotLoader initializes the candidate before disposing the old module. Wait until
+        // dispatch so the retiring module cannot unpatch the candidate's shared Harmony ID.
+        if (!_reelPatchAttempted)
+        {
+            _reelPatchAttempted = true;
+            try { ReelInteraction.InstallInteractionPatch(); }
+            catch (Exception e) { _host?.LogError($"[reel:act] install threw: {e.Message}"); }
+        }
         Perf.Hook();
         // Menu open/close edge first: it invalidates the menu group that the UI lookups below
         // read, and it costs a property read on a held reference (no scan).
@@ -92,6 +99,9 @@ public class HotModule : IHotModule
         // ModelSwapRuntime's own ActivateOrClick. Inert unless the request file exists.
         try { Perf.W("uidriver", () => UiDriver.Tick(_host, _runtime)); }
         catch (Exception e) { _host.LogError($"[ui] driver threw: {e.Message}"); }
+        // Explicit, identity-bound session automation; inert without its local request file.
+        try { Perf.W("session", () => SessionControl.Tick(_host, _runtime)); }
+        catch (Exception e) { _host.LogError($"[session] tick threw: {e.Message}"); }
         // Quest admin (`quest.request`): state dump plus the game's own completion APIs
         // (QuestService/QuestRunner/QuestsCommandsWrapper). Inert unless the request file exists.
         try { Perf.W("quest", () => QuestAdmin.Tick(_host)); }
@@ -99,13 +109,11 @@ public class HotModule : IHotModule
         // The game's own console (QFSW.QC): status/boot/table/help/invoke via `qc.request`.
         try { Perf.W("qc", () => GameConsole.Tick(_host)); }
         catch (Exception e) { _host.LogError($"[qc] activator threw: {e.Message}"); }
-        // Appearance trace plus the one-roll-per-lobby-membership policy (both cheap pollers).
+        // Read-only appearance trace.
         try { Perf.W("jointrace", () => JoinTrace.Tick(_host, unscaledDeltaTime)); }
         catch (Exception e) { _host.LogError($"[join:trace] tick threw: {e.Message}"); }
         try { SceneSyncTrace.Tick(unscaledDeltaTime); }
         catch (Exception e) { _host.LogError($"[scenesync] tick threw: {e.Message}"); }
-        try { Perf.W("randomjoin", () => RandomModelOnJoin.Tick(_host, unscaledDeltaTime)); }
-        catch (Exception e) { _host.LogError($"[random:join] tick threw: {e.Message}"); }
     }
     public void LateUpdate()
     {
@@ -134,11 +142,11 @@ public class HotModule : IHotModule
         catch (Exception e) { _host?.LogError($"[music:ui] dispose threw: {e.Message}"); }
         try { QcGate.Dispose(); } catch { }
         try { MenuScope.Dispose(); } catch { }
-        try { RandomModelOnJoin.Dispose(); } catch { }
         try { JoinTrace.Dispose(); } catch { }
         try { MapBody.Dispose(); } catch { }
         try { SceneSyncTrace.Dispose(); } catch { }
         try { ClipRecorder.Abort(_host); } catch { }
+        try { ReelInteraction.DisposeInteractionPatch(); } catch { }
         try { _runtime?.Dispose(); } catch { }
         _runtime = null;
     }

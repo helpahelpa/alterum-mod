@@ -46,7 +46,7 @@ if ($SteamLaunch) {
     $wd  = "C:\Program Files (x86)\Steam"
 } else {
     $exe = Join-Path $GameDir "Alterum.exe"
-    $args = $ExtraArgs
+    $args = "$ExtraArgs -alterumDevMode"
     $wd  = $GameDir
 }
 

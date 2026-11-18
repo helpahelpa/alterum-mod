@@ -16,6 +16,16 @@ namespace UnityEngine
     }
 }
 
+namespace UnityEngine.SceneManagement
+{
+    internal static class SceneManager
+    {
+        internal static string Active = "Lobby";
+        internal static Scene GetActiveScene() => new Scene { name = Active };
+    }
+    internal struct Scene { public string name; }
+}
+
 namespace UnityEngine.UI
 {
     public sealed class Slider

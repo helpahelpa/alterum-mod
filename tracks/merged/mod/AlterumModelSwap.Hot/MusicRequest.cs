@@ -152,6 +152,8 @@ internal static class MusicRequest
         log.LogInfo($"{Tag} status: statusText='{host.StatusText()}' error='{host.LastError}' uiState={host.UiState()} " +
                     $"controls(play={host.CanPlay} pause={host.CanPause} seek={host.CanSeek}) " +
                     $"channel={host.HasPlayableChannel} enginePaused={host.Engine.IsPaused}");
+        log.LogInfo($"{Tag} status: transport playing={host.Engine.Playing()} channelOpen={host.Engine.HasChannel} " +
+                    $"retiring={host.RetiredCount()}");
         if (p != null) log.LogInfo($"{Tag} status: pipeline {p.Report()}");
         else log.LogInfo($"{Tag} status: pipeline (none - cache playback or idle)");
         log.LogInfo(host.TimingReport());

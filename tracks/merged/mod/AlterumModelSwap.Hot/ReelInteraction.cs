@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Text;
 using AlterumModelSwap.Contracts;
 using Gameplay.PlayerSystem;
+using HarmonyLib;
 using Il2CppInterop.Runtime;
 using Il2CppInterop.Runtime.InteropTypes;
 using UnityEngine;
@@ -108,6 +109,8 @@ internal sealed class ReelInteraction
             else if (line.Equals("hideui", StringComparison.OrdinalIgnoreCase)) ForceUi(log, false);
             else if (line.Equals("providers", StringComparison.OrdinalIgnoreCase)) Providers(log);
             else if (line.Equals("handlerfire", StringComparison.OrdinalIgnoreCase)) HandlerFire(log);
+            else if (line.Equals("complete", StringComparison.OrdinalIgnoreCase)) DebugComplete(log);
+            else if (line.Equals("interact", StringComparison.OrdinalIgnoreCase)) DebugInteract(log);
             else if (line.Equals("startlook", StringComparison.OrdinalIgnoreCase)) LookHandoff(log, true);
             else if (line.Equals("stoplook", StringComparison.OrdinalIgnoreCase)) LookHandoff(log, false);
             else if (line.StartsWith("frames=", StringComparison.OrdinalIgnoreCase)) StartFrameLog(log, line.Substring(7).Trim());
@@ -259,8 +262,8 @@ internal sealed class ReelInteraction
             // hold the object as Active and E still does nothing. Resolve it from the live player.
             WireProvider(log);
 
-            // Spawn: the prefab is already registered (it came out of the network prefab list), so
-            // the host can spawn a real instance and the native RPC/accept path stays intact.
+            // Host/spawned objects still use the stock Interact path. Clients build a local
+            // clone; InteractPrefix routes its completed hold without the stock cooldown RPC.
             if (_netObj != null)
             {
                 try
@@ -1182,6 +1185,40 @@ internal sealed class ReelInteraction
         catch (Exception e) { log?.LogWarning($"[reel:act] subscribe failed: {e.Message}"); }
     }
 
+    // Exercise the game's completed-interaction entry point without a looker or physical input.
+    private void DebugInteract(IHostContext log)
+    {
+        var player = ReelLogic.FindLocalPlayerEntity();
+        var interactors = player != null
+            ? player.GetComponentsInChildren<InteractionSystem.Implementation.Interactors.PlayerInteractor>(true)
+            : null;
+        if (!_built || !_subscribed || _interactable == null || interactors == null || interactors.Length == 0 || interactors[0] == null)
+        {
+            log?.LogWarning("[reel:act] interact refused: booth/subscription/local interactor unavailable");
+            return;
+        }
+        log?.LogInfo($"[reel:act] interact test cheat: invoking game Interact spawned={_interactable.IsSpawned}; native input not tested");
+        try { _interactable.Interact(interactors[0]); }
+        catch (Exception e) { log?.LogWarning($"[reel:act] interact test threw {e.GetType().Name}: {e.Message}"); }
+    }
+
+    // Test-only: enter the subscribed completion callback without targeting or input. This does not
+    // test native hold progress or its dispatch; production eligibility and networking still run.
+    private void DebugComplete(IHostContext log)
+    {
+        var player = ReelLogic.FindLocalPlayerEntity();
+        var interactors = player != null
+            ? player.GetComponentsInChildren<InteractionSystem.Implementation.Interactors.PlayerInteractor>(true)
+            : null;
+        if (!_built || !_subscribed || interactors == null || interactors.Length == 0 || interactors[0] == null)
+        {
+            log?.LogWarning("[reel:act] complete refused: booth/subscription/local interactor unavailable");
+            return;
+        }
+        log?.LogInfo("[reel:act] complete test cheat: invoking completion callback; native input not tested");
+        OnInteracted(interactors[0]);
+    }
+
     private void OnInteracted(InteractionSystem.Core.Interactor interactor)
     {
         try
@@ -1218,6 +1255,55 @@ internal sealed class ReelInteraction
             return true;   // the event is on our own interactable; do not drop it for a name mismatch
         }
         catch { return true; }
+    }
+
+    private static Harmony _interactionPatch;
+
+    internal static void InstallInteractionPatch()
+    {
+        var method = AccessTools.Method(typeof(InteractionSystem.Core.Interactable), "Interact",
+            new[] { typeof(InteractionSystem.Core.Interactor) });
+        if (method == null) throw new MissingMethodException("Interactable.Interact(Interactor)");
+        var patch = new Harmony("alterum.reel.local-interaction");
+        try
+        {
+            patch.Patch(method, prefix: new HarmonyMethod(typeof(ReelInteraction), nameof(InteractPrefix)));
+            _interactionPatch = patch;
+        }
+        catch { patch.UnpatchSelf(); throw; }
+    }
+
+    internal static void DisposeInteractionPatch()
+    {
+        try { _interactionPatch?.UnpatchSelf(); } finally { _interactionPatch = null; }
+    }
+
+    private static bool InteractPrefix(InteractionSystem.Core.Interactable __instance,
+        InteractionSystem.Core.Interactor __0)
+    {
+        if (!ReelNet.IsClient || __instance == null || __instance.IsSpawned) return true;
+        foreach (var booth in Live)
+        {
+            if (!booth._built || booth._interactable == null || booth._interactable.Pointer != __instance.Pointer) continue;
+            // The client renders a local clone, not a spawned Netcode object. Interact's stock
+            // cooldown RPC throws before it emits the local completion event on this clone.
+            // Keep both the local constraints and ReelNet's authoritative validation.
+            var player = ReelLogic.FindLocalPlayerEntity();
+            if (!booth._subscribed || __0 == null || player == null || !Under(__0.transform, player.transform))
+            {
+                _log?.LogWarning("[reel:act] local booth interaction refused: subscription or local actor unavailable");
+                return false;
+            }
+            if (!__instance.CanInteract(__0, out var constraint))
+            {
+                _log?.LogWarning($"[reel:act] local booth interaction refused by {TypeName(constraint)}");
+                return false;
+            }
+            _log?.LogInfo("[reel:act] completed client interaction on local booth clone");
+            booth.OnInteracted(__0);
+            return false;
+        }
+        return true;
     }
 
     private static IHostContext _log;
@@ -1453,7 +1539,7 @@ internal sealed class ReelInteraction
     }
 
     // Absolute harness form: standat=x,y,z,yaw.
-    private void StandPlayerAt(IHostContext log, string val)
+    internal static void StandPlayerAt(IHostContext log, string val)
     {
         try
         {
@@ -1468,6 +1554,15 @@ internal sealed class ReelInteraction
             var rot = Quaternion.Euler(0f, yaw, 0f);
             var player = ReelLogic.FindLocalPlayerEntity();
             if (player == null) { log?.LogWarning("[reel:act] standat: no local player"); return; }
+            var lobby = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "Lobby";
+            if (lobby)
+            {
+                var kcc = player.GetComponentInChildren<Character.KinematicCharacterControllers.KCCTeleportationHandler>(true);
+                if (kcc == null) { log?.LogWarning("[reel:act] standat: no lobby movement teleport handler"); return; }
+                kcc.TeleportTo(target, rot, true);
+                log?.LogInfo($"[reel:act] standat pos={V(target)} yaw={yaw:F1} via=KCCTeleportationHandler (harness)");
+                return;
+            }
             var all = SceneCache.Scan(Il2CppType.Of<PlayerTeleportator>());
             for (int i = 0; i < all.Length; i++)
             {
@@ -1505,6 +1600,8 @@ internal sealed class ReelInteraction
             else if (line.Equals("why", StringComparison.OrdinalIgnoreCase)) Why(log);
             else if (line.Equals("frames=", StringComparison.OrdinalIgnoreCase)) StartFrameLog(log, "6");
             else if (line.Equals("handlerfire", StringComparison.OrdinalIgnoreCase)) HandlerFire(log);
+            else if (line.Equals("complete", StringComparison.OrdinalIgnoreCase)) DebugComplete(log);
+            else if (line.Equals("interact", StringComparison.OrdinalIgnoreCase)) DebugInteract(log);
             else log.LogWarning($"[reel:act] booth {Live.IndexOf(this) + 1}: '{line}' is not a per-booth command");
         }
         catch (Exception e) { log?.LogWarning($"[reel:act] booth line '{line}' failed: {e.Message}"); }

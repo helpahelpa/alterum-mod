@@ -17,7 +17,7 @@ namespace AlterumModelSwap.Hot
         internal bool Playable => _host.HasPlayableChannel;
         internal long LengthMs() => _host.TotalMs;
         internal long PositionMs => _host.PositionMs;
-        internal bool Playing => _host.HasPlayableChannel && !_host.EnginePaused;
+        internal bool Playing() => _host.HasPlayableChannel;
         internal string BusState => "harness";
         internal long OpenMs => 0;
         internal string FilePath => null;
@@ -193,6 +193,8 @@ namespace AlterumModelSwap.Hot
             _log?.LogWarning($"[test:host] seek readback mismatch target={absoluteMs} actual={actualMs}");
             return false;
         }
+
+        internal int RetiredCount() => 0;
 
         internal void Stop(string why)
         {

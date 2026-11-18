@@ -450,12 +450,17 @@ internal static class ReelPlacements
         {
             if (log == null || reels == null) return;
             try { ReelNet.Tick(log); } catch { }
-            // A booth whose root died with its scene (or with the retiring generation) is not a
-            // booth: drop it from both lists before deciding whether this map needs spawning.
+            // Unity destroys the scene objects but not the managed booth runtime. Dispose it
+            // before pruning so subscriptions and the indexed ReelInteraction.Live list retire too.
             for (int i = _auto.Count - 1; i >= 0; i--)
                 if (_auto[i] == null || _auto[i].Root == null) _auto.RemoveAt(i);
             for (int i = reels.Count - 1; i >= 0; i--)
-                if (reels[i] == null || reels[i].Root == null) reels.RemoveAt(i);
+            {
+                var reel = reels[i];
+                if (reel != null && reel.Root != null) continue;
+                reels.RemoveAt(i);
+                try { reel?.Dispose(); } catch { }
+            }
 
             if (!ReelLogic.IsMapRun(out string scene))
             {

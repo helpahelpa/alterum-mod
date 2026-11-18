@@ -104,6 +104,130 @@ Known issues while doing this:
 
 `win/run-second.ps1` launches an extra instance without killing the first.
 
+## Direct console automation
+
+`win/console.py` executes a real QC command through the running instance's local filesystem mailbox,
+without keyboard input, pausing, opening the console, or entering AEZAKMI:
+
+```bash
+python3 win/console.py --root /mnt/c/AlterumPinned 'help'
+python3 win/console.py --root /mnt/c/AlterumB --instance b 'alterum.test.assert-model local tc2-sniper'
+```
+
+Use `--instance` only for a process launched with that `-alterumInstance` name. The helper atomically
+publishes `exec <request-id> <command>` to that instance's `qc.request`, waits for the matching log
+acknowledgement, and prints the synchronous output. Exit 0 means dispatched, 1 means a processor
+error or failed synchronous assertion, and 2 means a transport/timeout error. Asynchronous game
+actions still need their own subsequent observation. A timeout does not prove the command was not
+executed; do not blindly retry mutations.
+
+This is an intentionally privileged **local developer transport**: access to the install's files is
+its trust boundary. Execution uses the actual QC parser/processor, with a scoped, thread-local
+exception to the access gate. The exception ends even if the command throws. It does not persist an
+unlock, play the unlock cue, or enable ordinary player console input. Normal `invoke` requests and
+in-game console access remain gated. Do not expose the mailbox as an untrusted network endpoint.
+
+Model join/rejoin assignment belongs to the original game. Custom rows extend its normal database;
+occupied rows are not added back to availability. The mod no longer restores a saved wanted choice
+or runs a second randomizer. Bodies and peer advertisements follow the game's applied row.
+
+## Confirmed session automation (existing processes)
+
+`win/session.py` is the generic normal-flow coordinator. Select the client to operate as `target`
+and the live host of the intended lobby as `peer`; neither role assumes an A/B install or instance
+name. For the current test pair:
+
+```sh
+python3 win/session.py rejoin \
+  --target-root /mnt/c/AlterumB --target-instance b \
+  --peer-root /mnt/c/AlterumPinned --peer-instance '' \
+  --output "$HOME/assets/monorepo/alterum-data/validation/session-flow" --diagnostics
+```
+
+Operations: `status` (read-only current verdict), `leave` (stop at confirmed interactive Menu),
+`join` (start from disconnected Menu), and `rejoin` (one complete leave/join cycle). `--target-pid`
+and `--peer-pid` further disambiguate selectors. Omitted instance selectors allow discovery; an
+explicit empty string selects the unnamed process. Host cycling, map scenes, pre-existing
+confirmation dialogs, missing/ambiguous processes and busy UI automation are refused. This tool
+never creates a lobby or starts, restarts, stops or moves a player. Native game model assignment
+on joining is expected; the helper makes no model choice, config write or reservation override.
+
+The merged Hot DLL must implement `SessionControl` on both selected processes. No permanent host
+update is needed. The coordinator uses a separate privileged local `session.request` mailbox;
+access to install files is its trust boundary, just like the direct console mailbox. It never
+unlocks the player console. Requests carry a correlation ID, PID, full process start UTC, hot
+MVID and generation nonce, expected lobby/client membership and a short expiry. Mutations are never automatically
+retried. Full, exact scene-owned UI paths are used (not the truncated log path formatter). The
+pause, exit, confirmation, code-panel, field and connect actions all use the game's native UI
+paths, not a direct network join/leave API or scene loader.
+
+Readiness is observed independently of dispatch: after leave, Menu must be loaded and interactive,
+Steam membership/network listening/local player must be gone, and the host must have removed the
+old client. After join, both processes must still belong to the intended lobby, the owned player
+must exist, each peer must see the other's connected player, the roster and applied model row
+must be observed, and membership/model observations must hold for at least three fresh samples
+and one second. New client IDs are discovered, never assumed. Rendering/material health is NOT
+part of connection readiness; it is collected separately with `--diagnostics` so a rendering bug
+cannot disguise itself as a join timeout. Runtime probes are sequential, not an atomic peer snapshot.
+
+Every run writes `report.json`, `summary.txt`, correlated runtime samples and OS identity evidence
+under a unique output directory. OS PID/start/exe/instance is checked before and after, with runtime
+identity and hot-generation guards throughout. Failure stops at the current stage and attempts a
+bounded observation-only diagnostic bundle while locks are held. Preflight failures before
+exclusive mailbox acquisition do not send diagnostic requests. Missing observations are not passes.
+A timeout does not prove a mutation never ran: inspect the current state before any new operation.
+
+Defaults: 150-second total flow deadline, 30 seconds per stage; optional/failure diagnostics have
+a separate 30-second bound. Exit 0 = requested state ready, 1 = flow/readiness failure, 2 = invocation
+or preflight failure, 3 = connection ready but diagnostic findings/incomplete observations. Existing
+permanent hosts currently lack verified active-config-path observations, so `--diagnostics` can
+legitimately return 3 after a successful cycle; inspect its findings rather than treating it as a
+join failure. Without `--diagnostics`, success reports health as `not-requested`, not healthy.
+
+The helper holds cooperative exclusive locks in both selected mailboxes. Other raw UI/QC writers
+and human input do not honor them: do not operate those instances concurrently. One cycle only;
+there is no blind retry/repeat mode or automatic recovery that could conceal a regression.
+
+Tests:
+
+```sh
+python3 -m unittest discover -s tests/session-flow -v
+dotnet run --project tests/session-flow/UiPathProbe.csproj -c Release
+```
+
+## Live lobby music and Reel regression probes
+
+`win/music-reel-probe.py` runs against two existing peers. Use `status` to collect fresh scene,
+transport, and booth evidence, `eof` for a short track that ends naturally, and `map` for a long
+track playing on both peers as they enter the map via the native readiness pad. The `reel` case
+requires a loaded map; it grants and equips an eligible stake, uses explicit test poses, and
+checks host consumption and settlement against the client result. Its default action calls the
+game's `Interact` method, not the physical hold-E input path; `--callback-only` tests only the
+completion callback and downstream logic.
+
+Run `python3 win/music-reel-probe.py --help` for the selectors, poses, and source options. The
+probe holds the session mailbox locks, does not restart either game, and never retries a mutation.
+Keep other mailbox writers and player input idle while it runs. Each run saves fresh, bounded log
+windows alongside identity observations and a verdict in its own output directory. Use
+`win/focus-logs.py` to group repeated errors without changing the original logs.
+
+## Diagnostic bundle
+
+For one bounded, observation-only collection of the current A/B processes:
+
+```sh
+python3 win/collect-diagnostics.py --main-root /mnt/c/AlterumPinned \
+  --secondary-root /mnt/c/AlterumB \
+  --output "$HOME/assets/monorepo/alterum-data/validation/diagnostics" --timeout 30
+```
+
+This stages its own minimal interactive Windows worker via `ssh windows` and emits absolute paths
+to a versioned JSON report and findings-first summary, fresh runtime manifests, hashes, targeted
+logs and current-window PNGs. It does not deploy, launch/stop, change models/configuration/POV,
+operate UI, or persist an unlock. Missing/stale observations are not passes. Exit 0 = complete and
+healthy; 1 = findings or incomplete; 2 = invocation failure. Full schema, limitations, selectors,
+runtime deployment boundary, tested invocation and tests: `notes/diagnostic-bundle.md`.
+
 ## Iterating
 
 ```

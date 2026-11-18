@@ -411,6 +411,18 @@ internal static class LobbyMusicNet
     // watermark (nonce/sequence) is kept, so the same revision cannot come back to life.
     internal static void ResetFollow(string why) => ClearFollow(why);
 
+    internal static void EndLobbyPlayback()
+    {
+        if (_following)
+        {
+            ClearFollow("left Lobby scene");
+            // Keep the revision watermark; a delayed Playing frame cannot reopen this track.
+            _fIntent = IntentStopped;
+        }
+        ClearPending("left Lobby scene");
+        ClearPendingControl("left Lobby scene");
+    }
+
     internal static void Debug(string line) => _log?.LogInfo(line);
 
     internal static bool IsAuthority => _isServer;
@@ -731,6 +743,7 @@ internal static class LobbyMusicNet
 
     internal static void HandleFrame(IHostContext log, INetBridge net, in NetInboundFrame frame, float now)
     {
+        if (!LobbyMusicHooks.InLobby) return;
         _log = log;
         var p = frame.Payload;
         if (p == null || p.Length < 2) return;
@@ -804,6 +817,7 @@ internal static class LobbyMusicNet
 
         if (intent == IntentStopped) { RxStopped(log, frame, url, rev, seq, anchorPos); return; }
         if (intent == IntentFailed) { RxFailed(log, frame, url, rev, seq); return; }
+        if (rev == _fRevision && _fIntent == IntentStopped) return;
         RxFollow(log, frame, url, title, duration, intent, rev, seq, anchorPos, anchorHost, flags, controlGen);
     }
 
@@ -839,7 +853,7 @@ internal static class LobbyMusicNet
             h.Stop("remote-stopped");
         }
         ClearFollow("host stopped");
-        _fRevision = rev; _fUrl = url; _fAnchorPos = anchorPos;
+        _fRevision = rev; _fUrl = url; _fAnchorPos = anchorPos; _fIntent = IntentStopped;
     }
 
     private static void RxFailed(IHostContext log, in NetInboundFrame frame, string url, uint rev, uint seq)
@@ -1674,7 +1688,7 @@ internal static class LobbyMusicNet
         _log = log;
         _lateJoins++;
         var host = LobbyMusicHooks.Host;
-        if (host == null || _net == null) return;
+        if (host == null || _net == null || !LobbyMusicHooks.InLobby) return;
         if (!_isServer || !host.OwnsPlayback || peerId == 0)
         {
             log?.LogInfo($"{Tag} late-join client={peerId}: nothing playing at the host (phase={host.Current})");

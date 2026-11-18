@@ -269,7 +269,7 @@ if ($DryRun) {
         $launchArgs = $launchArgs + "-alterumInstance=" + $Instance
     }
     if ($launchArgs) { $launchArgs = $launchArgs + " " }
-    $launchArgs = $launchArgs + "-alterumLabelLaunch=" + $script:Token
+    $launchArgs = $launchArgs + "-alterumLabelLaunch=" + $script:Token + " -alterumDevMode"
     $script:Result.arguments = $launchArgs
 
     try {

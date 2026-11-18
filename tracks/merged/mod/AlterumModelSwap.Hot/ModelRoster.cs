@@ -54,7 +54,6 @@ internal sealed class ModelSpec
     // Taken from the bake manifest's bbox, not guessed at runtime.
     public float YOffset;
     public string[] RegionBones;         // region id -> game bone, in bake order
-    public bool Bat;                     // build the classic bat prop (Sahur only, it is the joke)
 
     // Rigged only. { model bone, game bone } pairs. Anatomy, not names: the game side is what the
     // shipped rig uses (UE-style), the model side is whatever the bake emitted.
@@ -66,9 +65,9 @@ internal sealed class ModelSpec
     // Set this to override the measured default for one entry.
     public HatAnchor AnchorOverride;
 
-    // Object names in the scene are `Tag + "_Body" | "_PreviewBody" | "_Skeleton" | "_Bat"`. The
-    // "Sahur" prefix is the mod's own-object marker: MirrorPlayerVisibility / CosmeticMarkers /
-    // SahurPreview skip anything starting with it, so imported models keep the prefix too.
+    // Object names in the scene are `Tag + "_Body" | "_PreviewBody" | "_Skeleton"`. The "Sahur"
+    // prefix is the mod's own-object marker: MirrorPlayerVisibility / CosmeticMarkers / SahurPreview
+    // skip anything starting with it, so imported models keep the prefix too.
     public string Tag;
 
     // Licence. DemoOnly models are integrated for the local demo only and must never ship: this
@@ -129,8 +128,6 @@ internal static class ModelRoster
     {
         // rigged: Sahur (Roblox) ~2.25x a native head wide, so the hat scales with it
         new Entry("sahur-roblox", new Vector3(0.2918f, -0.0046f, -0.0040f), 0.5300f),
-        // rigid: classic Sahur, oversized wooden head
-        new Entry("sahur-classic", new Vector3(0.2459f, -0.0194f, 0.0012f), 0.4656f),
         // rigid pigeon, head+hat region
         new Entry("golubiro", new Vector3(0.3478f, 0.0074f, 0.0049f), 0.6148f),
         // rigged Capuchino: the coffee-cup head is the widest in the roster
@@ -224,9 +221,9 @@ internal static class ModelRoster
         new[] { "RightFoot",   "foot_r" },
     };
 
-    // Region ids every variants2 rigid bake uses (their manifest's piece_table): torso, head, arm_l,
-    // arm_r, leg_l, leg_r. Identical to the classic Sahur bake, so the table is shared; a bake that
-    // ever numbers its regions differently only needs its own array here.
+    // Region ids every rigid bake uses (their manifest's piece_table): torso, head, arm_l, arm_r,
+    // leg_l, leg_r. The table is shared; a bake that ever numbers its regions differently only needs
+    // its own array here.
     private static readonly string[] RigidRegions =
     {
         "spine_01", "head", "upperarm_l", "upperarm_r", "thigh_l", "thigh_r",
@@ -234,8 +231,8 @@ internal static class ModelRoster
 
     // ============================================================== the entries, in wardrobe order
     //
-    // Existing indices must not move: the game persists the selected index, and both Sahur entries
-    // have been at 10/11 since they shipped. New models are appended as their bakes land.
+    // Existing indices must not move: the game persists the selected index. The retained entries
+    // keep their leading positions and new models are appended as their bakes land.
     // Balerina Capuchino: a real Rigify rig, pruned 301 -> 56 bones and re-parented under one root
     // (`DEF-spine`) at bake time, so the existing delta retarget runs unchanged - it only needs this
     // table. Its 23 pairs, measured from bone positions in the source (manifest.json -> bone_map),
@@ -268,8 +265,8 @@ internal static class ModelRoster
         new[] { "DEF-toe.R",        "ball_r" },
     };
 
-    // The four entries that shipped before the Nordbo set, at fixed indices 10..13. The Nordbo ones
-    // (index 14 onwards) live in the generated NordboRoster.g.cs and are appended after these, so
+    // The entries that shipped before the Nordbo set, at fixed indices 10..12. The Nordbo ones
+    // (index 13 onwards) live in the generated NordboRoster.g.cs and are appended after these, so
     // their order and indices are unchanged by adding models to the end of the roster.
     private static readonly ModelSpec[] Base =
     {
@@ -286,15 +283,6 @@ internal static class ModelRoster
                      "(modified: 4K maps downscaled, roughness/AO folded into constants, mesh mirrored " +
                      "in X, weights reduced to 4 influences)",
         },
-        new ModelSpec
-        {
-            Slug = "sahur-classic", Tag = "Sahur",
-            Label = "Sahur (Classic)", AdoptNames = new[] { "Sahur (Classic)", "Sahur" }, Kind = ModelKind.Rigid,
-            BlobSuffix = "sahur.mset", AlbedoSuffixes = new[] { "sahur_albedo.png" },
-            PortraitSuffix = "sahur_portrait.png", BustSuffix = "sahur_bust.png",
-            Yaw180 = true, YOffset = 0f, RegionBones = RigidRegions, Bat = true,
-            Credit = "'Tung Tung Tung Sahur' by @BakaFoxArt, CC0 1.0",
-        },
         // "Shpioniro Golubiro" by alex.cgwarrior, CC BY 4.0
         // https://sketchfab.com/3d-models/shpioniro-golubiro-game-3d-model-free-download-f503749e40a44321bee4c46c00c759d9
         // Baked as a rigid region split (no rig in the source at all): 10 pieces, regions 0..5 as
@@ -306,7 +294,7 @@ internal static class ModelRoster
             Label = "Golubiro", AdoptNames = new[] { "Golubiro" }, Kind = ModelKind.Rigid,
             BlobSuffix = "shpioniro-golubiro.mset", AlbedoSuffixes = new[] { "shpioniro-golubiro_albedo.png" },
             PortraitSuffix = "shpioniro-golubiro_portrait.png", BustSuffix = "shpioniro-golubiro_bust.png",
-            Yaw180 = false, YOffset = 0.0054f, RegionBones = RigidRegions, Bat = false,
+            Yaw180 = false, YOffset = 0.0054f, RegionBones = RigidRegions,
             Credit = "'Shpioniro Golubiro' by alex.cgwarrior, CC BY 4.0 " +
                      "(modified: mesh mirrored in X, scaled to 180 cm, maps downscaled to one 1024^2 " +
                      "unlit albedo, normal/roughness/AO folded into constants)",
@@ -320,8 +308,8 @@ internal static class ModelRoster
         // the frozen worlds, frame-zero identity deltas and CPU-skinned articulation fixtures. The
         // 105.9055 load-time rescale is gone with the defect that needed it.
         //
-        // Appended at the end on purpose: the game persists the selected model as an index and the
-        // two Sahur entries must keep 10/11.
+        // Appended after the retained entries on purpose: the game persists the selected model as
+        // an index, so a new model only ever goes at the end.
         new ModelSpec
         {
             Slug = "capuchino", Tag = "Sahur_Capuchino",
@@ -350,12 +338,12 @@ internal static class ModelRoster
         return all;
     }
 
-    // Labels a previous generation registered that are no longer in All. "Labubu" is the one
-    // withdrawal: a CC BY-NC bundle with a no-redistribution clause over third-party character IP,
-    // which was never distributable and is now out of the mod entirely. The data object outlives a
-    // hot reload, so a withdrawn entry is dropped from PlayerModelDatabase.Models by name instead of
-    // lingering as a row that renders the donor body.
-    internal static readonly string[] Retired = { "Labubu" };
+    // Labels a previous generation registered that are no longer in All. "Labubu" was a CC BY-NC
+    // bundle with a no-redistribution clause over third-party character IP, never distributable;
+    // "Sahur (Classic)" is the retired rigid BakaFox body (its mset, albedo, portraits and bat are
+    // gone). The data object outlives a hot reload, so a withdrawn entry is dropped from
+    // PlayerModelDatabase.Models by name instead of lingering as a row that renders the donor body.
+    internal static readonly string[] Retired = { "Labubu", "Sahur (Classic)" };
 
     internal static bool IsRetired(string label)
     {
@@ -369,8 +357,18 @@ internal static class ModelRoster
         return null;
     }
 
-    // The classic entry: what the F3/F2 request file drives when nothing else is selected.
-    internal static ModelSpec Classic => BySlug("sahur-classic");
+    // The roster's first entry (Sahur/Roblox today), and the first RIGID entry. The F3 request file
+    // drives the rigid module, so it must resolve a rigid spec; handing it the rigged first entry
+    // would make SahurModel parse an rset as an mset.
+    internal static ModelSpec Default => All.Length > 0 ? All[0] : null;
+    internal static ModelSpec DefaultRigid
+    {
+        get
+        {
+            foreach (var s in All) if (s != null && s.Kind == ModelKind.Rigid) return s;
+            return null;
+        }
+    }
 
     // The mod's own scene objects: every one is named `Sahur...` and one of the suffixes below.
     // One predicate for all of them, because "is this ours" is asked from the body hide/restore
@@ -382,8 +380,10 @@ internal static class ModelRoster
         return n.EndsWith("_Body", StringComparison.Ordinal)
             || n.EndsWith("_PreviewBody", StringComparison.Ordinal)
             || n.EndsWith("_Skeleton", StringComparison.Ordinal)
-            || n.EndsWith("_Bat", StringComparison.Ordinal)
-            || n.EndsWith("_ScaleHuman", StringComparison.Ordinal);
+            || n.EndsWith("_ScaleHuman", StringComparison.Ordinal)
+            // A bat object only exists in a scene created by a build that still had Sahur (Classic);
+            // keeping the suffix here lets the orphan sweep remove that leftover.
+            || n.EndsWith("_Bat", StringComparison.Ordinal);
     }
 
     internal static int IndexOf(ModelSpec spec)

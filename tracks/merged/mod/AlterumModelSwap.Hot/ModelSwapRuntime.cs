@@ -18,6 +18,8 @@ public class ModelSwapRuntime
     // Placement chosen in game and baked in. World space, Lobby scene.
     private const bool UseFixedLobbyPose = true;
     private const int FrameCap = 15;
+    // Explicit opt-in for local development display restrictions; normal players retain game settings.
+    private static readonly bool DevDisplayMode = DevDisplayPolicy.Enabled(Environment.GetCommandLineArgs());
     private float _nextFpsCheck;
     private static readonly Vector3 FixedLobbyPos = new Vector3(-0.328f, 1.153f, -12.273f);
     private static readonly Vector3 FixedLobbyEuler = new Vector3(0f, 41.06f, 0f);
@@ -391,6 +393,7 @@ public class ModelSwapRuntime
     // ignores targetFrameRate entirely.
     private void EnforceFrameCap()
     {
+        if (!DevDisplayMode) return;
         try
         {
             if (_t < _nextFpsCheck) return;
@@ -407,7 +410,7 @@ public class ModelSwapRuntime
     // display settings a few seconds into startup, which would otherwise go fullscreen.
     private void KeepQuiet()
     {
-        if (!_cfg.ForceWindowed && !_cfg.Quiet) return;
+        if (!DevDisplayMode || (!_cfg.ForceWindowed && !_cfg.Quiet)) return;
         var log = _h;
 
         if (_myHwnd == IntPtr.Zero) _myHwnd = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
@@ -612,20 +615,23 @@ public class ModelSwapRuntime
 
     // internal: UiDriver (`ui.request`) presses the same buttons through this method, so a menu
     // walked unattended and the startup ClickSequence cannot drift apart.
-    internal int ActivateOrClick(string pattern)
+    internal bool SequenceActive => _clicks != null && _clickIndex < _clicks.Length && !_abortSequence;
+
+    internal int ActivateOrClick(string pattern, bool exact = false)
     {
         var log = _h;
         int hits = 0;
-        var mbs = SceneCache.Scan(Il2CppType.Of<MonoBehaviour>());
+        var mbs = exact ? Resources.FindObjectsOfTypeAll(Il2CppType.Of<MonoBehaviour>())
+                        : SceneCache.Scan(Il2CppType.Of<MonoBehaviour>());
         for (int i = 0; i < mbs.Length; i++)
         {
             var mb = mbs[i].TryCast<MonoBehaviour>();
             if (mb == null) continue;
             var go = mb.gameObject;
-            if (go == null || !go.activeInHierarchy) continue;
+            if (go == null || !go.activeInHierarchy || (exact && !go.scene.IsValid())) continue;
             string path;
-            try { path = PathOf(go.transform); } catch { continue; }
-            if (path.IndexOf(pattern, StringComparison.OrdinalIgnoreCase) < 0) continue;
+            try { path = exact ? UiPath.Full(go.transform) : PathOf(go.transform); } catch { continue; }
+            if (exact ? path != pattern : path.IndexOf(pattern, StringComparison.OrdinalIgnoreCase) < 0) continue;
 
             if (mb.GetIl2CppType().Name == "Button")
             {

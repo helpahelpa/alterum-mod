@@ -82,15 +82,6 @@ internal static class ModelEnhancementProfiles
         });
         Add(new EnhancementProfile
         {
-            Slug = "sahur-classic", Chest = EnhanceMode.RestDeform, Hips = EnhanceMode.RestDeform,
-            // A wooden statue: the chest band is the barrel's belly, the hips its hem.
-            ChestScale = 1.18f, HipScale = 1.12f,
-            ChestCenterFrac = 0.66f, ChestHalfFrac = 0.090f,
-            HipCenterFrac = 0.36f, HipHalfFrac = 0.070f,
-            Note = "8 rigid pieces, rest-space band",
-        });
-        Add(new EnhancementProfile
-        {
             Slug = "golubiro", Chest = EnhanceMode.RestDeform, Hips = EnhanceMode.RestDeform,
             ChestScale = 1.22f, HipScale = 1.14f,
             ChestCenterFrac = 0.70f, ChestHalfFrac = 0.080f,

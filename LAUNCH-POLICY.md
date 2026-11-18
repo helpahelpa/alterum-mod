@@ -36,16 +36,16 @@ artifacts: a comparison baseline for update testing, never a launch target.
 
 | Thing | Where |
 |---|---|
-| FPS cap | `FrameCap = 15` in `AlterumModelSwap.Hot/ModelSwapRuntime.cs` (`EnforceFrameCap`: `vSyncCount = 0`, `targetFrameRate = FrameCap`, re-asserted every 2 s, logs `[fps] cap applied 15 (vSync off)`) |
+| FPS cap (dev only) | `-alterumDevMode` opts into `FrameCap = 15` in `AlterumModelSwap.Hot/ModelSwapRuntime.cs` (`vSyncCount = 0`, re-asserted every 2 s) |
 | Window size (authoritative) | the launch arguments `-screen-fullscreen 0 -screen-width 640 -screen-height 360` |
 | Window size (config) | `[Window] QuietWidth = 640`, `QuietHeight = 360`, `ForceWindowed = true` in `<install>/BepInEx/config/com.user0.alterum.modelswap*.cfg` |
 | Stop one instance | `./track.sh <bones\|emotes\|cosmetics> stop` (tracks T1/T2/T3) or `win/track-instance.ps1 -Action stop -Install C:\AlterumB` |
 | Default install for every launch script | `C:\AlterumPinned` (`run-game.ps1`, `run-quiet.ps1`, `run-second.ps1`, `run-a-nokill.ps1`: `-GameDir`; `track-instance.ps1`: `-Install`; `iterate.sh`/`two.sh`/`mp-test.sh`/`clip.sh`: `ALTERUM_GAME`) |
 
-The cfg keys are **hot-reloaded** (`[config] reloaded from disk`) but `QuietWidth/QuietHeight` are
-only pushed to the display on a fullscreen → windowed transition (`Screen.SetResolution`). The live
-render size comes from the launch arguments, so **cfg and launch args must agree**; changing only
-the cfg affects the next launch. That is why the launch scripts below carry the numbers too.
+Normal launches without `-alterumDevMode` leave FPS, VSync, and window settings up to the game,
+even if an old mod config still has `ForceWindowed` or `Quiet` enabled. Local dev launchers opt in.
+The `[Window]` config is hot-reloaded; in dev mode the mod can reapply the configured size if the
+game changes it, so keep that size consistent with the launch arguments.
 
 Every launch script defaults to 640x360: `win/run-game.ps1`, `win/run-second.ps1`,
 `win/run-quiet.ps1`, `win/track-instance.ps1` (`-ScreenWidth/-ScreenHeight`), `two.sh`, `mp-test.sh`,

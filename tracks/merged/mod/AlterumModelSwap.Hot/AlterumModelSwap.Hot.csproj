@@ -29,16 +29,6 @@
          decoded by PngDecoder at load (ReelArt.LoadPoolIcons) and sliced by the rects in
          ReelPool.g.cs. A live Sprite wins over the sheet when the scene has one loaded. -->
     <EmbeddedResource Include="$(HotAssetsDir)reel_pool_icons.png" LogicalName="AlterumModelSwap.Hot.reel_pool_icons.png" />
-    <!-- Sahur body (CC0 1.0, @BakaFoxArt) baked offline by tracks/merged/tools/bake_sahur.py:
-         sahur.mset = 8 rigid pieces, int16 positions, uint16 UV, int8 normals, per-vertex bone
-         region; sahur_albedo.png = byte copy of the model's own albedo (no material path). -->
-    <EmbeddedResource Include="$(HotAssetsDir)sahur.mset" LogicalName="AlterumModelSwap.Hot.sahur.mset" />
-    <EmbeddedResource Include="$(HotAssetsDir)sahur_albedo.png" LogicalName="AlterumModelSwap.Hot.sahur_albedo.png" />
-    <!-- Wardrobe portraits for the Sahur entry: rendered from the same sahur.mset by
-         tracks/merged/tools/sahur_portrait.py (RGBA, transparent), so the icon cannot drift from
-         the mesh. sahur_portrait.png = full body, sahur_bust.png = head+shoulders. -->
-    <EmbeddedResource Include="$(HotAssetsDir)sahur_portrait.png" LogicalName="AlterumModelSwap.Hot.sahur_portrait.png" />
-    <EmbeddedResource Include="$(HotAssetsDir)sahur_bust.png" LogicalName="AlterumModelSwap.Hot.sahur_bust.png" />
     <!-- Rigged variant: "Tung Sahur Game 3D model (Roblox)" by alex.cgwarrior, CC BY 4.0, modified
          (4K maps downscaled, roughness/AO folded into constants, mesh mirrored in X, weights cut to
          4 influences). baked offline by tracks/merged/tools/bake_sahur_roblox.py:

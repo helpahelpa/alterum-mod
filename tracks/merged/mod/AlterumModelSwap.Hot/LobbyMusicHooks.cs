@@ -8,6 +8,7 @@ using HarmonyLib;
 using Il2CppInterop.Runtime;
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace AlterumModelSwap.Hot;
 
@@ -125,11 +126,21 @@ internal static class LobbyMusicHooks
         }
     }
 
+    internal static bool InLobby => SceneManager.GetActiveScene().name == "Lobby";
+
     internal static void Tick(IHostContext log)
     {
         if (_log == null) _log = log;
         var h = _host;
         if (h == null) return;
+        if (!InLobby)
+        {
+            // The FMOD stream outlives the scene's player UI; stop it ourselves. This also
+            // retires a download that was buffering (or a channel paused) during the transition.
+            if (h.OwnsPanel) h.Stop("left Lobby scene");
+            LobbyMusicNet.EndLobbyPlayback();
+            return;
+        }
         try { h.Tick(Time.unscaledTime); } catch (Exception e) { log?.LogWarning($"{Tag} host tick threw {e.GetType().Name}: {e.Message}"); }
         try { LobbyMusicNet.Tick(log, h); } catch (Exception e) { log?.LogWarning($"{Tag} net tick threw {e.GetType().Name}: {e.Message}"); }
         if (Time.unscaledTime < _nextMirror) return;
@@ -173,7 +184,7 @@ internal static class LobbyMusicHooks
                                       AudioPlayerUI ui = null, bool startPaused = false)
     {
         var h = _host;
-        if (h == null) return false;
+        if (h == null || !InLobby) return false;
         if (ui == null) ui = FindUi();
         // 1. the game's own track is a different URL: stop it through its controller first,
         //    otherwise its handle keeps feeding the panel the old title and clock.
@@ -216,6 +227,11 @@ internal static class LobbyMusicHooks
         if (_host == null) return IntentOutcome.Passthrough;
         url = (url ?? "").Trim();
         if (YtDlpPipeline.Classify(url) != YtDlpPipeline.UrlKind.Page) return IntentOutcome.Passthrough;
+        if (!InLobby)
+        {
+            _lastRefusal = "yt-dlp music is only available in the Lobby scene";
+            return IntentOutcome.Refused;
+        }
         if (LobbyMusicNet.IsAuthority)
         {
             if (AuthoritativeStart(url, source, -1, ui, false)) return IntentOutcome.Sent;

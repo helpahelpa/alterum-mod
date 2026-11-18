@@ -55,12 +55,13 @@ OCCULT = {"ceremonial_candle", "crucifix", "ritualdagger", "rune", "spellbook"}
 DEBUG = {"flashlight_test", "test_lagcomprensationgun"}
 
 # ---- never bettable, never winnable ------------------------------------------------
-# Two whole classes of item are excluded from the card pool itself (weight 0, Excluded flag),
+# Quest items and the special lantern are excluded from the card pool itself (weight 0, Excluded flag),
 # and ReelLogic refuses them as the inserted item too:
 #
 #   rune*   quest items. The Curse Dispelling Rune is consumed by a quest step; betting it can
 #           make that quest impossible. Matched on id/name by the rules below, so a new
 #           `*_rune` item in the extraction is caught without a code change.
+#   crucifix quest item; betting it can make the quest impossible.
 #   lantern  the quest/special light the player selects with X (the game's dedicated "Lantern
 #           Slot", key X, `LanternProperties`, quest `LightTheLantern`). There is exactly one
 #           lantern item (`lantern`, prefab "Lantern Handheld"); it is not an ordinary
@@ -76,6 +77,8 @@ def exclusion_reason(item):
         return "quest-lantern: the X-selected special light, never bet or won"
     if any(r in iid for r in RUNES) or "rune" in name or "curse dispelling" in name:
         return "quest-rune: consumed by the curse-dispelling quest step, never bet or won"
+    if "crucifix" in iid or "crucifix" in name or "сrucifix" in name:
+        return "quest-crucifix: quest item, never bet or won"
     return ""
 
 
@@ -371,14 +374,14 @@ def main():
         for it in items:
             it["icon"] = None
         no_icon = [i["itemId"] for i in items if not i.get("iconSprite")]
-        if os.path.exists(OUT_PNG):
+        if os.path.exists(OUT_CS):
             # Reuse the rects already recorded in the .g.cs when the sheet is not rebuilt.
             try:
                 old = open(OUT_CS).read()
             except OSError:
                 old = ""
             for it in items:
-                m = re.search(r'new Item\("%s".*?(-?\d+), (-?\d+), (\d+), (\d+)\)' % re.escape(it["itemId"]), old)
+                m = re.search(r'new Item\("%s".*?(-?\d+), (-?\d+), (\d+), (\d+),\s*"[^"\n]*"\)' % re.escape(it["itemId"]), old)
                 if m and int(m.group(1)) >= 0:
                     it["icon"] = tuple(int(g) for g in m.groups())
 

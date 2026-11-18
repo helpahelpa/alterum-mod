@@ -20,17 +20,14 @@ using UnityEngine.UI;
 
 namespace AlterumModelSwap.Hot;
 
-// Sahur as selectable entries in the wardrobe model list - TWO of them, so the user can pick which
-// body he wants:
+// Custom models as selectable entries in the wardrobe model list. "Sahur" is the rigged variant
+// (SahurRig): the CC BY 4.0 Roblox model with its own 71-bone Mixamo skeleton retargeted from this
+// rig. The former rigid Sahur entry is no longer offered; the other roster rows (Golubiro,
+// Capuchino, ...) are data in ModelRoster and use whichever renderer path their kind names.
 //
-//   "Sahur"          the rigged variant (SahurRig): the CC BY 4.0 Roblox model with its own 71-bone
-//                    Mixamo skeleton retargeted from this rig.
-//   "Sahur (Classic)" the CC0 BakaFox model (SahurModel): the original rigid 6-piece bind onto the
-//                    game's own bones.
-//
-// Both are real `PlayerModelData` entries appended to `PlayerModelDatabase.Models`. The game's own
+// Each is a real `PlayerModelData` entry appended to `PlayerModelDatabase.Models`. The game's own
 // selection path then applies, and `SyncSelection` maps "which entry is applied" to "which module
-// shows its body", so exactly one of the two is ever visible.
+// shows its body", so exactly one entry is ever visible.
 //
 // The wardrobe builds one `WardrobeModelButtonedTab` per `PlayerModelData` and the list it walks is
 // `PlayerModelDatabase.Models` (a static `PlayerModelData[]`; the wardrobe's model display keeps a
@@ -50,11 +47,6 @@ namespace AlterumModelSwap.Hot;
 // loads (the tabs are built from the list).
 internal static class SahurWardrobe
 {
-    private const string ClassicBustSuffix = "sahur_bust.png";
-    private const string ClassicFullSuffix = "sahur_portrait.png";
-    private const string RiggedBustSuffix = "sahur_roblox_bust.png";
-    private const string RiggedFullSuffix = "sahur_roblox_portrait.png";
-
     private const float DataSeconds = 5.0f;
     private const float SyncSeconds = 0.5f;
     private const float UiSeconds = 1.0f;
@@ -81,10 +73,10 @@ internal static class SahurWardrobe
         public readonly List<WardrobeModelButtonedTab> Tabs = new();
     }
 
-    // Order = registration order = ModelRoster.All (which is why the two Sahur entries keep indices
-    // 10/11: the game persists the selected index). Every other difference between the entries -
-    // which renderer path drives the body, which blob/portraits are embedded, which bone table applies
-    // - is data in ModelRoster, not a branch here.
+    // Order = registration order = ModelRoster.All (the game persists the selected index, so the
+    // retained entries keep their leading positions). Every other difference between the entries -
+    // which renderer path drives the body, which blob/portraits are embedded, which bone table
+    // applies - is data in ModelRoster, not a branch here.
     private static readonly Entry[] Entries = Build();
 
     private static Entry[] Build()
@@ -107,9 +99,7 @@ internal static class SahurWardrobe
     internal static ModelSpec SpecAt(int index) => index >= 0 && index < Entries.Length ? Entries[index].Spec : null;
     internal static int EntryCount => Entries.Length;
 
-    // A random-on-join roll waits for this: every entry has its PlayerModelData and a live row in
-    // PlayerModelDatabase.Models. "After the roster is ready" means exactly this, not "the game
-    // started": before the append the pool would still be the ten native rows.
+    // The game's sampler sees every custom row once registration completes.
     internal static bool RosterReady
     {
         get
@@ -119,9 +109,7 @@ internal static class SahurWardrobe
         }
     }
 
-    // How many times the wardrobe's own Select button (or the `select` request) has applied a row.
-    // A random-on-join roll compares this against its value at membership start: a manual pick
-    // before the roll wins, and the roll is skipped rather than overwriting it.
+    // Diagnostic count of explicit wardrobe/request selections; never used to assign a model.
     internal static int ManualSelections { get; private set; }
     internal static void MarkManualSelection() => ManualSelections++;
 
@@ -133,8 +121,7 @@ internal static class SahurWardrobe
 
     // Apply one of our entries through the game's own path (ApplyNative -> SetBaseModelIndex).
     // Returns false when the row is not registered yet, so the caller can retry a moment later.
-    // `why` is the provenance word persisted with the record; the random-on-join roll passes its
-    // own marker so a record it wrote is never mistaken for a player's pick (DemoteRolledWanted).
+    // `why` labels the explicit request in diagnostics; no model choice is persisted by the mod.
     internal static bool ApplyEntry(IHostContext log, int entryIndex, string why = null)
     {
         if (entryIndex < 0 || entryIndex >= Entries.Length) return false;
@@ -142,10 +129,6 @@ internal static class SahurWardrobe
         if (entry == null || entry.Data == null || entry.Index < 0) return false;
         return ApplyNative(log, entry, entry.Index, why);
     }
-
-    // The exact value RandomModelOnJoin writes into `why` for a record its roll produced. A record
-    // with any other provenance (a wardrobe pick, an apply request, a native pick) is a real choice.
-    internal const string RollWhy = "random roll";
 
     private static PlayerModelSetuper _setuper;
     private static WardrobeOptionalViewController _view;
@@ -172,7 +155,7 @@ internal static class SahurWardrobe
     // deliberate pick, and must not be read back as a new decision.
     internal static bool OurApply => _ourApply;
 
-    // Which of the two entries is the applied model, or -1. The wardrobe preview binds to this.
+    // Which roster entry is the applied model, or -1. The wardrobe preview binds to this.
     internal static int SelectedIndex
     {
         get
@@ -328,6 +311,43 @@ internal static class SahurWardrobe
 
     // Diagnostic probe for the acceptance evidence: logs every call the game's own wardrobe RPC
     // reaches. Purely observational (a postfix), removed with the generation on hot reload.
+    internal static void Install(IHostContext log) => InstallClickProbe(log);
+
+    // Register at the join boundary before the game's spawn/assignment implementation runs.
+    // Unlike hooking a tiny sampler, this also covers native builds that inline random selection.
+    // Reading the original availability result below never adds occupied rows back to it.
+    private static void BeforeGameSpawn(ulong clientId)
+    {
+        foreach (var e in Entries)
+        {
+            if (e.Data == null) EnsureData(_probeLog, e);
+            if (e.Data != null) EnsureRegistered(_probeLog, e);
+        }
+        try
+        {
+            var all = SceneCache.Scan(Il2CppType.Of<PersistentData.PlayersModelsNetworkData>());
+            for (int k = 0; all != null && k < all.Length; k++)
+            {
+                var network = all[k].TryCast<PersistentData.PlayersModelsNetworkData>();
+                if (network == null || !network.IsSpawned || !network.IsServer) continue;
+                var available = network.GetAvailablesModelsIndexes();
+                var rows = new List<ushort>();
+                int custom = 0;
+                for (int i = 0; available != null && i < available.Count; i++)
+                {
+                    ushort index = available[i];
+                    rows.Add(index);
+                    if (!string.IsNullOrEmpty(SlugOfData(DatabaseRowAt(index)))) custom++;
+                }
+                _probeLog?.LogInfo($"[model:game-pool] client={clientId} database={DatabaseCount} " +
+                                   $"available=[{string.Join(",", rows)}] customAvailable={custom} " +
+                                   "source=original-game (read only; no mod roll or availability rewrite)");
+                break;
+            }
+        }
+        catch (Exception e) { _probeLog?.LogWarning($"[model:game-pool] trace failed: {e.Message}"); }
+    }
+
     private static void InstallClickProbe(IHostContext log)
     {
         _probeLog = log;
@@ -340,7 +360,12 @@ internal static class SahurWardrobe
             var post = typeof(SahurWardrobe).GetMethod(nameof(OnSetBaseModelIndex), BindingFlags.Static | BindingFlags.NonPublic);
             _clickProbe = new Harmony("alterum.modelswap.wardrobeclick");
             _clickProbe.Patch(m, postfix: new HarmonyMethod(post));
-            log.LogInfo("[sahur:click] probe installed on PlayersAppearanceManager.SetBaseModelIndex (postfix, logging only)");
+            var spawn = AccessTools.DeclaredMethod(typeof(Network.Spawners.PlayersModelSetuper),
+                                                   "SpawnPlayerModelOnServer", new[] { typeof(ulong) });
+            if (spawn == null) throw new MissingMethodException("PlayersModelSetuper.SpawnPlayerModelOnServer");
+            _clickProbe.Patch(spawn, prefix: new HarmonyMethod(typeof(SahurWardrobe), nameof(BeforeGameSpawn)));
+            log.LogInfo("[sahur:wardrobe] original-game assignment: custom rows registered before spawn; " +
+                        "no saved-choice restore, mod reroll, or shared occupied rows");
         }
         catch (Exception e) { log.LogWarning($"[sahur:click] probe install failed: {e.Message}"); _clickProbe = null; }
     }
@@ -475,8 +500,8 @@ internal static class SahurWardrobe
     }
 
     // The portraits are the same meshes the runtime builds, rasterised offline by
-    // tracks/merged/tools/sahur_portrait.py (classic) and sahur_roblox_portrait.py (rigged), RGBA
-    // with a transparent background and embedded.
+    // tracks/merged/tools/sahur_roblox_portrait.py (rigged) and the variants2 tools, RGBA with a
+    // transparent background and embedded.
     private static Sprite Icon(IHostContext log, string suffix, out Texture2D tex)
     {
         tex = null;
@@ -681,287 +706,14 @@ internal static class SahurWardrobe
 
     // ================================================================== selection
 
-    // Which roster entry this player wants on his body, independent of the row the GAME last
-    // applied. It survives a hot reload and a restart by name, because the map run re-applies a
-    // stale index (PlayersModelSetuper.SpawnPlayerModelOnServer replays the index captured at lobby
-    // join, which is older than the wardrobe selection). Evidence: 2026-11-15 06:31, host
-    // `dictionaryIndex=12` then SetBaseModelIndex(0,12) after the lobby had applied 24, and client
-    // `dictionaryIndex=6` after its roll had applied 16. In a map the body is therefore driven from
-    // THIS value, not from `PlayerModelSetuper._playerModelData`.
-    private const int WantedUnknown = -2;
-    private const string WantedFileName = "alterum-wanted-model.cfg";
-    private const float MapAssertSeconds = 1.5f;
-    private static int _wantIndex = WantedUnknown;
-    private static bool _wantLoaded;
-    // EXPLICIT vs ADOPTED. A wanted entry is explicit when the player chose it through one of this
-    // module's own paths (a wardrobe tab click, `apply`/`select`, a body request). It is adopted
-    // when this module merely recorded the row the GAME had applied, so that a map would keep it.
-    //
-    // The distinction is the whole lobby bug: the lobby recreates the local body and re-applies the
-    // row it captured at join (`SpawnPlayerModelOnClient` -> `SetupModel`), so `hit != Wanted`
-    // there is that stale row, not a decision. Adopting it overwrote a deliberate body request and
-    // - because it writes alterum-wanted-model*.cfg - carried the wrong entry into the next map
-    // (2026-11-15 17:36 `body request` tc2-soldier, 17:44 `lobby: our row applied` sigma-labubu).
-    // Only an adopted value may be replaced by the lobby's applied row.
-    private static bool _wantExplicit;
-    // The canonical wanted record after the repair rules: its slug ("" = native, "-" = none yet),
-    // whether its row is registered YET (pending), and a provenance word for the identity line.
-    private static string _wantSlug = "-";
-    private static bool _wantPending;
-    private static string _wantProvenance = "none";
-    private static string _wantFrom = "none";          // record origin: file | roll | none
-    // The `why` word the RECORD on disk carries (file) or the one this generation wrote. Needed by
-    // DemoteRolledWanted: a record this class wrote as its roll default has to be distinguishable
-    // from a real pick of the same model, which writes its own provenance word.
-    private static string _wantWhy = "";
-    private static string _lastPendingSig;
+    // Compatibility diagnostic names below now describe the game's applied row only.
+    // No saved wanted choice is loaded or written, and no sync path selects a model.
     private static IntPtr _lastAppliedPtr;
     private static bool _lastAppliedSeen;
-    private static string _lastMismatch;
-    private static string _lastLobbyHold;
-    private static float _wantRetryAt;
-    private static float _nextMapAssert;
-
-    // ---- map re-entry guard -------------------------------------------------------------------
-    //
-    // In a map the game rebuilds the local body and re-applies the model index it captured at lobby
-    // join. `hit != want` is therefore a normal, recurring condition there, not an edge: acting on it
-    // every sync is what put the host into a rebuild loop (the map branch re-forcing the wanted row
-    // every 1.5 s while `ApplySelection` re-asserted the module) and, with a second body module
-    // switched on by request, diverged the skeleton (hand_l x -> -1.4e12). What follows makes the
-    // map path edge-triggered:
-    //   * the row is only forced when the WANTED entry changes, or when the game built a NEW body
-    //     instance that has not had that row applied yet (keyed on the body object itself);
-      //   * nothing is forced while our own module is already bound to the wanted entry - the row
-    //     the game applied is then irrelevant, because the module hides that body anyway;
-    //   * a native wanted entry (slug="") releases our body once and stays native - no forcing;
-    //   * a fuse stops everything when the same body is rebuilt more than FuseRebuilds times inside
-    //     FuseWindow seconds: it logs loudly and settles on native instead of diverging further.
-    private const int FuseRebuilds = 4;          // body rebuilds tolerated inside the window
-    private const float FuseWindow = 6f;         // seconds the fuse counts over
-    private static int _forcedIndex = int.MinValue;  // entry index last forced onto _forcedBody
-    private static int _forcedBody;                  // body instance id the force was issued against
-    private static int _lastBody;                    // last body instance id seen in a map
-    private const float ChurnSeconds = 1.5f;      // a rebuild this soon after the last one is churn
-    private static float _fuseStart = -1e6f;
-    private static float _lastRebuildAt = -1e6f;
-    private static int _fuseRebuilds;
-    private static bool _fuseTripped;
-    private static bool _nativeReleased;             // edge: our body already released for native
-    private static bool _ourApply;                   // inside ApplyIndex: our own write, not a choice
-    // The lobby re-assert (a real leave/rejoin spawns the new actor with the game's own native row).
-    // One key per (client, wanted row) plus the row the game applied when the key was armed: a new
-    // membership or a new stale applied row starts a fresh, bounded attempt window instead of a
-    // per-frame fight with the game's own re-apply.
-    private static string _lobbyAssertKey = "";
-    private static int _lobbyAssertCount;
-    private static float _lobbyAssertAt;
-    private static bool _nativeReleaseLogged;
-    private static string _wantPath = "(not resolved)";
-
+    private static bool _ourApply;
     private static Entry EntryAt(int i) => i >= 0 && i < Entries.Length ? Entries[i] : null;
-    private static Entry Wanted => EntryAt(_wantIndex);
-    internal static string WantedState() => _wantIndex == WantedUnknown ? "unknown"
-        : _wantIndex < 0 ? "none" : (Wanted == null ? "?" : Wanted.Label);
+    internal static string WantedState() => Snapshot().Label;
     private static int SafeIndex(PlayerModelData d) { try { return d == null ? -1 : d.Index; } catch { return -1; } }
-
-    private static string WantPath(IHostContext log)
-    {
-        if (!string.IsNullOrEmpty(_wantPath) && _wantPath != "(not resolved)") return _wantPath;
-        try
-        {
-            string dir = System.IO.Path.GetDirectoryName(log.ConfigPath);
-            string name = string.IsNullOrEmpty(log.InstanceName)
-                ? WantedFileName
-                : WantedFileName.Replace(".cfg", "." + log.InstanceName + ".cfg");
-            _wantPath = System.IO.Path.Combine(dir, name);
-        }
-        catch { _wantPath = WantedFileName; }
-        return _wantPath;
-    }
-
-    // Read once per generation, and only until something decides: the file first, then the
-    // random-on-join roll (which is a recorded choice of this player). While neither exists the
-    // value stays Unknown so a later pass can still pick it up; after 2 s it looks again.
-    //
-    // REPAIR RULES (the wanted cfg is the one record that survives a restart, so a stale or foreign
-    // record must never decide the wrong body):
-    //   * a valid slug wins over a stale `label`/`index` in the same file - the row is looked up
-    //     through the current roster by SLUG, and the file is only rewritten by the next real
-    //     choice (never by this read);
-    //   * an entry whose row the game has not registered YET stays PENDING: the custom choice is
-    //     kept, never downgraded to native, and the body module may still build;
-    //   * a withdrawn/unknown slug INVALIDATES the record: explicit precedence is cleared, the
-    //     normal default selection produces the replacement, and that path persists atomically;
-    //   * a record with NO `slug` key at all is not the same as a deliberate `slug=` (native):
-    //     the missing one may only be recovered through an unambiguous label, never through the
-    //     numeric index a pre-slug build recorded.
-    private static void EnsureWanted(IHostContext log)
-    {
-        if (_wantIndex != WantedUnknown || _wantLoaded) return;
-        float now = 0f; try { now = Time.unscaledTime; } catch { }
-        if (now < _wantRetryAt) return;
-        _wantRetryAt = now + 2f;
-
-        string path = WantPath(log);
-        bool exists = false;
-        try { exists = System.IO.File.Exists(path); } catch { }
-        if (!exists)
-        {
-            // No record at all (the file was never written, or is not there): the roll is this
-            // generation's recorded choice, and it is resolved by SLUG like every other record.
-            string rolled = "";
-            try { rolled = RandomModelOnJoin.RolledSlug; } catch { }
-            int r = EntryIndexForSlug(rolled);
-            if (r >= 0)
-            {
-                _wantLoaded = true;
-                _wantIndex = r;
-                _wantExplicit = true;   // the roll is a recorded choice of this player
-                _wantSlug = rolled;
-                _wantFrom = "roll";
-                _wantProvenance = "roll";
-                _wantWhy = RollWhy;
-                _wantPending = Pending(Entries[r]);
-                log.LogInfo($"[sahur:map] no wanted state; seeded from the random-on-join roll: " +
-                            $"{r} '{Entries[r].Label}' slug='{rolled}' pending={_wantPending}");
-            }
-            return;
-        }
-
-        _wantLoaded = true;
-        try
-        {
-            string slug = null, why = null, label = null, legacyIndex = null;
-            bool slugSeen = false, explicitFlag = false;
-            foreach (var raw in System.IO.File.ReadAllLines(path))
-            {
-                string line = raw.Trim();
-                int eq = line.IndexOf('=');
-                if (eq <= 0) continue;
-                string key = line.Substring(0, eq).Trim();
-                string val = line.Substring(eq + 1).Trim();
-                if (key.Equals("slug", StringComparison.OrdinalIgnoreCase)) { slug = val; slugSeen = true; }
-                else if (key.Equals("label", StringComparison.OrdinalIgnoreCase)) label = val;
-                else if (key.Equals("why", StringComparison.OrdinalIgnoreCase)) why = val;
-                else if (key.Equals("entry", StringComparison.OrdinalIgnoreCase) ||
-                         key.Equals("index", StringComparison.OrdinalIgnoreCase)) legacyIndex = val;
-                else if (key.Equals("explicit", StringComparison.OrdinalIgnoreCase)) explicitFlag = val == "1" || val.Equals("true", StringComparison.OrdinalIgnoreCase);
-            }
-            // The flag belongs to the RECORD, not to the row it points at: an explicit NATIVE choice
-            // (slug="") has to suppress the join roll exactly like an explicit entry does, so it is
-            // assigned before the empty-slug early return. A file from a build before this key
-            // existed has no `explicit`: the recorded `why` is written by this module only, so it is
-            // the fallback.
-            _wantExplicit = explicitFlag || IsExplicitWhy(why);
-            _wantFrom = "file";
-            _wantWhy = why ?? "";
-
-            if (!slugSeen)
-            {
-                // Pre-slug record. `entry=N` is a roster INDEX and is never reinterpreted (a roster
-                // change would silently make it a different model). The label is the only thing that
-                // can name an entry across a build, and only when exactly one entry answers to it.
-                int unique = UniqueEntryForLabel(label);
-                if (unique >= 0)
-                {
-                    var e = Entries[unique];
-                    _wantIndex = unique;
-                    _wantSlug = e.Spec == null ? "" : e.Spec.Slug;
-                    _wantPending = Pending(e);
-                    _wantProvenance = _wantExplicit ? "wanted:explicit" : "wanted:adopted";
-                    log.LogWarning($"[model:wanted] record had no slug (legacy entry={legacyIndex ?? "-"}); " +
-                                   $"recovered the only entry labelled '{label}' -> {unique} '{e.Label}' slug='{_wantSlug}' " +
-                                   $"pending={_wantPending}");
-                    InvalidatePresentation(log, "legacy wanted record recovered by label");
-                    return;
-                }
-                log.LogWarning($"[model:wanted] record had no slug and label='{label ?? "-"}' names " +
-                               $"{(unique < 0 ? "no unique entry" : "an ambiguous entry")}; the legacy index " +
-                               $"{legacyIndex ?? "-"} is NOT reinterpreted - record dropped");
-                InvalidateWanted(log, null, "legacy record without a slug");
-                return;
-            }
-
-            if (string.IsNullOrEmpty(slug))
-            {
-                // A deliberate NATIVE choice, distinct from a missing record.
-                _wantIndex = -1;
-                _wantSlug = "";
-                _wantPending = false;
-                _wantProvenance = _wantExplicit ? "native:explicit" : "native:adopted";
-                log.LogInfo($"[sahur:map] wanted entry restored from '{path}': the game's own (native) row " +
-                            $"[{(_wantExplicit ? "explicit" : "adopted")}]");
-                return;
-            }
-
-            int idx = EntryIndexForSlug(slug);
-            if (idx < 0)
-            {
-                // Withdrawn or unknown: not a choice this build can honour. Clear the explicit
-                // precedence (a later adopted write is allowed to replace it) and let the normal
-                // default selection produce the replacement; that path persists atomically.
-                InvalidateWanted(log, slug, $"slug is not in this build's roster (label='{label ?? "-"}')");
-                return;
-            }
-
-            var entry = Entries[idx];
-            _wantIndex = idx;
-            _wantSlug = entry.Spec == null ? "" : entry.Spec.Slug;
-            _wantPending = Pending(entry);
-            _wantProvenance = _wantExplicit ? "wanted:explicit" : "wanted:adopted";
-            if (_wantPending) _wantProvenance = "wanted:pending";
-            log.LogInfo($"[sahur:map] wanted entry restored from '{path}': {idx} '{entry.Label}' ({_wantSlug}) " +
-                        $"[{(_wantExplicit ? "explicit" : "adopted")}] db={(entry.Data == null ? "pending" : entry.Index.ToString(CultureInfo.InvariantCulture))} " +
-                        $"row-state={(_wantPending ? "pending (slug wins, row not registered yet)" : "ready")}");
-            InvalidatePresentation(log, "wanted state loaded");
-        }
-        catch (Exception e)
-        {
-            _wantIndex = -1;
-            log.LogWarning($"[sahur:map] wanted state read failed: {e.Message}");
-        }
-    }
-
-    // A record this build cannot honour. The in-memory state goes back to "nothing decided yet"
-    // (NOT to native): the map/lobby selection then produces the replacement through its normal
-    // path, which is the same path that writes the cfg atomically. A failed write there leaves the
-    // old file alone; nothing here rewrites it.
-    private static void InvalidateWanted(IHostContext log, string slug, string why)
-    {
-        _wantIndex = WantedUnknown;
-        _wantLoaded = true;
-        _wantExplicit = false;          // invalid precedence: an adopted write may replace it
-        _wantPending = false;
-        _wantSlug = null;
-        _wantProvenance = slug == null ? "withdrawn" : "withdrawn:" + slug;
-        _wantFrom = "invalidated";
-        _wantWhy = "";
-        log.LogWarning($"[model:wanted] invalidated wanted record: {why}; explicit precedence cleared - the " +
-                       "normal default selection chooses the replacement and persists it atomically");
-        InvalidatePresentation(log, "wanted record invalidated");
-    }
-
-    // Is exactly one roster entry named (or adopt-named) like this? Case-insensitive, same matching
-    // rule EntryOwningRow uses. -1 for none, -2 for ambiguous.
-    private static int UniqueEntryForLabel(string label)
-    {
-        if (string.IsNullOrEmpty(label)) return -1;
-        int found = -1;
-        for (int i = 0; i < Entries.Length; i++)
-        {
-            var e = Entries[i];
-            bool match = string.Equals(e.Label, label, StringComparison.OrdinalIgnoreCase);
-            for (int n = 0; !match && e.AdoptNames != null && n < e.AdoptNames.Length; n++)
-                match = string.Equals(e.AdoptNames[n], label, StringComparison.OrdinalIgnoreCase);
-            if (!match) continue;
-            if (found >= 0) return -2;
-            found = i;
-        }
-        return found;
-    }
-
-    private static bool Pending(Entry e) => e == null || e.Data == null || e.Index < 0;
 
     private static void InvalidatePresentation(IHostContext log, string reason)
     {
@@ -1001,12 +753,12 @@ internal static class SahurWardrobe
 
     internal static WantSnapshot Snapshot()
     {
-        int kind = _wantIndex == WantedUnknown ? 0 : (_wantIndex < 0 ? 2 : 1);
-        var e = EntryAt(_wantIndex);
-        return new WantSnapshot(kind, _wantIndex,
-                                _wantSlug ?? (kind == 2 ? "" : "-"),
-                                kind == 1 && e != null ? e.Label : (kind == 2 ? "<native>" : "?"),
-                                _wantExplicit, _wantPending, _wantProvenance, _wantFrom);
+        PlayerModelData applied = AppliedData(_probeLog);
+        var e = applied == null ? null : EntryOwningRow(_probeLog, applied);
+        int entry = e?.Spec == null ? -1 : EntryIndexForSlug(e.Spec.Slug);
+        return new WantSnapshot(applied == null ? 0 : (e == null ? 2 : 1), entry,
+                                e?.Spec?.Slug ?? "", e?.Label ?? (applied == null ? "?" : "<native>"),
+                                false, false, "game:applied", "game");
     }
 
     // Slug -> roster entry. Never an index: slugs are the only identity that survives a roster change.
@@ -1022,61 +774,6 @@ internal static class SahurWardrobe
     }
 
     internal static PlayerModelData DataAtEntry(int entry) => EntryAt(entry)?.Data;
-
-    // ------------------------------------------------------------------ a roll is not a choice
-    //
-    // RandomModelOnJoin applies its roll through ApplyEntry, which records the result as an EXPLICIT
-    // wanted entry ("the player chose this"). It is not a choice: it is this module's default for a
-    // player who has not chosen, and persisting it as explicit is what let it outrank the row the
-    // game's own HUD portrait and wardrobe tab show - `wanted=tc2-heavy explicit / body=tc2-heavy /
-    // applied=Golubiro`, i.e. the pigeon portrait over the heavy body on 2026-11-17 07:55Z.
-    //
-    // Called by RandomModelOnJoin for the membership it recorded a roll for. It demotes ONLY when
-    // all four facts hold, so a real pick can never be demoted:
-    //   1. the record on disk carries the roll's own provenance word (`why=random roll`) - a manual
-    //      wardrobe pick of the same model rewrites that word, so "same slug" alone is never enough;
-    //   2. that slug is the one the roll state file recorded for this membership (pid/lobby/client
-    //      are compared by the caller, in BeginMembership);
-    //   3. the game's applied row is one of OUR rows - a native applied row leaves the roll as the
-    //      only custom claim, so it keeps standing;
-    //   4. that applied row is a DIFFERENT model - when it is the rolled one, body and display agree
-    //      already and the record needs no change.
-    // Only then is the roll the wrong side of the precedence: the HUD portrait and the wardrobe tab
-    // name another custom model, and the body has to follow them.
-    internal static bool DemoteRolledWanted(IHostContext log, string rollSlug)
-    {
-        if (string.IsNullOrEmpty(rollSlug)) return false;
-        EnsureWanted(log);
-        if (!_wantLoaded || !_wantExplicit) return false;
-        if (!string.Equals(_wantWhy, RollWhy, StringComparison.Ordinal))
-        {
-            log?.LogInfo($"[sahur:map] rolled record for '{rollSlug}' is not this module's roll any more " +
-                         $"(why='{_wantWhy}') - it is a real choice and is kept");
-            return false;
-        }
-        if (_wantIndex < 0 || _wantIndex >= Entries.Length) return false;
-        var e = EntryAt(_wantIndex);
-        string slug = e == null || e.Spec == null ? "" : e.Spec.Slug;
-        if (!string.Equals(slug, rollSlug, StringComparison.OrdinalIgnoreCase)) return false;
-        string appliedSlug;
-        try { appliedSlug = SlugOfData(AppliedData(log)); } catch { appliedSlug = ""; }
-        if (string.IsNullOrEmpty(appliedSlug))
-        {
-            log?.LogInfo($"[sahur:map] keeping the rolled entry '{WantedState()}': the game applied a NATIVE " +
-                         "row, so the roll is the only custom claim there is");
-            return false;
-        }
-        if (string.Equals(appliedSlug, slug, StringComparison.OrdinalIgnoreCase)) return false;
-        _wantExplicit = false;
-        _wantProvenance = "wanted:adopted";
-        bool written = WriteWanted(log, e, "random roll (this module's default, not a pick) - the applied row decides", false, NowStamp());
-        _wantWhy = written ? "random roll (this module's default, not a pick) - the applied row decides" : _wantWhy;
-        log?.LogInfo($"[sahur:map] wanted entry '{WantedState()}' was this module's random roll, not a pick: " +
-                     $"demoted to adopted (persisted={written}) because the game applied our other row " +
-                     $"'{appliedSlug}' - the row the HUD and the wardrobe show decides the body");
-        InvalidatePresentation(log, "rolled wanted demoted to adopted");
-        return true;
-    }
 
     // The entry that owns a database row, as a slug, or "" when the row is not ours. Pointer
     // identity, never the row index: rows shift between generations.
@@ -1118,325 +815,6 @@ internal static class SahurWardrobe
         try { return list[i]; } catch { return null; }
     }
     internal static bool ViewAttached { get { try { return _view != null && _view.gameObject != null; } catch { return false; } } }
-
-    // Read by RandomModelOnJoin before it rolls. The roll is the default for a player who has NOT
-    // chosen, so a persisted EXPLICIT wanted entry must suppress it instead of being replaced by it
-    // (that is what used to happen on a restart / next session: only a same-session manual pick was
-    // noticed). Returns:
-    //   0 = no explicit choice (roll)
-    //   1 = explicit roster entry, `entryIndex` >= 0
-    //   2 = explicit NATIVE row (the player chose the game's own model)
-    // `applied` says the game currently has that entry on the body, so the caller only re-applies
-    // when the join path has not already landed it.
-    // Any persisted CUSTOM wanted record, explicit or ADOPTED, with its row resolved. The join roll
-    // consults this after ExplicitWanted: the roll is the default for a player with no custom
-    // identity, and a native join row must not turn a persisted custom identity into a roll. The
-    // adopted case is the 2026-11-17 08:58Z rejoin (Golubiro adopted, Sarah spawned, capuchino
-    // rolled): the wanted record is the identity, the native row is the game's default.
-    internal static bool PersistedCustomWanted(IHostContext log, out int entryIndex, out string label, out bool applied)
-    {
-        entryIndex = -1;
-        label = "?";
-        applied = false;
-        EnsureWanted(log);
-        if (!_wantLoaded || _wantIndex < 0 || _wantIndex >= Entries.Length) return false;
-        var e = EntryAt(_wantIndex);
-        if (e == null || e.Spec == null || e.Data == null) return false;
-        entryIndex = _wantIndex;
-        label = e.Label;
-        try { applied = Same(LocalSetuper(log)?._playerModelData?.Value, e.Data); }
-        catch { applied = false; }
-        return true;
-    }
-
-    internal static int ExplicitWanted(IHostContext log, out int entryIndex, out string label, out bool applied)
-    {
-        entryIndex = -1;
-        label = "?";
-        applied = false;
-        EnsureWanted(log);
-        if (!_wantLoaded || !_wantExplicit) return 0;
-        if (_wantIndex < 0 || _wantIndex >= Entries.Length) return 2;   // explicit NATIVE row
-        var e = EntryAt(_wantIndex);
-        if (e == null || e.Spec == null) return 2;
-        // A known entry whose row the game has not registered yet is STILL the player's choice: it
-        // is reported as an entry with `applied=false`, so the caller keeps waiting/re-applying and
-        // never converts a valid custom choice into "native".
-        entryIndex = _wantIndex;
-        label = e.Label;
-        try { applied = e.Data != null && Same(LocalSetuper(log)?._playerModelData?.Value, e.Data); }
-        catch { applied = false; }
-        return 1;
-    }
-
-    // The `why` values that mean "the player chose this". Used only for a file written before the
-    // `explicit` key existed; everything after this build writes the flag itself.
-    private static bool IsExplicitWhy(string why)
-    {
-        if (string.IsNullOrEmpty(why)) return false;
-        return why.StartsWith("body request", StringComparison.OrdinalIgnoreCase)
-            || why.StartsWith("apply", StringComparison.OrdinalIgnoreCase)
-            || why.StartsWith("deliberate", StringComparison.OrdinalIgnoreCase)
-            || why.StartsWith("revert to the donor", StringComparison.OrdinalIgnoreCase)
-            || why.StartsWith("body module switched on by request", StringComparison.OrdinalIgnoreCase);
-    }
-
-    // Record (or clear) the body this player wants. Persisted immediately: the value is the one
-    // thing a hot reload or a restart must not lose, because after either of those the game's
-    // applied row is the stale one.
-    //
-    // `explicitChoice` says this came from a decision (wardrobe pick / apply / body request) rather
-    // than from following the row the game had applied. The flag is persisted with the slug so a
-    // restart cannot turn a deliberate pick back into an adoptable one.
-    private static void SetWanted(IHostContext log, Entry e, string why, bool explicitChoice = false,
-                                 bool alreadyPersisted = false)
-    {
-        _wantLoaded = true;
-        int want = -1;
-        for (int i = 0; i < Entries.Length; i++) if (ReferenceEquals(Entries[i], e)) { want = i; break; }
-        // A new choice is a new state: clear the map guard and the fuse BEFORE the early return, so
-        // re-choosing the entry the fuse settled on also un-fuses it.
-        if (_fuseTripped) log?.LogInfo("[sahur:map] fuse cleared by a new choice");
-        _fuseTripped = false;
-        _fuseRebuilds = 0;
-        _forcedIndex = int.MinValue;
-        _forcedBody = 0;
-        _nativeReleased = false;
-        _nextMapAssert = 0f;
-        _lastLobbyHold = null;
-        if (want == _wantIndex)
-        {
-            // Same entry. An explicit set still upgrades an adopted record (a tab click on the row
-            // the lobby adopted, without the row changing); an adopted set never downgrades an
-            // explicit one - that would hand the lobby the right to overwrite a real choice.
-            if (!explicitChoice || _wantExplicit) return;
-            _wantExplicit = true;
-            _wantWhy = why ?? "";
-            _wantProvenance = _wantPending ? "wanted:pending" : "wanted:explicit";
-            _wantFrom = "decision";
-            log?.LogInfo($"[sahur:map] wanted entry '{WantedState()}' is now an explicit choice (why={why})");
-            InvalidatePresentation(log, "wanted selection became explicit");
-            // `alreadyPersisted`: the pick path wrote this very candidate before committing it; a
-            // second write here would stamp one decision with two different `at` values.
-            if (!alreadyPersisted) WriteWanted(log, e, why, explicitChoice, NowStamp());
-            return;
-        }
-        _wantIndex = want;
-        _wantExplicit = explicitChoice;
-        _wantWhy = why ?? "";
-        string slug = e == null || e.Spec == null ? "" : e.Spec.Slug;
-        _wantSlug = slug;
-        _wantPending = e != null && Pending(e);
-        _wantProvenance = e == null ? (_wantExplicit ? "native:explicit" : "native:adopted")
-                                    : (_wantPending ? "wanted:pending" : (_wantExplicit ? "wanted:explicit" : "wanted:adopted"));
-        _wantFrom = "decision";
-        log?.LogInfo($"[sahur:map] wanted model -> {(e == null ? "<native>" : "'" + e.Label + "' (" + slug + ")")} (why={why})");
-        InvalidatePresentation(log, "wanted selection changed");
-        if (!alreadyPersisted) WriteWanted(log, e, why, explicitChoice, NowStamp());
-    }
-
-    private static string NowStamp() => DateTime.UtcNow.ToString("o");
-
-    // Write the wanted record. Returns whether it landed, because the pick path commits ONLY after
-    // the value is on disk: a failed write must leave memory and the cfg agreeing on the old value
-    // rather than let the game apply a row the next generation will not know about.
-    //
-    // `explicitFlag` is the flag of the CANDIDATE being written, not of a field that may not have
-    // been assigned yet. `slug` differs between a native choice ("") and an entry; `explicit` has to
-    // say "the player chose this" for BOTH, or the record is adopted over on the next join.
-    //
-    // The temp sibling is flushed to disk and then atomically REPLACED over the destination. The
-    // destination is never deleted first: that opened a window in which the file was missing, and a
-    // generation loading exactly then read "no record" instead of either value.
-    private static bool WriteWanted(IHostContext log, Entry e, string why, bool explicitFlag, string at)
-    {
-        string slug = e == null || e.Spec == null ? "" : e.Spec.Slug;
-        string tmp = null;
-        try
-        {
-            string path = WantPath(log);
-            string dir = System.IO.Path.GetDirectoryName(path);
-            if (!string.IsNullOrEmpty(dir)) System.IO.Directory.CreateDirectory(dir);
-            string text =
-                "version=1\n" +
-                "slug=" + slug + "\n" +
-                "label=" + (e == null ? "" : e.Label) + "\n" +
-                "why=" + why + "\n" +
-                "explicit=" + (explicitFlag ? "1" : "0") + "\n" +
-                "at=" + at + "\n";
-            var bytes = new UTF8Encoding(false).GetBytes(text);
-            tmp = path + ".tmp";
-            using (var fs = new System.IO.FileStream(tmp, System.IO.FileMode.Create,
-                                                     System.IO.FileAccess.Write, System.IO.FileShare.None))
-            {
-                fs.Write(bytes, 0, bytes.Length);
-                fs.Flush(true);        // on disk before the rename, not only in the OS cache
-            }
-            ReplaceWantedFile(tmp, path);
-            tmp = null;
-            return true;
-        }
-        catch (Exception ex)
-        {
-            log?.LogWarning($"[sahur:map] wanted state write failed: {ex.Message}");
-            if (tmp != null) { try { System.IO.File.Delete(tmp); } catch { } }
-            return false;
-        }
-    }
-
-    // Atomic replace that never leaves the destination missing: File.Replace is the atomic
-    // primitive, and where it is unavailable a single rename over the destination still never
-    // deletes it first.
-    private static void ReplaceWantedFile(string tmp, string path)
-    {
-        if (!System.IO.File.Exists(path)) { System.IO.File.Move(tmp, path); return; }
-        try { System.IO.File.Replace(tmp, path, null, true); }
-        catch (Exception) { System.IO.File.Move(tmp, path, true); }
-    }
-
-    // ------------------------------------------------------------------ pick provenance
-    //
-    // Where the wanted entry comes from now: the game's own wardrobe select RPC. A wardrobe tab
-    // click is the only caller of `WardrobeController.OnModelSelectedServerRpc`, and THIS instance
-    // owning the call (`localClientId == NetworkManager.LocalClientId`) is proof of who picked -
-    // which "the applied row changed" can never be, because the lobby re-creates the local body and
-    // re-applies the row it captured at join, and that looks exactly like a pick. Reading that
-    // difference as a decision is what discarded a real one (2026-11-16 04:54: Golubiro picked, the
-    // explicit hold kept TC2 Soldier, and cfg stayed slug=tc2-soldier).
-    //
-    // `chosenModelIndex` is resolved against the CURRENT PlayerModelDatabase.Models: the numeric
-    // index is not stable across generations, so a custom row is identified by the native
-    // PlayerModelData pointer. Returns whether the original RPC may run:
-    //   * a pick that resolves and whose record landed -> true (the game applies the row once);
-    //   * a pick that resolves but whose record did NOT land -> false (see below);
-    //   * an unusable row -> true, but nothing is recorded (the game may apply it; this module will
-    //     not claim it was a choice).
-    internal static bool NoteLocalWardrobePick(IHostContext log, ulong clientId, ushort chosenModelIndex)
-    {
-        // Counted first, and counted for EVERY pick this instance owns: a click is a decision, and
-        // one this module cannot record must still not let the join roll overwrite it.
-        MarkManualSelection();
-
-        string scene = "";
-        try { scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name ?? ""; } catch { }
-
-        int rows = -1;
-        PlayerModelData row = null;
-        try
-        {
-            var models = PlayerModelDatabase.Models;
-            rows = models == null ? -1 : models.Length;
-            if (models != null && chosenModelIndex < models.Length) row = models[chosenModelIndex];
-        }
-        catch (Exception e) { log?.LogWarning($"{ChoiceTag} row lookup failed: {e.Message}"); }
-
-        string rowName = "";
-        try { rowName = row == null ? "" : (row.name ?? ""); } catch { }
-
-        Entry picked = null;
-        bool native = false;
-        string reject = null;
-        if (rows < 0) reject = "database-missing";
-        else if (chosenModelIndex >= rows) reject = "index-out-of-range";
-        else if (row == null) reject = "row-null";
-        else
-        {
-            picked = EntryOwningRow(log, row);
-            // Not ours by pointer and not one of the names an entry may adopt. A WITHDRAWN row is
-            // still ours, so it must never be read as "the player picked a native row". A row that is
-            // neither ours nor positively one of the game's own is not a choice this module can
-            // describe either.
-            if (picked == null)
-            {
-                if (ModelRoster.IsRetired(rowName)) reject = "retired-row";
-                else if (!IsNativeDatabaseRow(row, chosenModelIndex)) reject = "unrecognised-row";
-                else native = true;
-            }
-        }
-        if (reject != null)
-        {
-            // Skipping the original RPC is the point: a pick whose row this module cannot describe
-            // must not be committed by the game either, or the applied row and the recorded choice
-            // disagree (exactly what the provenance work exists to prevent).
-            log?.LogWarning($"{ChoiceTag} rejected wardrobe pick client={clientId} db={chosenModelIndex} " +
-                            $"reason={reject} rows={rows} name='{rowName}' scene='{scene}'; wanted state untouched, " +
-                            "the original RPC is skipped");
-            return false;
-        }
-
-        string slug = picked == null || picked.Spec == null ? "" : picked.Spec.Slug;
-        log?.LogInfo($"{ChoiceTag} local wardrobe pick client={clientId} db={chosenModelIndex} slug='{slug}' " +
-                     $"source=WardrobeController.OnModelSelectedServerRpc scene='{scene}'");
-        if (native)
-            log?.LogInfo($"{ChoiceTag} db={chosenModelIndex} '{rowName}' is one of the game's own rows (current " +
-                         "native database) -> recorded as the native choice");
-
-        // 1 persist. The candidate and its timestamp are built once, so the file, the log and the
-        // in-memory record all carry the same instant.
-        string why = "deliberate wardrobe pick";
-        string at = NowStamp();
-        string path = WantPath(log);
-        if (!WriteWanted(log, picked, why, true, at))
-        {
-            // 2a the record could not be written: do NOT apply. Skipping the original RPC is what
-            // keeps the applied row and the recorded choice the same; the previous wanted state
-            // stays in memory untouched, and nothing was half-written (temp file, atomic replace).
-            log?.LogWarning($"{ChoiceTag} rejected wardrobe pick client={clientId} db={chosenModelIndex} " +
-                            $"slug='{slug}' reason=persist-failed path='{path}'; skipping the RPC and keeping the " +
-                            "previous wanted state");
-            return false;
-        }
-        log?.LogInfo($"{ChoiceTag} persisted path='{path}' slug='{slug}' explicit=1 why='{why}' at='{at}' " +
-                     "before-native-apply=yes");
-
-        // 2b commit in memory only now (no second write), which resets the fuse bookkeeping.
-        _wantLoaded = true;
-        SetWanted(log, picked, why, true, alreadyPersisted: true);
-        log?.LogInfo($"{ChoiceTag} committed client={clientId} slug='{slug}' fuse-reset=yes");
-
-        // 3 the game's own RPC runs and applies the row it was asked for, exactly once. This prefix
-        // never touches ApplyIndex/ApplyEntry/SetupModel or any body module: no second rebuild.
-        return true;
-    }
-
-    // Is this row positively one of the game's OWN, rather than merely "not one of ours"? The test is
-    // two-part on purpose:
-    //   * it is the row the current PlayerModelDatabase.Models holds at `index` (pointer identity, so
-    //     a detached or stale object cannot qualify), and
-    //   * its name is one of the game's own rows: `Female_<n>_<Name>` / `Male_<n>_<Name>` (the ten
-    //     shipped entries, `Female_1_Emma … Male_5_Ryan`, see tracks/merged/notes/sahur-body.md).
-    // Our clones are named after roster labels/adopt names and never match; a row another generation
-    // or another mod left behind does not either, and is therefore rejected instead of being recorded
-    // as a native choice.
-    private static bool IsNativeDatabaseRow(PlayerModelData row, int index)
-    {
-        if (row == null) return false;
-        try
-        {
-            var models = PlayerModelDatabase.Models;
-            if (models == null || index < 0 || index >= models.Length) return false;
-            if (!Same(models[index], row)) return false;
-        }
-        catch { return false; }
-        string name = "";
-        try { name = row.name ?? ""; } catch { return false; }
-        return IsGameRowName(name);
-    }
-
-    // `Female_<digits>_<rest>` or `Male_<digits>_<rest>`, the game's own row naming.
-    private static bool IsGameRowName(string name)
-    {
-        if (string.IsNullOrEmpty(name)) return false;
-        int i;
-        if (name.StartsWith("Female_", StringComparison.Ordinal)) i = 7;
-        else if (name.StartsWith("Male_", StringComparison.Ordinal)) i = 5;
-        else return false;
-        int digits = 0;
-        while (i < name.Length && name[i] >= '0' && name[i] <= '9') { i++; digits++; }
-        if (digits == 0) return false;
-        if (i >= name.Length || name[i] != '_') return false;
-        return i + 1 < name.Length;
-    }
 
     // Which entry (if any) owns a row of the CURRENT PlayerModelDatabase.Models. Identity is the
     // native PlayerModelData POINTER, never the numeric index: rows are appended, pruned and shifted
@@ -1506,89 +884,18 @@ internal static class SahurWardrobe
         return false;
     }
 
-    // Identity of the body the game currently shows for the LOCAL player, keyed on the object
-    // itself: a rebuild replaces the ThirdViewPlayerModel, so "same id" means "the row I wrote is
-    // still on this very body". 0 = no local body yet (nothing to key on).
-    private static int BodyId()
-    {
-        try
-        {
-            Transform owner = null;
-            try { var p = ReelLogic.FindLocalPlayerEntity(); if (p != null) owner = p.transform; } catch { }
-            if (owner == null) return 0;
-            var all = SceneCache.Scan(Il2CppType.Of<ThirdViewPlayerModel>());
-            for (int i = 0; all != null && i < all.Length; i++)
-            {
-                var m = all[i].TryCast<ThirdViewPlayerModel>();
-                if (m == null || m.gameObject == null || !m.gameObject.activeInHierarchy) continue;
-                for (var t = m.transform; t != null; t = t.parent) if (t == owner) return unchecked((int)m.Pointer.ToInt64());
-            }
-        }
-        catch { }
-        return 0;
-    }
-
-    // Is the wanted entry's body already on screen through its own module? Then the game's row does
-    // not matter: the module hides the native body and drives its own mesh, and forcing a row would
-    // only make the game rebuild the skeleton underneath it (the loop).
-    private static bool ModuleProvides(Entry e)
-    {
-        if (e == null || e.Spec == null) return false;
-        try
-        {
-            if (e.Rigged) return SahurRig.Active && ReferenceEquals(SahurRig.Spec, e.Spec);
-            return SahurModel.Active && ReferenceEquals(SahurModel.Spec, e.Spec);
-        }
-        catch { return false; }
-    }
-
-    // A body module was switched on OUTSIDE the wardrobe (F1/F3 or a `sahur.request on` /
-    // `sahurrig.request on` line). That is a deliberate choice of a body, so it becomes the wanted
-    // entry: the map path then stops forcing the game's row and the two modules stop fighting over
-    // the same skeleton. This is the exact sequence that produced the alternating rebuilds.
+    // Direct body requests are diagnostic only. The next sync follows the game's actual row.
     internal static void NoteBodyRequest(IHostContext log, ModelSpec spec, bool on)
     {
-        if (log == null || !on) return;                      // off = hide the body, not a choice
-        if (spec == null) spec = ModelRoster.Classic;         // a module that has not bound yet means the classic
-        int idx = -1;
-        for (int i = 0; i < Entries.Length; i++)
-            if (Entries[i].Spec != null && ReferenceEquals(Entries[i].Spec, spec)) { idx = i; break; }
-        if (idx < 0) return;
-        _fuseTripped = false;
-        _fuseRebuilds = 0;
-        _forcedIndex = int.MinValue;
-        _forcedBody = 0;
-        SetWanted(log, Entries[idx], "body module switched on by request", true);
-        log.LogInfo($"[sahur:map] body request '{Entries[idx].Label}': the module owns the body, " +
-                    "row forcing stops and the wanted entry follows the request");
-    }
-
-    // More rebuilds of the local body inside the window than the fuse allows. Stop deciding, say so
-    // once, and settle on native: a skeleton rebuild every frame is what turns two writers into
-    // diverging transforms, and the safe state is the game's own body.
-    private static void TripFuse(IHostContext log, Entry want, PlayerModelData applied, float now)
-    {
-        log.LogWarning($"[sahur:map] FUSE: the local body was rebuilt {_fuseRebuilds} times in {FuseWindow:F0}s " +
-                       $"(limit {FuseRebuilds}) - STOPPING all row forcing and settling on the native body. " +
-                       $"wanted='{WantedState()}' applied='{(applied == null ? "<none>" : applied.name)}' at t={now:F1}. " +
-                       "A new choice (wardrobe click / select / body request) clears this.");
-        SetWanted(log, null, "fuse: settling on the native body");
-        _fuseTripped = true;          // after SetWanted, which clears it by design
-        _forcedIndex = int.MinValue;
-        _forcedBody = 0;
-        _lastMismatch = null;
+        InvalidatePresentation(log, "diagnostic body request");
     }
 
     private static void SyncSelection(IHostContext log)
     {
-        EnsureWanted(log);
-        bool map = ReelLogic.IsMapRun(out string mapScene);
-        var s = LocalSetuper(log);
-
-        PlayerModelData applied = null;
-        try { applied = s?._playerModelData?.Value; } catch { }
-        // Edge for the display resolver: the game's applied row is the HUD's own feed, so when it
-        // changes the portrait/occupancy projection has to be re-evaluated. Pointer compare only.
+        // The original game owns assignment, persistence, availability, and rejoin randomness.
+        // The mod only maps the currently applied row to its custom body; it never restores a
+        // wanted row or sends a selection RPC from this sync path.
+        PlayerModelData applied = AppliedData(log);
         try
         {
             IntPtr p = applied == null ? IntPtr.Zero : applied.Pointer;
@@ -1600,247 +907,9 @@ internal static class SahurWardrobe
             }
         }
         catch { }
-        Entry hit = null;
-        foreach (var e in Entries) if (Same(applied, e.Data)) { hit = e; break; }
-
-        if (map)
-        {
-            // In a map the GAME's row is not a decision this frame: the player prefab re-applies the
-            // index it captured at lobby join (stale), so following it is exactly the reported bug -
-            // the wardrobe was right in the lobby and the body came back native (client) or on the
-            // previous entry (host) in the map. Drive the body from the wanted entry instead, and
-            // say out loud when the two disagree, so the overwrite is one grep.
-            if (_wantIndex == WantedUnknown)
-            {
-                // No record at all: the roll is a decision this player made, the game's row here is
-                // the stale spawn replay. Prefer the roll (resolved by SLUG); only fall back to the
-                // row when there is no roll to prefer (a hands-off player).
-                int rolled = -1;
-                try { rolled = RandomModelOnJoin.RolledEntry; } catch { }
-                if (rolled < 0)
-                {
-                    string rolledSlug = "";
-                    try { rolledSlug = RandomModelOnJoin.RolledSlug; } catch { }
-                    rolled = EntryIndexForSlug(rolledSlug);
-                }
-                // The canonical resolver's cached entry is the third source, and the last one: it
-                // is what the HUD/wardrobe projection already believes this player is wearing, so
-                // the body and the display cannot be seeded from different answers.
-                var seed = EntryAt(rolled) ?? hit ?? EntryAt(ModelPresentation.CachedLocalEntry);
-                bool seededByResolver = rolled < 0 && hit == null && seed != null;
-                SetWanted(log, seed, rolled >= 0
-                    ? "map entry, seeded from the random-on-join roll"
-                    : (seededByResolver ? "map entry, seeded from the canonical resolver"
-                                        : "map entry, no stored choice (adopted the game's row)"), rolled >= 0 || seededByResolver);
-            }
-            var want = Wanted;
-            float now = 0f;
-            try { now = Time.unscaledTime; } catch { }
-            int body = BodyId();
-
-            // Rebuild census + fuse. A rebuild is a NEW local body object; it is counted whether the
-            // game or a force caused it, because either way two modules writing a skeleton that is
-            // replaced every frame is the corruption path.
-            if (body != 0 && body != _lastBody)
-            {
-                // Only rebuilds that follow each other quickly count: a churn (the loop) replaces the
-                // body every frame or every forced re-apply, while a player clicking rows does it
-                // seconds apart and must never trip the fuse.
-                if (now - _lastRebuildAt > ChurnSeconds || now - _fuseStart > FuseWindow) _fuseRebuilds = 0;
-                if (_fuseRebuilds == 0) _fuseStart = now;
-                _fuseRebuilds++;
-                _lastRebuildAt = now;
-                _lastBody = body;
-                if (!_fuseTripped && _fuseRebuilds > FuseRebuilds) TripFuse(log, want, applied, now);
-            }
-
-            if (hit != want)
-            {
-                string sig = (applied == null ? "none" : applied.name) + "|" + WantedState() + "|" + (_fuseTripped ? "fused" : "ok");
-                if (sig != _lastMismatch)
-                {
-                    _lastMismatch = sig;
-                    log.LogInfo($"[sahur:map] scene='{mapScene}' game applied {(applied == null ? "<none>" : "'" + (applied.name ?? "?") + "' idx=" + SafeIndex(applied) + " ours=" + (hit != null))} " +
-                                $"but wanted is '{WantedState()}' (body={(_fuseRebuilds > 0 ? _fuseRebuilds.ToString() : "0")} rebuilds/{FuseWindow:F0}s)");
-                }
-            }
-            else _lastMismatch = null;
-
-            // Native: the game's own row is the body. Release ours once, then leave the game alone.
-            // This is a deliberate choice (a native row picked in the wardrobe, or the donor revert)
-            // and it must not be overridden by a force, which is what fought the user here.
-            if (want == null)
-            {
-                if (!_nativeReleaseLogged)
-                {
-                    _nativeReleaseLogged = true;
-                    log.LogInfo($"[sahur:map] native body is the wanted entry (game applied " +
-                                $"[{(applied == null ? "<none>" : applied.name)}]) -> no forcing, releasing our body and hands lease");
-                }
-                if (!_nativeReleased) { _nativeReleased = true; ApplySelection(log, null, applied, "map:native"); }
-                _forcedIndex = int.MinValue;
-                _forcedBody = 0;
-                _fuseTripped = false;
-                _fuseRebuilds = 0;
-                Publish(log, null);
-                return;
-            }
-            _nativeReleaseLogged = false;
-            _nativeReleased = false;
-
-            if (_fuseTripped)
-            {
-                // Settled native. Do not touch the row or the body again until a new choice clears
-                // the fuse (SetWanted resets it); the modules are already off.
-                Publish(log, null);
-                return;
-            }
-
-            // Edge-triggered: force only when the wanted entry changed, or when a NEW body instance
-            // has appeared that this row was never applied to. `hit != want` alone is not an edge in
-            // a map - the game re-applies its own captured index there, on purpose.
-            // A pending wanted row has no database index to force yet. The body module is still
-            // driven below (it binds bones, not a row); the game's row is left alone until the row
-            // is registered, and that registration bumps the database generation.
-            if (want.Data == null || want.Index < 0)
-            {
-                string sig = "pending:" + WantedState();
-                if (sig != _lastPendingSig)
-                {
-                    _lastPendingSig = sig;
-                    log.LogInfo($"[sahur:map] wanted entry '{want.Label}' is PENDING (row not registered yet): " +
-                                "no row is forced and the choice is not downgraded to native");
-                }
-                ApplySelection(log, want, applied, "map:pending");
-                Publish(log, want);
-                return;
-            }
-            _lastPendingSig = null;
-
-            bool wantEdge = _forcedIndex != want.Index;
-            bool bodyEdge = body != 0 && body != _forcedBody;
-            bool provides = ModuleProvides(want);
-            if (!provides && hit != want && s != null && now >= _nextMapAssert && (wantEdge || bodyEdge))
-            {
-                _nextMapAssert = now + MapAssertSeconds;
-                _forcedIndex = want.Index;
-                _forcedBody = body;
-                bool server = false;
-                try { var nm = Unity.Netcode.NetworkManager.Singleton; server = nm != null && nm.IsServer; } catch { }
-                // Host: the game's own path rebuilds the body under the player. Client: the host
-                // owns that index, and a local SetupModel leaves a detached body at the scene root,
-                // so the client relies on the rig's bone aliasing to build on whatever native body
-                // it has.
-                if (server)
-                {
-                    log.LogInfo($"[sahur:map] force '{want.Label}' index={want.Index} once " +
-                                $"(why={(wantEdge ? "wanted changed" : "new body instance")}, body={body}, rebuilds={_fuseRebuilds}/{FuseWindow:F0}s)");
-                    ApplyIndex(log, want.Index, $"'{want.Label}' (map re-apply)", want.Data);
-                }
-            }
-            ApplySelection(log, want, applied, "map");
-            Publish(log, want);
-            return;
-        }
-
-        if (applied == null) return;
-        // Lobby: the game's applied row is the source of truth for an ADOPTED state (join-time row,
-        // lobby re-spawn, random roll) so a map keeps it after the stale re-apply. It is NOT the
-        // source of truth over an EXPLICIT CUSTOM choice: the lobby re-applies the row it captured at
-        // join every time it re-creates the local body, and adopting that here is what replaced a
-        // deliberate `body request` with the stale entry (and, by rewriting the cfg, put the wrong
-        // model in the next map). An explicit NATIVE record is NOT held: the applied row is what the
-        // game's own HUD/wardrobe show, so holding native there is the 2026-11-17 Demoman red.
-        Entry keep = hit;
-        if (hit != Wanted)
-        {
-            // The precedence itself lives in ModelWantedPolicy (a pure decision, exercised by
-            // tests/model-sync/real-path against this exact branch).
-            WantedKind kind = _wantIndex == WantedUnknown ? WantedKind.Unknown
-                            : (_wantIndex < 0 ? WantedKind.Native : WantedKind.Custom);
-            bool dataReady = Wanted != null && Wanted.Data != null;
-            if (ModelWantedPolicy.Lobby(kind, dataReady, _wantExplicit) == SelectionAction.HoldWanted)
-            {
-                // Hold the wanted CUSTOM entry (explicit, or adopted with a NATIVE join row behind
-                // it). Nothing is adopted from an unprovenanced applied row. The row still has to
-                // become the game's own row, though: the body module alone cannot fix the HUD
-                // portrait or the wardrobe tab, and on a guest the local manager write this used to
-                // do never reached the host at all. LobbyReassert drives it once per edge through
-                // the game's own selection path.
-                keep = Wanted;
-                string sig = WantedState() + "|" + (hit == null ? "<native>" : hit.Label) + "|" + (_wantExplicit ? "explicit" : "adopted");
-                if (sig != _lastLobbyHold)
-                {
-                    _lastLobbyHold = sig;
-                    log.LogInfo($"[sahur:map] lobby: keeping the {(_wantExplicit ? "explicit" : "adopted")} wanted entry '{WantedState()}' - the game " +
-                                $"applied {(hit == null ? "<native>" : "'" + hit.Label + "'")} (index={SafeIndex(applied)}), " +
-                                (hit == null
-                                    ? "which is the membership's native join row, not a choice; re-asserting the wanted row"
-                                    : "which is an unprovenanced applied row (no wardrobe pick behind it); not adopting it"));
-                }
-                LobbyReassert(log, Wanted, hit);
-            }
-            else
-            {
-                // Adopted row. The one case worth its own line: the wanted record was an explicit
-                // NATIVE row and the game's spawn applied one of OUR rows. The body must follow the
-                // applied row, because that row is what the game's HUD portrait and wardrobe tab
-                // show; holding native here is the "Demoman portrait, James body" bug.
-                if (kind == WantedKind.Native && hit != null)
-                    log.LogInfo($"[sahur:map] lobby: adopting the game's applied row '{hit.Label}' " +
-                                $"(index={SafeIndex(applied)}) over the explicit native wanted record - the body " +
-                                "follows the applied row, because the HUD portrait and the wardrobe tab do; the " +
-                                "assignment is persisted as an adopted (not explicit) slug");
-                SetWanted(log, hit, hit == null ? "lobby: native row applied" : "lobby: our row applied");
-            }
-        }
-        else _lastLobbyHold = null;
-        ApplySelection(log, keep, applied, "lobby");
-        Publish(log, keep);
-    }
-
-    // Put the wanted row back as the GAME's row on the just-joined actor, through the game's own
-    // selection path (host: PlayersAppearanceManager; guest: WardrobeController's server RPC). This
-    // is the rejoin half of the 2026-11-17 08:58Z bug: a new netcode client id spawns the actor with
-    // the game's stored NATIVE row, so without this the body module shows the wanted custom body
-    // while the game's HUD portrait, wardrobe tab and every peer's row say the native model - and
-    // RandomModelOnJoin then reads "native applied" and rolls over the identity.
-    //
-    // Bounded per edge: one attempt per (client, row, applied-row) signature, 5 tries at 1.5 s. A row
-    // that does not land is reported, never fought; a new membership/applied row re-arms the window.
-    private static void LobbyReassert(IHostContext log, Entry want, Entry hit)
-    {
-        if (want == null || want.Data == null || want.Index < 0) return;
-        string scene = "";
-        try { scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name ?? ""; } catch { }
-        if (scene.IndexOf("Lobby", StringComparison.OrdinalIgnoreCase) < 0) return;
-        ulong client = 0; bool listening = false;
-        try
-        {
-            var nm = Unity.Netcode.NetworkManager.Singleton;
-            listening = nm != null && nm.IsListening && nm.IsClient;
-            if (nm != null) client = nm.LocalClientId;
-        }
-        catch { }
-        if (!listening) return;
-        float now = 0f; try { now = Time.unscaledTime; } catch { }
-        PlayerModelData applied = null;
-        try { applied = LocalSetuper(log)?._playerModelData?.Value; } catch { }
-        string sig = client + "|" + want.Index + "|" + (hit == null ? "native" : hit.Label);
-        if (!string.Equals(sig, _lobbyAssertKey, StringComparison.Ordinal))
-        {
-            _lobbyAssertKey = sig;
-            _lobbyAssertCount = 0;
-            _lobbyAssertAt = 0f;
-        }
-        if (_lobbyAssertCount >= 5 || now < _lobbyAssertAt) return;
-        _lobbyAssertAt = now + 1.5f;
-        _lobbyAssertCount++;
-        bool ok = ApplyIndex(log, want.Index, $"'{want.Label}' (lobby re-assert {_lobbyAssertCount}/5)", want.Data);
-        log.LogInfo($"[sahur:map] lobby re-assert '{want.Label}' index={want.Index} client={client} over the game's " +
-                    $"{(applied == null ? "<none>" : "'" + (applied.name ?? "?") + "'")} row -> {(ok ? "sent" : "failed")} " +
-                    $"(a new membership spawns the actor with the game's own row; the wanted row has to own the HUD, " +
-                    $"the wardrobe tab and every peer's view, not just this module's body)");
+        Entry hit = applied == null ? null : EntryOwningRow(log, applied);
+        ApplySelection(log, hit, applied, "game assigned row");
+        Publish(log, hit);
     }
 
     // Release first, acquire second, both in roster order. SahurRig/SahurModel are one singleton
@@ -1888,9 +957,8 @@ internal static class SahurWardrobe
         catch (Exception ex) { log.LogWarning($"[sahur:wardrobe] body set failed for '{hit.Label}': {ex.Message}"); }
     }
 
-    // Stage-2 sync: the one funnel every applied-model change goes through (manual wardrobe pick,
-    // random-on-join roll, the `select`/`index` request path, lobby -> map re-apply). Publish the
-    // chosen entry's stable slug, or "" for a native row; the sender coalesces and rate-limits.
+    // Publish the actually applied entry's stable slug, or "" for a native row.
+    // The sender coalesces and rate-limits; rejected requests never become a peer claim.
     private static void Publish(IHostContext log, Entry hit)
     {
         try { RemoteModels.PublishLocal(log, hit == null || hit.Spec == null ? "" : hit.Spec.Slug); }
@@ -2450,8 +1518,7 @@ internal static class SahurWardrobe
     // view, the slug or the tab reports why instead of applying the model directly, because a silent
     // fallback would make "the UI path works" unfalsifiable.
 
-    // The provenance word a `protocol` run persists with its record, so a wanted entry written by a
-    // test is never mistaken for a player's pick (or for the random-on-join roll).
+    // Diagnostic label for the explicit `protocol` test path; never persisted as a choice.
     internal const string ProtocolWhy = "test protocol";
 
     // `ui`: resolve the slug to the tab the OPEN view built for it, then press that tab's own
@@ -3211,7 +2278,6 @@ internal static class SahurWardrobe
     {
         Entry chosen = null;
         foreach (var e in Entries) if (e.Index == dbIndex) { chosen = e; break; }
-        SetWanted(log, chosen, chosen == null ? $"deliberate native row {dbIndex} ({why})" : $"deliberate row {dbIndex} '{chosen.Label}' ({why})", true);
     }
 
     private static void OnOursActivated(IHostContext log, Entry entry)
@@ -3299,7 +2365,7 @@ internal static class SahurWardrobe
                     Dump(log);
                     break;
                 case "select":
-                    // "select=classic" / "select=sahur" / "select=classic:off" -- the unattended
+                    // "select=sahur" / "select=golubiro" / "select=sahur:off" -- the unattended
                     // equivalent of clicking the wardrobe tab, through the game's own model index.
                     Select(log, val);
                     break;
@@ -3316,9 +2382,6 @@ internal static class SahurWardrobe
                     break;
                 case "off":
                     SetBody(log, Entries[0], false);
-                    break;
-                case "classic":
-                    SetBody(log, Entries[1], val != "off" && val != "0");
                     break;
                 case "body":
                     // "body=<label or slug>:<on|off>" - the unattended body switch for any entry
@@ -3451,27 +2514,15 @@ internal static class SahurWardrobe
         catch (Exception e) { log.LogError($"[sahur:wardrobe] command failed: {e}"); }
     }
 
-    // The game's own guest selection entry point, in either shape this build ships:
-    //   * 26735461+: `WardrobeController.OnModelSelected(ulong,ushort)` - the LOCAL entry the
-    //     wardrobe tab calls, which then sends the server RPC. Preferred: it takes the client id
-    //     and needs no RpcParams.
-    //   * 26735461+ RPC only: `OnModelSelectedServerRpc(ushort,RpcParams)` - transport form; a
-    //     guest invocation sends the index and Netcode fills in the sender.
-    //   * older builds: `OnModelSelectedServerRpc(ulong,ushort)`.
+    // Enter the game's transport RPC directly for an automatic guest re-assert. OnModelSelected
+    // is a thin local UI callback that forwards to this RPC; neither a callback return nor an RPC
+    // send is an acknowledgement. The applied row must subsequently converge on the guest.
     private static bool TryGuestSelect(IHostContext log, WardrobeController wc, ulong clientId, ushort index,
                                        out string how)
     {
         how = null;
         try
         {
-            var local = AccessTools.Method(typeof(WardrobeController), "OnModelSelected",
-                                           new[] { typeof(ulong), typeof(ushort) });
-            if (local != null)
-            {
-                local.Invoke(wc, new object[] { clientId, index });
-                how = "WardrobeController.OnModelSelected";
-                return true;
-            }
             var rpc = AccessTools.DeclaredMethod(typeof(WardrobeController), "OnModelSelectedServerRpc",
                                                 new[] { typeof(ushort), typeof(Unity.Netcode.RpcParams) });
             if (rpc != null)
@@ -3506,7 +2557,6 @@ internal static class SahurWardrobe
             string slug = (e.Spec == null ? "" : e.Spec.Slug).ToLowerInvariant();
             if (label == n || label.Replace(" ", "").Replace("(", "").Replace(")", "") == n || slug == n) return e;
         }
-        if (n == "classic" || n == "bakafox" || n == "old") return Entries[1];
         if (n == "roblox" || n == "rigged" || n == "sahur") return Entries[0];
         return null;
     }
@@ -3532,7 +2582,6 @@ internal static class SahurWardrobe
     private static void SetBody(IHostContext log, Entry entry, bool on)
     {
         entry.Selected = on;
-        SetWanted(log, on ? entry : null, on ? "body request" : "body request off", true);
         if (entry.Rigged) SahurRig.SetFromWardrobe(log, entry.Spec, on);
         else SahurModel.SetFromWardrobe(log, entry.Spec, on);
         log.LogInfo($"[sahur:wardrobe] '{entry.Label}' body forced {(on ? "on" : "off")} by request");
@@ -3579,7 +2628,6 @@ internal static class SahurWardrobe
         // The index actually asked for is what the player wants from now on: our own row when the
         // forced index is the entry's (or unset), a native row when a caller reverts to the donor.
         bool ours = forcedIndex < 0 || forcedIndex == entry.Index;
-        SetWanted(log, ours ? entry : null, why ?? (ours ? "apply" : "revert to the donor row"), true);
         return ApplyIndex(log, forcedIndex >= 0 ? forcedIndex : entry.Index, $"'{entry.Label}'", entry.Data);
     }
 
@@ -3620,7 +2668,6 @@ internal static class SahurWardrobe
                     if (string.IsNullOrEmpty(c.gameObject.scene.name)) continue;   // prefab asset
                     wc = c; break;
                 }
-                var rpc = true;
                 if (wc == null)
                 {
                     log.LogWarning($"[sahur:wardrobe] apply {what}: guest has no wardrobe controller " +
@@ -3720,7 +2767,7 @@ internal static class SahurWardrobe
                             $"body={(e.Rigged ? SahurRig.On : SahurModel.On)}");
             }
             log.LogInfo($"[sahur:wardrobe] databaseCount={n} registers={_registers} inserts={_tabs} " +
-                        $"classicBody={SahurModel.On} riggedBody={SahurRig.On} view={(_view == null ? "none" : PathOf(_view.transform))}");
+                        $"rigidBody={SahurModel.On} riggedBody={SahurRig.On} view={(_view == null ? "none" : PathOf(_view.transform))}");
             log.LogInfo($"[sahur:wardrobe] PlayerModelDatabase.Models = [{names}]");
             DumpOurs(log);
             var s = LocalSetuper(null);

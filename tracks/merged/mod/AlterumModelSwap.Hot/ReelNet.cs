@@ -123,6 +123,11 @@ internal static class ReelNet
     private static uint _pubRev;
     private static readonly List<Machine> _pubMachines = new List<Machine>();
     private static readonly HashSet<uint> _settleSent = new HashSet<uint>();
+    // spinId -> machine id, remembered when a spin frame arrives. The booth forgets its spin id the
+    // moment its own strip stops (LobbyProp.StepSpin resets it), and a settle frame normally lands
+    // just after that, so resolving the outcome cue by spin id alone would be silent exactly when
+    // the result is on screen.
+    private static readonly Dictionary<uint, string> _spinMachine = new Dictionary<uint, string>();
     private static uint _nextSpinId;
     private static string _forceNextOutcome = "";
 
@@ -483,6 +488,9 @@ internal static class ReelNet
         booth.RemoteSpin(log, spinId, actor, (float)Math.Max(0.0, age), duration, targetCell,
                          (int)composeSeed, (int)shuffleSeed, mask,
                          new[] { (int)c0, (int)c1, (int)c2, (int)c3, (int)c4 }, deck);
+        // Kept for the settle frame's cue (see the field): the booth will have dropped the id by then.
+        if (_spinMachine.Count > 256) _spinMachine.Clear();
+        _spinMachine[spinId] = machine;
     }
 
     private static void HandleSettle(IHostContext log, byte[] payload)
@@ -504,6 +512,20 @@ internal static class ReelNet
                     $"item='{item}' n={count} hpLost={hp} text='{text}' " +
                     $"{(mine ? "" : "-> shown only to the actor")}");
         var booth = ReelPlacements.BoothForSpin(spinId);
+        // The outcome cue, at the machine that turned: the host played (or is playing) the same cue
+        // from ReelLogic.Resolve, from the one card-type mapping, so both peers hear the card they
+        // can see come to rest. Played on receipt rather than at this peer's own strip stop: the
+        // settle frame IS the host's stop moment, so the two peers stay together. Positioned by
+        // MACHINE (with the spin id as the first choice), because this peer's booth may already
+        // have released the id.
+        if (ReelAudio.TryOutcomeCue(kind, out var outcomeCue))
+        {
+            var cueBooth = booth;
+            string cueMachine;
+            if (cueBooth == null && _spinMachine.TryGetValue(spinId, out cueMachine))
+                cueBooth = ReelPlacements.FindBooth(cueMachine);
+            if (cueBooth != null) ReelAudio.Cue(log, outcomeCue, cueBooth.LookCentre);
+        }
         if (booth != null) booth.RemoteSettle(log, spinId, mine, text);
         else if (mine) ReelHud.Result(log, text);
     }
@@ -606,6 +628,23 @@ internal static class ReelNet
     }
 
     private static string Key(ulong clientId, uint requestId) => clientId.ToString() + ":" + requestId;
+
+    // The audio origin for anything about `machineId`: that machine's sign face on THIS peer. False
+    // when this peer has no such booth (a map transition, an id that predates this generation), so
+    // the caller stays silent instead of playing a cue from nowhere.
+    private static bool BoothOrigin(string machineId, out Vector3 at)
+    {
+        at = default(Vector3);
+        if (string.IsNullOrEmpty(machineId)) return false;
+        try
+        {
+            var booth = ReelPlacements.FindBooth(machineId);
+            if (booth == null) return false;
+            at = booth.LookCentre;
+            return ReelAudio.Positional(at);
+        }
+        catch { return false; }
+    }
 
     // ================================================================== host validation + settle
 
@@ -745,7 +784,7 @@ internal static class ReelNet
 
         if (reason == ReasonNone)
         {
-            if (!ReelLogic.TryBeginPull(log, actor, out pull))
+            if (!ReelLogic.TryBeginPull(log, actor, booth.LookCentre, out pull))
             {
                 reject = "Could not take the stake"; reason = ReasonInternal;
                 log.LogWarning($"{Tag} reject id={requestId} client={sender} reason=consume-failed machine='{machine}'");
@@ -761,6 +800,12 @@ internal static class ReelNet
         if (reason != ReasonNone)
         {
             _rejects++;
+            // A refusal is a cue from the machine that refused, on the host, exactly like the
+            // requesting client's own refusal cue from the verdict below. The origin is resolved
+            // from the machine id, not from the (possibly never found) validated booth, so a stale
+            // epoch or an unknown id still points at the right sign face when this peer has it.
+            Vector3 rejectAt;
+            if (BoothOrigin(machine, out rejectAt)) ReelAudio.Cue(log, ReelCue.Error, rejectAt);
             var rej = new Req { RequestId = requestId, ClientId = sender, MachineId = machine,
                                 Status = StatusRejected, Reason = reason, At = now, Text = reject };
             _ledger[key] = rej;
@@ -998,6 +1043,11 @@ internal static class ReelNet
                 break;
             default:
                 log.LogInfo($"{Tag} request {requestId} REJECTED reason={ReasonWord(reason)} text='{text}' (nothing consumed)");
+                // The host refused: the same Error cue the host's machine made, from this client's
+                // own booth, so the player who pressed E hears WHY on the side they are standing on.
+                Vector3 rejectAt;
+                if (BoothOrigin(rec != null ? rec.MachineId : null, out rejectAt))
+                    ReelAudio.Cue(log, ReelCue.Error, rejectAt);
                 if (rec == null || !rec.Shown) { ReelHud.Error(log, text); if (rec != null) rec.Shown = true; }
                 break;
         }
@@ -1181,6 +1231,19 @@ internal static class ReelNet
                                     $"-> machine={V(booth.Anchor)} yaw={yaw:F1} floorY={floorY:F3} rev={_pubRev}");
                     }
                     break;
+                case "pose":
+                    {
+                        // Read-only test harness: sample the same actor/body the host validates.
+                        // A teleport dispatch (particularly on a joiner) is not proof of movement.
+                        handled = true;
+                        if (!NetRole.IsServer || !ulong.TryParse(val, out ulong cid))
+                        { log.LogWarning("[reel:pose] unavailable: expected host and a client ID"); break; }
+                        var actor = FindActor(cid);
+                        if (actor == null || !ReelLogic.TryGetPose(actor, out var pos, out var fwd, out var src))
+                        { log.LogWarning($"[reel:pose] unavailable for actor={cid}"); break; }
+                        log.LogInfo(FormattableString.Invariant($"[reel:pose] actor={cid} source={src} pos=({pos.x:F2},{pos.y:F2},{pos.z:F2}) fwd=({fwd.x:F2},{fwd.y:F2},{fwd.z:F2})"));
+                    }
+                    break;
                 case "holdremote":
                     {
                         // Test hook (host side): report what the host sees the actor holding, so the
@@ -1219,7 +1282,7 @@ internal static class ReelNet
             if (line.StartsWith("pull") || line.StartsWith("req") || line.StartsWith("forge") ||
                 line.StartsWith("nextoutcome") || line.StartsWith("force") || line.StartsWith("inv") ||
                 line.StartsWith("reelstate") || line.StartsWith("giveremote") || line.StartsWith("holdremote") ||
-                line.StartsWith("placeat")) continue;
+                line.StartsWith("placeat") || line.StartsWith("pose=")) continue;
             return true;
         }
         return false;

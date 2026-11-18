@@ -241,13 +241,15 @@ internal static class ReelLogic
 
     // Called by LobbyPropRuntime before a map-run spin starts. Consumes one item. Returns false
     // when the spin must not start (wrong scene, no held item, inventory refused the take).
-    internal static bool TryBeginPull(IHostContext log, out Pull pull) =>
-        TryBeginPull(log, null, out pull);
+    // `audioAt` is the booth's sign face: a refusal is heard AT the machine that refused, on the
+    // host (which is where this runs for both paths), not in the middle of the map.
+    internal static bool TryBeginPull(IHostContext log, Vector3 audioAt, out Pull pull) =>
+        TryBeginPull(log, null, audioAt, out pull);
 
     // The host's request path passes the ACTOR explicitly: every read below (hands, held item,
     // inventory) is that player's, and the consume is the game's own server-side take, which
     // replicates to the owner. `actor == null` means the local player (the solo/host path).
-    internal static bool TryBeginPull(IHostContext log, Player actor, out Pull pull)
+    internal static bool TryBeginPull(IHostContext log, Player actor, Vector3 audioAt, out Pull pull)
     {
         pull = null;
         string scene;
@@ -270,7 +272,7 @@ internal static class ReelLogic
         {
             log.LogInfo($"[reel] pull rejected reason=no-held-item scene='{scene}' message='You need an item to bet'");
             if (actor == null) ReelHud.Error(log, "You need an item to bet");
-            ReelAudio.Cue(log, ReelCue.Error);
+            ReelAudio.Cue(log, ReelCue.Error, audioAt);
             return false;
         }
 
@@ -295,7 +297,7 @@ internal static class ReelLogic
         }
 
         string heldId = ItemId(data);
-        // Never bet a quest rune or the X-selected lantern: refuse before ANY inventory change, so
+        // Never bet a quest item or the X-selected lantern: refuse before ANY inventory change, so
         // a refusal costs the player nothing. Identification is id+name based (ReelExclusions),
         // with the generated pool rows (weight 0) as the second opinion.
         string refusal = ReelExclusions.ReasonFor(heldId, DisplayNameOf(heldId));
@@ -304,7 +306,7 @@ internal static class ReelLogic
             log.LogWarning($"[reel] pull refused reason={refusal} held='{heldId}' name='{DisplayNameOf(heldId)}' " +
                            "consumed=0 (quest/special item is never bettable or winnable)");
             if (actor == null) ReelHud.Error(log, RefusalText(refusal, heldId));
-            ReelAudio.Cue(log, ReelCue.Error);
+            ReelAudio.Cue(log, ReelCue.Error, audioAt);
             return false;
         }
 
@@ -364,6 +366,7 @@ internal static class ReelLogic
         switch (reason)
         {
             // ASCII only: the card font has no em dash, and the drawn line is a 5x7 bitmap.
+            case "quest-crucifix":
             case "quest-rune": return $"Not the {name}: quest item";
             case "quest-lantern": return $"Not the {name}: quest light";
             default: return $"Not the {name}";
@@ -427,8 +430,9 @@ internal static class ReelLogic
 
     // `cell` is the strip cell that came to rest under the marker and `card` is the card in that
     // cell - the caller read it with the same accessor the renderer used, so what the log names and
-    // what the picture shows are the same card.
-    internal static void Resolve(IHostContext log, Pull pull, int cell, ReelCard card)
+    // what the picture shows are the same card. `audioAt` is that booth's sign face: the outcome
+    // sounds there, and a client hears the same cue at the same booth from its settle frame.
+    internal static void Resolve(IHostContext log, Pull pull, int cell, ReelCard card, Vector3 audioAt)
     {
         if (pull == null) return;
         LastOutcome = new Outcome { Kind = (byte)card.Type, Ok = false, ItemId = "", Text = "" };
@@ -436,11 +440,11 @@ internal static class ReelLogic
         {
             switch (card.Type)
             {
-                case ReelCardType.Item: ResolveItem(log, pull, cell, card); return;
-                case ReelCardType.Double: ResolveDouble(log, pull, cell, card); return;
-                case ReelCardType.Damage: ResolveDamage(log, pull, cell, card); return;
-                case ReelCardType.Debuff: ResolveDebuff(log, pull, cell, card); return;
-                case ReelCardType.Blank: ResolveBlank(log, pull, cell, card); return;
+                case ReelCardType.Item: ResolveItem(log, pull, cell, card, audioAt); return;
+                case ReelCardType.Double: ResolveDouble(log, pull, cell, card, audioAt); return;
+                case ReelCardType.Damage: ResolveDamage(log, pull, cell, card, audioAt); return;
+                case ReelCardType.Debuff: ResolveDebuff(log, pull, cell, card, audioAt); return;
+                case ReelCardType.Blank: ResolveBlank(log, pull, cell, card, audioAt); return;
             }
         }
         catch (Exception e)
@@ -453,15 +457,23 @@ internal static class ReelLogic
     // reference's 48.5 % "no match" bucket, the largest single outcome it has, and the reason a
     // losing spin is normally a quiet one rather than a hit. The hosted item was already consumed by
     // TryBeginPull before the strip turned, so there is nothing to take here.
-    private static void ResolveBlank(IHostContext log, Pull pull, int cell, ReelCard card)
+    private static void ResolveBlank(IHostContext log, Pull pull, int cell, ReelCard card, Vector3 audioAt)
     {
         log.LogInfo($"[reel] settle card={cell} type=blank -> consumed=1 returned=0 penalty=none");
         Report(log, pull, "Nothing. It keeps your item.", (byte)card.Type, "", 0, 0, true);
-        ReelAudio.Cue(log, ReelCue.Settle);
+        OutcomeCue(log, card.Type, audioAt);
+    }
+
+    // The card's cue, from the one mapping both peers use (ReelAudio.TryOutcomeCue): the host plays
+    // it from here, a client from the settle frame, so an outcome cannot sound like a different
+    // card on the other side of the connection.
+    private static void OutcomeCue(IHostContext log, ReelCardType type, Vector3 audioAt)
+    {
+        if (ReelAudio.TryOutcomeCue((byte)type, out var cue)) ReelAudio.Cue(log, cue, audioAt);
     }
 
     // item -> grant that one item (1 instance).
-    private static void ResolveItem(IHostContext log, Pull pull, int cell, ReelCard card)
+    private static void ResolveItem(IHostContext log, Pull pull, int cell, ReelCard card, Vector3 audioAt)
     {
         if (card.Item < 0 || card.Item >= ReelPool.All.Length)
         {
@@ -474,11 +486,11 @@ internal static class ReelLogic
             ? $"You won 1 x {PrettyName(item.Name)}"
             : $"Card says {PrettyName(item.Name)}, but the item is not loaded",
             (byte)card.Type, item.Id, ok ? 1 : 0, 0, ok);
-        ReelAudio.Cue(log, ReelCue.Win);
+        OutcomeCue(log, card.Type, audioAt);
     }
 
     // double -> grant two instances of the item that was INSERTED (the consumed one).
-    private static void ResolveDouble(IHostContext log, Pull pull, int cell, ReelCard card)
+    private static void ResolveDouble(IHostContext log, Pull pull, int cell, ReelCard card, Vector3 audioAt)
     {
         if (string.IsNullOrEmpty(pull.HeldId))
         {
@@ -491,7 +503,7 @@ internal static class ReelLogic
             ? $"Double! 2 x {name}"
             : $"Double! But {name} could not be granted",
             (byte)card.Type, pull.HeldId, ok ? 2 : 0, 0, ok);
-        ReelAudio.Cue(log, ReelCue.Double);
+        OutcomeCue(log, card.Type, audioAt);
     }
 
     private static bool Grant(IHostContext log, Pull pull, int cell, string type, string id, int count)
@@ -518,7 +530,7 @@ internal static class ReelLogic
     }
 
     // damage -> lose 25-45 % of max HP (clamped by the game's Health; can kill).
-    private static void ResolveDamage(IHostContext log, Pull pull, int cell, ReelCard card)
+    private static void ResolveDamage(IHostContext log, Pull pull, int cell, ReelCard card, Vector3 audioAt)
     {
         var health = FindHealth(pull.Player);
         if (health == null)
@@ -550,7 +562,7 @@ internal static class ReelLogic
         int lost = Mathf.Max(0, Mathf.RoundToInt(before - after));
         Report(log, pull, dead ? $"You lost {lost} HP - you went down" : $"You lost {lost} HP",
                (byte)card.Type, "", 0, lost, true);
-        ReelAudio.Cue(log, ReelCue.Damage);
+        OutcomeCue(log, card.Type, audioAt);
     }
 
     // debuff -> the real imposed status effect the card names (Slow/Fatigue/Blind, each the game's
@@ -558,7 +570,7 @@ internal static class ReelLogic
     // game's RPC handler does). A card never acts as something other than what it shows: if the
     // named family has no loaded variant, nothing is applied and the log says so - no silent fold
     // into damage any more.
-    private static void ResolveDebuff(IHostContext log, Pull pull, int cell, ReelCard card)
+    private static void ResolveDebuff(IHostContext log, Pull pull, int cell, ReelCard card, Vector3 audioAt)
     {
         var info = ReelTable.Debuff(card.Debuff);
         string name, via;
@@ -566,7 +578,7 @@ internal static class ReelLogic
         {
             log.LogInfo($"[reel] settle card={cell} type=debuff kind={info.Code} effect='{name}' via={via} consumed=1");
             Report(log, pull, info.Plain, (byte)card.Type, "", 0, 0, true);
-            ReelAudio.Cue(log, ReelCue.Debuff);
+            OutcomeCue(log, card.Type, audioAt);
             return;
         }
         log.LogWarning($"[reel] settle card={cell} type=debuff kind={info.Code} -> no loaded variant for this effect; " +
@@ -1059,7 +1071,8 @@ internal static class ReelLogic
                     $"health={(health != null ? health.Value.ToString("F1") + "/" + health.MaxValue.ToString("F1") : "none")} " +
                     $"scan={_scanSummary} pool={ReelPool.UsableCount()} icons=" +
                     $"{CountIcons()} {ReelTable.Summary()} debuffScan='{_debuffSummary}' " +
-                    $"excluded=[{ReelExclusions.TableSummary()}] promptPath='{ReelHud.Path}' audio='{ReelAudio.Summary}'");
+                    $"excluded=[{ReelExclusions.TableSummary()}] promptPath='{ReelHud.Path}' audio='{ReelAudio.Summary}' " +
+                    $"audioSpace='{ReelAudio.SpatialSummary}'");
         log.LogInfo($"[reel:probe] deck {ReelDeck.Census(deck)} order=[{sb}]");
     }
 

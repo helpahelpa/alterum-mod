@@ -1,7 +1,7 @@
 #!/bin/bash
 # Item 2: prove the CLIENT's own body is re-created after a death+respawn.
 # host = C:\AlterumPinned (production build), client = C:\AlterumB.
-# Custom wanted entry (Sahur Classic) + hat (cosmetics.txt) + enhancement profile (ChestEnabled).
+# Custom wanted entry (Sahur/Roblox) + hat (cosmetics.txt) + enhancement profile (ChestEnabled).
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 DLL="$HERE/tracks/merged/mod/AlterumModelSwap.Hot/bin/Release/AlterumModelSwap.Hot.dll"
@@ -78,9 +78,9 @@ sleep 8
 say "B scene: $(grep -o "\[scene\] -> '[A-Za-z]*'" "$BLOG" | tail -1)"
 say "clients seen by host: $(grep -o 'SetBaseModelIndex(client=[0-9]*' "$ALOG" | tail -3 | tr '\n' ' ')"
 
-# ---- custom wanted entry on the CLIENT (Sahur Classic: a custom roster entry, verified hat anchor)
-say "client: select custom wanted entry (classic)"
-echo "wardrobe=select=classic" > "$BSCR/sahur.request"
+# ---- custom entry on the CLIENT (Sahur/Roblox: a custom roster entry, verified hat anchor)
+say "client: select custom wanted entry (sahur)"
+echo "wardrobe=select=sahur" > "$BSCR/sahur.request"
 sleep 6
 grep -E "sahur:wardrobe|wanted|sahur:bind|\[mapbody\]" "$BLOG" | tail -6 | sed 's/^/  B| /'
 

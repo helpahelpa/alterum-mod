@@ -25,7 +25,7 @@ $task.Settings.AllowHardTerminate = $false
 $task.Settings.MultipleInstances = 2
 $a = $task.Actions.Create(0)
 $a.Path = "$GameDir\Alterum.exe"
-$a.Arguments = $GameArgs
+$a.Arguments = "$GameArgs -alterumDevMode"
 $a.WorkingDirectory = $GameDir
 $p = $task.Principal
 $p.UserId = $RunAs; $p.LogonType = 3; $p.RunLevel = 1; $p.GroupId = ""

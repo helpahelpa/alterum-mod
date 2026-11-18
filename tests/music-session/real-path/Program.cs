@@ -1,4 +1,5 @@
 using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -51,6 +52,7 @@ namespace MusicSession.RealPath
             Run("process-wide ids survive a reload without overlap", IdSpaceAcrossReload);
             Run("id space exhaustion is an explicit refusal, not a wrap", IdSpaceExhaustion);
             Run("host session nonce/caches reset on leave-rehost and epoch change", SessionEpochIsolation);
+            Run("map entry releases lobby playback and rejects delayed state", LobbySceneScope);
             Run("wire sizes and mixed protocol rejection", WireBudget);
 
             Console.WriteLine();
@@ -762,6 +764,35 @@ namespace MusicSession.RealPath
         }
 
         private static uint U32(byte[] frame, int offset) => BitConverter.ToUInt32(frame, offset);
+
+        private static void LobbySceneScope()
+        {
+            using var rig = new Rig();
+            rig.StartXAndFollow();
+            rig.Pump(6);
+            var playing = rig.LastStateFromHost();
+            Check("both lobby copies are playing", playing?.Intent == 1 && rig.B.Snap()["channel"] == "1");
+            rig.B.Call("SetScene", "Lair Of Occultists Map Scene");
+            rig.AdvanceFollowerOnly(0.25);
+            Check("follower releases its channel before any host stop", rig.B.Snap()["channel"] == "0");
+            var late = (byte[])playing.Bytes.Clone();
+            var sequence = BinaryPrimitives.ReadUInt32LittleEndian(late.AsSpan(12, 4));
+            BinaryPrimitives.WriteUInt32LittleEndian(late.AsSpan(12, 4), sequence + 1);
+            rig.B.Call("Deliver", HostId, late);
+            Check("map follower refuses a fresh local request", !rig.B.CallB("Submit", "https://www.youtube.com/watch?v=Y"));
+            rig.B.Call("SetScene", "Lobby");
+            rig.B.Call("Deliver", HostId, late);
+            rig.AdvanceFollowerOnly(0.25);
+            Check("late playing state cannot revive the old revision on return", rig.B.Snap()["phase"] == "Idle");
+            rig.Host.Call("SetScene", "Lair Of Occultists Map Scene");
+            rig.Step();
+            Check("host also releases its channel", rig.Host.Snap()["channel"] == "0");
+            Check("no native takeover out of lobby", !rig.Host.CallB("Start", "https://www.youtube.com/watch?v=Y"));
+            rig.Host.Call("SetScene", "Lobby");
+            Check("fresh lobby request is accepted", rig.Host.CallB("Start", "https://www.youtube.com/watch?v=Y"));
+            rig.Pump(6);
+            Check("fresh revision follows again", rig.B.Snap()["url"].EndsWith("=Y") && rig.B.Snap()["channel"] == "1");
+        }
 
         private static void WireBudget()
         {

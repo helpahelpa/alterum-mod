@@ -16,16 +16,37 @@ namespace AlterumModelSwap;
 // The identity rule is a pure function so it can be tested without a window or a game process.
 public static class InstanceLabelIdentity
 {
+    // The wire format of the evidence records. Unchanged by the third installation identity:
+    // `installation` was always an opaque string, so adding "portable" changes no field's type or
+    // meaning and existing readers keep working.
     public const int ProtocolVersion = 1;
 
-    // Every other executable path is fatal: the guard exists to make it impossible to mistake one
-    // install for the other, so silently labelling an unknown build would defeat it.
+    // Three identities, decided only by the executable path this process was started from:
+    //
+    //   main      C:\AlterumPinned\Alterum.exe   this machine's pinned install
+    //   b         C:\AlterumB\Alterum.exe        this machine's B (SAHUR test) install
+    //   portable  any other fully qualified path whose file name is Alterum.exe
+    //
+    // The two local installs stay exact-path identities. No other path may claim main or b, so a
+    // shipped copy can never put the MAIN [pinned] or B label on its window, and its evidence can
+    // never be read as one of this machine's installs. "portable" is the honest identity for an
+    // ordinary copy of the game (another PC, a Steam library, a track install): it is named
+    // distinctly from both local labels and claims nothing about provenance - it is not a build,
+    // signature or allowlist check, only a statement that this is an Alterum executable at a path
+    // that is not one of the two pinned ones.
+    //
+    // Any other executable is still fatal (unknown-exe): a relative path, or a file that is not
+    // named Alterum.exe, makes the record this guard writes untrustworthy, so it refuses to write
+    // one. Silently labelling such a process would defeat the guard.
     public const string MainExePath = @"C:\AlterumPinned\Alterum.exe";
     public const string BExePath = @"C:\AlterumB\Alterum.exe";
     public const string MainTag = "main";
     public const string BTag = "b";
+    public const string PortableTag = "portable";
     public const string MainLabel = "Alterum - MAIN (all features) [pinned]";
     public const string BLabel = "Alterum B - SAHUR TEST";
+    public const string PortableLabel = "Alterum (portable)";
+    public const string ExeFileName = "Alterum.exe";
 
     public const string InstanceFlag = "-alterumInstance";
     public const string LaunchFlag = "-alterumLabelLaunch=";
@@ -64,7 +85,7 @@ public static class InstanceLabelIdentity
 
         public string ExeRaw;
         public string Exe;                 // normalized, drive-uppercase, backslash form
-        public string InstallationTag;     // "main" | "b", null when the exe is unsupported
+        public string InstallationTag;     // "main" | "b" | "portable", null when the exe is unsupported
         public string InstallationLabel;
         public string RawInstanceArg;      // null when the argument was not supplied
         public bool HasInstanceArg;
@@ -136,9 +157,14 @@ public static class InstanceLabelIdentity
             r.InstallationTag = BTag;
             r.InstallationLabel = BLabel;
         }
+        else if (IsOrdinaryInstallPath(r.Exe))
+        {
+            r.InstallationTag = PortableTag;
+            r.InstallationLabel = PortableLabel;
+        }
         else
         {
-            return Fail(r, Fault.UnknownExe, "executable is neither the pinned install nor the B install");
+            return Fail(r, Fault.UnknownExe, UnknownExeDetail(r.Exe));
         }
 
         if (!r.HasInstanceArg)
@@ -147,7 +173,9 @@ public static class InstanceLabelIdentity
         }
         else
         {
-            // main/b are reserved to their own install; every other valid tag is allowed in both.
+            // main/b are reserved to their own install, on every installation: an ordinary copy
+            // cannot borrow a local label, and the local installs cannot borrow each other's.
+            // Every other valid tag is allowed everywhere.
             if (r.EffectiveTag == MainTag && r.InstallationTag != MainTag)
                 return Fail(r, Fault.ReservedTag, "tag 'main' is reserved to " + MainExePath);
             if (r.EffectiveTag == BTag && r.InstallationTag != BTag)
@@ -162,6 +190,28 @@ public static class InstanceLabelIdentity
     public static string BuildTitle(string label, string tag, int pid)
     {
         return label + " [instance=" + tag + "; pid=" + pid.ToString(CultureInfo.InvariantCulture) + "]";
+    }
+
+    /// <summary>
+    /// An ordinary (shipped) copy of the game: a fully qualified path, not one of the two pinned
+    /// paths, whose file name is Alterum.exe. Callers pass the already-normalized path.
+    /// </summary>
+    public static bool IsOrdinaryInstallPath(string exe)
+    {
+        if (!IsAbsoluteExePath(exe)) return false;
+        return string.Equals(FileNameOf(exe), ExeFileName, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// A fully qualified Windows path: drive-letter rooted or UNC. The identity and its evidence
+    /// name the executable, so a relative path - which only a broken process environment could
+    /// produce - is never accepted as an install. Host OS independent, like NormalizeExePath.
+    /// </summary>
+    public static bool IsAbsoluteExePath(string exe)
+    {
+        if (string.IsNullOrEmpty(exe)) return false;
+        if (exe.Length >= 3 && char.IsLetter(exe[0]) && exe[1] == ':' && exe[2] == '\\') return true;
+        return exe.StartsWith("\\\\", StringComparison.Ordinal);
     }
 
     /// <summary>1..32 chars: ASCII alphanumeric first, then alphanumeric, '_' or '-'.</summary>
@@ -205,6 +255,22 @@ public static class InstanceLabelIdentity
             stack.Add(segment);
         }
         return drive + ":\\" + string.Join("\\", stack);
+    }
+
+    // Deliberately bounded wording: the detail is logged and stored, so it never echoes the
+    // executable path (that path is already in the same log line and evidence record).
+    private static string UnknownExeDetail(string exe)
+    {
+        if (string.IsNullOrEmpty(exe)) return "executable path is empty";
+        if (!IsAbsoluteExePath(exe)) return "executable path is not absolute";
+        return "executable file name is not " + ExeFileName;
+    }
+
+    // Normalized paths use '\\' only, so the leaf is everything after the last separator.
+    private static string FileNameOf(string exe)
+    {
+        int slash = exe.LastIndexOf('\\');
+        return slash < 0 ? exe : exe.Substring(slash + 1);
     }
 
     private static Result Fail(Result r, Fault fault, string detail)

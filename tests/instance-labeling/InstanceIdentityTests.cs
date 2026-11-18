@@ -245,17 +245,178 @@ public class InstanceIdentityTests
         Assert.Equal("b", b.EffectiveTag);
     }
 
-    // ---------------------------------------------------------------- unknown executables
+    // ---------------------------------------------------------------- ordinary (portable) installs
+
+    // A copy of the game that is not one of the two exact pinned paths is an ordinary install: it
+    // runs, but under the distinct "portable" identity, so its window title and evidence can never
+    // pass for the MAIN [pinned] or B install.
+    [Theory]
+    [InlineData(@"C:\Program Files (x86)\Steam\steamapps\common\Alterum\Alterum.exe")]
+    [InlineData(@"C:\Games\Alterum\Alterum.exe")]
+    [InlineData(@"D:\Games\Alterum\Alterum.exe")]
+    [InlineData(@"C:\AlterumDev\Alterum.exe")]
+    [InlineData(@"C:\AlterumT1\Alterum.exe")]
+    [InlineData(@"D:\AlterumPinned\Alterum.exe")] // same leaf, different drive: not this machine's pin
+    [InlineData(@"\\server\share\Alterum\Alterum.exe")]
+    public void OrdinaryInstall_OmittedArgument_DerivesPortableIdentity(string exe)
+    {
+        var r = Resolve(exe);
+
+        Assert.True(r.Ok);
+        Assert.Equal(InstanceLabelIdentity.PortableTag, r.InstallationTag);
+        Assert.Equal(InstanceLabelIdentity.PortableLabel, r.InstallationLabel);
+        Assert.Equal("portable", r.EffectiveTag);
+        Assert.False(r.HasInstanceArg);
+        Assert.Null(r.RawInstanceArg);
+        Assert.Equal(exe, r.ExeRaw);
+        Assert.Equal(InstanceLabelIdentity.NormalizeExePath(exe), r.Exe);
+        Assert.Equal("Alterum (portable) [instance=portable; pid=4242]", r.ExpectedTitle);
+    }
 
     [Theory]
-    [InlineData(@"C:\AlterumDev\Alterum.exe")]
-    [InlineData(@"C:\Program Files (x86)\Steam\steamapps\common\Alterum\Alterum.exe")]
-    [InlineData(@"C:\AlterumTests\123\Alterum.exe")]
-    [InlineData(@"D:\AlterumPinned\Alterum.exe")]
-    [InlineData(@"C:\AlterumPinned\Alterum.exe.bak")]
-    [InlineData("Alterum.exe")]
+    [InlineData(@"C:/Program Files (x86)/Steam/steamapps/common/Alterum/Alterum.exe")]
+    [InlineData(@"\\?\D:\Games\Alterum\Alterum.exe")]
+    [InlineData(@"D:\Games\.\Alterum\sub\..\Alterum.exe")]
+    [InlineData(@"d:\games\ALTERUM\alterum.EXE")]
+    public void OrdinaryInstall_PathIsNormalizedBeforeTheIdentityIsDerived(string exe)
+    {
+        var r = Resolve(exe);
+
+        Assert.True(r.Ok);
+        Assert.Equal("portable", r.InstallationTag);
+        Assert.Equal(@"Alterum (portable) [instance=portable; pid=4242]", r.ExpectedTitle);
+    }
+
+    [Fact]
+    public void OrdinaryInstall_LabelCannotBeMistakenForALocalInstall()
+    {
+        var ordinary = Resolve(@"C:\Program Files (x86)\Steam\steamapps\common\Alterum\Alterum.exe");
+        var main = Resolve(MainExe);
+        var b = Resolve(BExe);
+
+        Assert.NotEqual(main.InstallationLabel, ordinary.InstallationLabel);
+        Assert.NotEqual(b.InstallationLabel, ordinary.InstallationLabel);
+        Assert.NotEqual(main.InstallationTag, ordinary.InstallationTag);
+        Assert.NotEqual(b.InstallationTag, ordinary.InstallationTag);
+        Assert.NotEqual(main.ExpectedTitle, ordinary.ExpectedTitle);
+        Assert.NotEqual(b.ExpectedTitle, ordinary.ExpectedTitle);
+        // The label must never inherit the local pin's claim.
+        Assert.DoesNotContain("pinned", ordinary.InstallationLabel);
+    }
+
+    [Theory]
+    [InlineData("qc")]
+    [InlineData("sahur-test")]
+    [InlineData("0123")]
+    public void OrdinaryInstall_NonReservedTag_IsAccepted(string tag)
+    {
+        var inline = Resolve(@"D:\Games\Alterum\Alterum.exe", "-alterumInstance=" + tag);
+        var separate = Resolve(@"D:\Games\Alterum\Alterum.exe", "-alterumInstance", tag);
+
+        Assert.True(inline.Ok);
+        Assert.Equal("portable", inline.InstallationTag);
+        Assert.Equal(tag, inline.EffectiveTag);
+        Assert.Equal("Alterum (portable) [instance=" + tag + "; pid=4242]", inline.ExpectedTitle);
+        Assert.True(separate.Ok);
+        Assert.Equal("portable", separate.InstallationTag);
+        Assert.Equal(tag, separate.EffectiveTag);
+    }
+
+    // The strict local protections survive on a portable install: it may not borrow either local
+    // label, because that would put "MAIN [pinned]" (or the B label) on a machine that is not this
+    // one. Conversely, "portable" was and stays an ordinary tag on the two local installs: the
+    // local labels stay exact-path, so no new reservation is needed to keep them unambiguous.
+    [Theory]
+    [InlineData("-alterumInstance=main")]
+    [InlineData("-alterumInstance=MAIN")]
+    [InlineData("-alterumInstance=b")]
+    [InlineData("-alterumInstance=B")]
+    public void OrdinaryInstall_ReservedLocalTag_IsFatal(string arg)
+    {
+        var r = Resolve(@"C:\Program Files (x86)\Steam\steamapps\common\Alterum\Alterum.exe", arg);
+
+        Assert.False(r.Ok);
+        Assert.Equal(InstanceLabelIdentity.Fault.ReservedTag, r.Fault);
+        Assert.Equal("reserved-tag", r.Code);
+        Assert.Null(r.ExpectedTitle);
+    }
+
+    [Fact]
+    public void OrdinaryInstall_ExplicitPortableTag_IsAccepted()
+    {
+        var r = Resolve(@"D:\Games\Alterum\Alterum.exe", "-alterumInstance=portable");
+
+        Assert.True(r.Ok);
+        Assert.Equal("portable", r.RawInstanceArg);
+        Assert.Equal("portable", r.EffectiveTag);
+        Assert.Equal("Alterum (portable) [instance=portable; pid=4242]", r.ExpectedTitle);
+    }
+
+    // No new reservation on the local installs: 'portable' keeps the meaning it had before this
+    // change, and the pinned/B label in the title is what keeps it unambiguous.
+    [Fact]
+    public void LocalInstall_PortableTag_RemainsAnOrdinaryInstanceTag()
+    {
+        var main = Resolve(MainExe, "-alterumInstance=portable");
+        var b = Resolve(BExe, "-alterumInstance=portable");
+
+        Assert.True(main.Ok);
+        Assert.Equal("main", main.InstallationTag);
+        Assert.Equal(MainLabel + " [instance=portable; pid=4242]", main.ExpectedTitle);
+        Assert.True(b.Ok);
+        Assert.Equal("b", b.InstallationTag);
+        Assert.Equal(BLabel + " [instance=portable; pid=4242]", b.ExpectedTitle);
+    }
+
+    [Fact]
+    public void OrdinaryInstall_TwoProcesses_GetDistinctTitles()
+    {
+        var first = Resolve(@"D:\Games\Alterum\Alterum.exe", 900);
+        var second = Resolve(@"D:\Games\Alterum\Alterum.exe", 901);
+
+        Assert.True(first.Ok);
+        Assert.True(second.Ok);
+        Assert.NotEqual(first.ExpectedTitle, second.ExpectedTitle);
+        Assert.EndsWith("[instance=portable; pid=900]", first.ExpectedTitle);
+        Assert.EndsWith("[instance=portable; pid=901]", second.ExpectedTitle);
+    }
+
+    [Theory]
+    [InlineData(@"C:\Alterum.exe")]
+    [InlineData(@"D:\Games\Alterum\Alterum.exe")]
+    [InlineData(@"\\server\share\Alterum.exe")]
+    public void IsAbsoluteExePath_AcceptsFullyQualifiedPaths(string exe)
+    {
+        Assert.True(InstanceLabelIdentity.IsAbsoluteExePath(InstanceLabelIdentity.NormalizeExePath(exe)));
+    }
+
+    [Theory]
     [InlineData("")]
-    public void UnsupportedExecutablePath_IsFatal(string exe)
+    [InlineData("Alterum.exe")]
+    [InlineData(@"Alterum\Alterum.exe")]
+    [InlineData(@"C:Alterum.exe")]
+    [InlineData(@"\Alterum.exe")]
+    public void IsAbsoluteExePath_RejectsRelativePaths(string exe)
+    {
+        Assert.False(InstanceLabelIdentity.IsAbsoluteExePath(InstanceLabelIdentity.NormalizeExePath(exe)));
+    }
+
+    // ---------------------------------------------------------------- unrecognised executables
+
+    // Portable is not a licence to label anything that happens to host the plugin: the guard's
+    // evidence is only meaningful when it names an Alterum executable at an absolute path, so a
+    // relative or non-Alterum path stays fatal.
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("Alterum.exe")]
+    [InlineData(@"Alterum\Alterum.exe")]
+    [InlineData(@"C:Alterum.exe")]
+    [InlineData(@"C:\AlterumPinned\Alterum.exe.bak")]
+    [InlineData(@"C:\AlterumPinned\notthegame.exe")]
+    [InlineData(@"C:\AlterumPinned")]
+    [InlineData(@"C:\AlterumPinned\")]
+    public void UnrecognisedExecutablePath_IsFatal(string exe)
     {
         var r = Resolve(exe);
 
@@ -263,15 +424,29 @@ public class InstanceIdentityTests
         Assert.Equal(InstanceLabelIdentity.Fault.UnknownExe, r.Fault);
         Assert.Equal("unknown-exe", r.Code);
         Assert.False(r.HasInstanceArg);
+        Assert.Null(r.ExpectedTitle);
+        Assert.Null(r.InstallationTag);
+        Assert.Null(r.InstallationLabel);
     }
 
     [Fact]
-    public void UnknownExecutablePath_IsFatalEvenWithAValidTag()
+    public void UnrecognisedExecutablePath_IsFatalEvenWithAValidTag()
     {
-        var r = Resolve(@"C:\AlterumDev\Alterum.exe", "-alterumInstance=qc");
+        var r = Resolve(@"C:\AlterumPinned\notthegame.exe", "-alterumInstance=qc");
 
         Assert.False(r.Ok);
         Assert.Equal(InstanceLabelIdentity.Fault.UnknownExe, r.Fault);
+    }
+
+    [Fact]
+    public void UnrecognisedExecutablePath_DetailNamesTheReasonWithoutEchoingThePath()
+    {
+        var relative = Resolve("Alterum.exe");
+        var wrongName = Resolve(@"C:\Games\Alterum\AlterumLauncher.exe");
+
+        Assert.Equal("executable path is not absolute", relative.FaultDetail);
+        Assert.Equal("executable file name is not Alterum.exe", wrongName.FaultDetail);
+        Assert.DoesNotContain(@"C:\Games", wrongName.FaultDetail);
     }
 
     // ---------------------------------------------------------------- title / pid

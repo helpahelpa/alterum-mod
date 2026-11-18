@@ -145,16 +145,74 @@ internal static class ModelPresentation
         }
     }
 
-    // The row each DISPLAY surface presents for an identity, as the resolver itself computes it, so
-    // a diagnostic (the console's `assert-model`) cannot disagree with the projection it describes.
-    // HUD: the canonical row's slug whenever one exists (even while the row is still pending, so the
-    // intended row is named, not "-"), else the native row's label. Wardrobe: the game's applied row
-    // for the local player (the native selection bit is not ours to move), and the canonical row for
-    // a remote actor (the tab the occupancy correction moves their entry to).
+    // Observe the sprite actually drawn in the local HUD, never the intended canonical row.
+    // Missing/unknown/conflicting surfaces must not produce a successful assert-model verdict.
+    // Remote actors have no local HUD slot; their canonical identity is separate evidence only.
     internal static string HudRow(ModelIdentity id)
-        => id == null ? "-"
-         : id.CanonicalSlug.Length > 0 ? id.CanonicalSlug
-         : (id.CanonicalData != null ? id.CanonicalLabel : "-");
+    {
+        if (id == null) return "<unobserved>";
+        if (id.Remote) return "<remote-no-hud>";
+        string observed = null;
+        try
+        {
+            // Explicit observation must not reuse a scene snapshot taken before the HUD spawned.
+            // This runs on diagnostic/identity edges, never as a per-frame scanner.
+            var all = Resources.FindObjectsOfTypeAll(Il2CppType.Of<global::UI.Portrait.PortraitCompositeView>());
+            for (int i = 0; all != null && i < all.Length; i++)
+            {
+                var cv = all[i].TryCast<global::UI.Portrait.PortraitCompositeView>();
+                if (cv == null || !cv.gameObject.activeInHierarchy ||
+                    !SafePath(cv.transform).Contains("/HUD/")) continue;
+                var image = cv._portraitImage;
+                if (image == null || !image.isActiveAndEnabled || !image.gameObject.activeInHierarchy) continue;
+                string row = ObservedBustRow(image.sprite);
+                if (observed != null && observed != row) return "<conflict>";
+                observed = row;
+            }
+            if (observed == null)
+            {
+                var legacy = Resources.FindObjectsOfTypeAll(Il2CppType.Of<HUDLayerElements.PortraitHUDElement>());
+                for (int i = 0; legacy != null && i < legacy.Length; i++)
+                {
+                    var element = legacy[i].TryCast<HUDLayerElements.PortraitHUDElement>();
+                    if (element == null || !element.gameObject.activeInHierarchy) continue;
+                    var images = element.GetComponentsInChildren(Il2CppType.Of<Image>(), false);
+                    for (int k = 0; images != null && k < images.Length; k++)
+                    {
+                        var image = images[k].TryCast<Image>();
+                        if (image == null || !image.isActiveAndEnabled) continue;
+                        string row = ObservedBustRow(image.sprite);
+                        if (row == "<unknown-sprite>") continue;
+                        if (observed != null && observed != row) return "<conflict>";
+                        observed = row;
+                    }
+                }
+            }
+        }
+        catch { return "<unobserved>"; }
+        return observed ?? "<unobserved>";
+    }
+
+    private static string ObservedBustRow(Sprite sprite)
+    {
+        if (sprite == null) return "<unknown-sprite>";
+        string observed = null;
+        var models = PlayerModelDatabase.Models;
+        for (int i = 0; models != null && i < models.Length; i++)
+        {
+            var row = models[i];
+            Sprite bust = row?._bustPortraitSprite;
+            // Hot reload may replace the row's Sprite while the live HUD holds its previous copy.
+            // Match an unambiguous bust asset name as well as Unity identity, not the intended row.
+            if (bust == null || (!Same(sprite, bust) &&
+                (string.IsNullOrEmpty(sprite.name) || sprite.name != bust.name))) continue;
+            string slug = SahurWardrobe.SlugOfData(row);
+            string value = string.IsNullOrEmpty(slug) ? row.name : slug;
+            if (observed != null && observed != value) return "<ambiguous-sprite>";
+            observed = value;
+        }
+        return observed ?? "<unknown-sprite>";
+    }
 
     internal static string WardrobeRow(ModelIdentity id)
         => id == null ? "-"

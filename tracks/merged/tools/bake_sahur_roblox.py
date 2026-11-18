@@ -43,7 +43,7 @@ Choices, stated rather than hidden:
     the mirror the arms retarget side-swapped and the bat lands in the visual left hand. Mirror =
     negate x, reverse winding, mirror normals / bone locals / clip rotations (q -> x,-y,-z,w).
     UVs are NOT flipped: the texture is pinned to its surface, so flipping u would paint the
-    mirrored surface with doubly-mirrored artwork (the same rule the classic bake uses).
+    mirrored surface with doubly-mirrored artwork (the same rule the rigid bakes use).
 
 Usage (from the alterum workspace root):
   python3 tracks/merged/tools/bake_sahur_roblox.py                  # bake + verify

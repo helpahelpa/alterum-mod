@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Render the baked Roblox Sahur body into wardrobe portraits (RGBA, transparent background).
 
-Same idea as tools/sahur_portrait.py, for the rigged variant: it reads `sahur_roblox.rset` (the
+Renders the portrait sheet of the rigged variant: it reads `sahur_roblox.rset` (the
 exact blob the runtime builds its SkinnedMeshRenderer from) and the downscaled albedo next to it,
 in bind pose, through the software rasteriser in models/sahur/render.py.
 

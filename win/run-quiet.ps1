@@ -54,7 +54,7 @@ $fg = if (Test-Path "$tmp\fg.json") { (Get-Content "$tmp\fg.json" -Raw).Trim() }
 Write-Output "foreground saved: $fg"
 
 # 2) start the game
-Invoke-InteractiveTask "$TaskPrefix-Game" "$GameDir\Alterum.exe" $GameArgs $GameDir 0
+Invoke-InteractiveTask "$TaskPrefix-Game" "$GameDir\Alterum.exe" "$GameArgs -alterumDevMode" $GameDir 0
 Write-Output "game started"
 
 # 3) give the mod a moment to move its window away, then restore focus

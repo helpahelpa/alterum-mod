@@ -37,6 +37,7 @@ internal static class UiDriver
     private const float PollSeconds = 0.35f;
     private const int MaxLines = 500;
 
+    internal static bool Pending => Queue.Count != 0;
     private static float _nextPoll;
     private static readonly List<string> Queue = new List<string>();
     private static float _nextAction;
@@ -109,6 +110,7 @@ internal static class UiDriver
             case "inv": Inventory(log); return;
             case "wardrobe": OpenWardrobe(log); return;
             case "lobby": Lobby(log); return;
+            case "standat": ReelInteraction.StandPlayerAt(log, val); return;
             case "maps": Maps(log); return;
             case "items": Items(log); return;
             case "near": Near(log, val); return;

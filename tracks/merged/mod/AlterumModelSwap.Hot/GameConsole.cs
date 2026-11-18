@@ -399,6 +399,7 @@ internal static class GameConsole
             case "help": Help(host); break;
             case "dump": Dump(host); break;
             case "invoke": Invoke(host, arg); break;
+            case "exec": ExecuteDeveloperCommand(host, arg); break;
             case "probe": Probe(host); break;
             case "enable": Enable(host); break;
             case "ensure": EnsureNow(host); break;
@@ -1970,8 +1971,7 @@ internal static class GameConsole
 
         if (o.Local)
         {
-            // The persisted record. A custom expectation must name the slug; a native one must carry
-            // no custom claim ("" is a native pick, "-" no record at all - both qualify).
+            // Compatibility "wanted" field now describes the game's applied row, not saved intent.
             string w = id.WantedSlug ?? "-";
             AddModelField(o, "wanted", want, RowText(w),
                           t.Native ? IsNativeRow(w) : SameRow(w, t.Expected), true, null);
@@ -2007,14 +2007,13 @@ internal static class GameConsole
         AddModelField(o, "readiness", t.Native ? "native" : "ready", readiness,
                       SameRow(readiness, t.Native ? "native" : "ready"), true, null);
 
-        // The two display rows, from the resolver's own derivation (`ModelPresentation.HudRow` /
-        // `WardrobeRow`). The HUD slot is the LOCAL actor's surface (the resolver projects it for the
-        // local identity only), so for a remote the row is evidence; the wardrobe tab IS a remote
-        // actor's surface (that is where the occupancy correction moves their entry).
+        // Read the actual visible HUD sprite. Missing surfaces and unknown sprites fail closed;
+        // canonical identity alone cannot prove what a user sees. Remote actors have no HUD here.
         string hud = ModelPresentation.HudRow(id);
         AddModelField(o, "hud", want, RowText(hud),
-                      t.Native ? IsNativeRow(hud) : SameRow(hud, t.Expected), o.Local,
-                      o.Local ? "portrait slot row" : "canonical row (the HUD slot belongs to the local actor)");
+                      t.Native ? id.CanonicalData != null && SameRow(hud, id.CanonicalLabel)
+                               : SameRow(hud, t.Expected), o.Local,
+                      o.Local ? "observed visible portrait sprite" : "not observable (no remote HUD slot)");
 
         if (o.Local)
         {
@@ -3083,7 +3082,7 @@ internal static class GameConsole
         host.LogInfo($"[qc:test] select-model at {Stamp()} scene='{ActiveSceneName()}'");
 
         // `<slug> <variant>`: split on the LAST space, so the variant is the last word and a slug
-        // that is a label form ("Sahur (Classic)") still reaches the module's resolver whole.
+        // that is a label form ("TC2 Demoman") still reaches the module's resolver whole.
         string text = (arg ?? "").Trim();
         int sp = text.LastIndexOf(' ');
         string slug = sp < 0 ? text : text.Substring(0, sp).Trim();
@@ -4016,6 +4015,46 @@ internal static class GameConsole
             }
         }
 
+        // ---- effective host configuration (never a disk-profile guess) --------------------
+        m.Section("config");
+        var hostAssembly = Array.Find(AppDomain.CurrentDomain.GetAssemblies(), a => a.GetName().Name == "AlterumModelSwap");
+        try
+        {
+            // Older permanent hosts returned BasePlugin.Config, not their named-instance file.
+            // Fail closed if only Hot was updated: this observation needs the corrected host too.
+            var activePath = hostAssembly?.GetType("AlterumModelSwap.HostPlugin")?
+                .GetProperty("ActiveConfigPath", BindingFlags.Static | BindingFlags.NonPublic)?.GetValue(null) as string;
+            if (string.IsNullOrEmpty(activePath) || activePath != host.ConfigPath)
+                m.Absent("path", "permanent host lacks a verified active-profile ConfigPath; host update required");
+            else m.Text("path", activePath);
+            m.Flag("showLocalPlayer", host.Config.MirrorShowPlayer);
+            m.Raw("source", "in-memory-host-context");
+        }
+        catch (Exception e)
+        {
+            m.Absent("path", Describe(e));
+            m.Absent("showLocalPlayer", Describe(e));
+        }
+
+        m.Section("loaded");
+        foreach (string name in new[] { "AlterumModelSwap", "AlterumModelSwap.Contracts" })
+        {
+            try
+            {
+                var assembly = Array.Find(AppDomain.CurrentDomain.GetAssemblies(), a => a.GetName().Name == name);
+                if (assembly == null || string.IsNullOrEmpty(assembly.Location))
+                {
+                    m.Absent(name + ".sha256", "loaded assembly has no readable file location");
+                    continue;
+                }
+                m.Text(name + ".path", assembly.Location);
+                m.Raw(name + ".mvid", assembly.ManifestModule.ModuleVersionId.ToString("N"));
+                m.Raw(name + ".sha256", Sha256Hex(ReadFileShared(assembly.Location)));
+                m.Raw(name + ".hashSource", "loaded-assembly-backing-file-not-memory");
+            }
+            catch (Exception e) { m.Absent(name + ".sha256", Describe(e)); }
+        }
+
         // ---- scene ------------------------------------------------------------------------
         m.Section("scene");
         string sceneName = null, sceneWhy = null;
@@ -4130,6 +4169,38 @@ internal static class GameConsole
             }
         }
 
+        // Observations only: do not resolve a POV by changing it or infer visibility from a PNG.
+        m.Section("view");
+        try
+        {
+            var controllers = local == null ? null : local.GetComponentsInChildren(Il2CppType.Of<Cameras.SwitchActionProcessors.PlayerPOVController>(), true);
+            if (controllers == null || controllers.Length != 1)
+                m.Absent("pov", "no unique POV controller under the owned local actor");
+            else m.Text("pov", controllers[0].TryCast<Cameras.SwitchActionProcessors.PlayerPOVController>().CurrentPOV.ToString());
+        }
+        catch (Exception e) { m.Absent("pov", Describe(e)); }
+        try
+        {
+            if (local == null) m.Absent("rendererStats", "no local actor");
+            else
+            {
+                var renderers = local.GetComponentsInChildren(Il2CppType.Of<Renderer>(), true);
+                int enabled = 0, active = 0;
+                for (int i = 0; renderers != null && i < renderers.Length; i++)
+                {
+                    var renderer = renderers[i].TryCast<Renderer>();
+                    if (renderer == null) continue;
+                    if (renderer.enabled) enabled++;
+                    if (renderer.enabled && renderer.gameObject.activeInHierarchy) active++;
+                }
+                m.Number("renderers", renderers?.Length ?? 0);
+                m.Number("enabled", enabled);
+                m.Number("activeEnabled", active);
+                m.Text("scope", "all renderers under local actor; not proof of body visibility or camera admission");
+            }
+        }
+        catch (Exception e) { m.Absent("rendererStats", Describe(e)); }
+
         m.Section("points");
         m.Number("count", Points.Length);
         string nearest = "none";
@@ -4160,6 +4231,7 @@ internal static class GameConsole
 
         // ---- local model identity ---------------------------------------------------------
         m.Section("identity");
+        m.Raw("hudSource", "visible-sprite-observer/1");
         string localSlug = "unavailable";
         ModelPresentation.ModelIdentity localIdentity = null;
         string identityWhy = null;
@@ -4480,7 +4552,7 @@ internal static class GameConsole
     private static string ProcessStartUtc()
     {
         using var process = System.Diagnostics.Process.GetCurrentProcess();
-        return process.StartTime.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", Inv);
+        return process.StartTime.ToUniversalTime().ToString("O", Inv);
     }
 
     // Read a file another process (the runtime, the loader) already holds open: every share flag, so a
@@ -4566,8 +4638,8 @@ internal static class GameConsole
     //     replaces the previous manifest atomically rather than appending to it.
     //
     // The step set (`model-lifetime`), each with its own deadline and its own verdict:
-    //   1 preconditions     scene=Lobby, a local player, and two distinct roster rows (the roster's own
-    //                       classic entry plus the first non-demo entry after it). A failure ends the
+    //   1 preconditions     scene=Lobby, a local player, and two distinct roster rows (the roster's
+    //                       first entry plus the first non-demo entry after it). A failure ends the
     //                       run here, before anything is opened or selected.
     //   2 open-wardrobe     WardrobeInputHandler.TryOpenWardrobe() via UiDriver - the same helper
     //                       `alterum.test.open-wardrobe` calls.
@@ -5042,7 +5114,7 @@ internal static class GameConsole
         if (string.Equals(name, ScenarioModelLifetime, StringComparison.Ordinal))
         {
             AddScenarioStep(steps, "preconditions", "precondition", 0f,
-                "scene=Lobby, a local player, and two distinct roster rows (the roster classic entry plus " +
+                "scene=Lobby, a local player, and two distinct roster rows (the roster's first entry plus " +
                 "the first non-demo entry after it); nothing is opened or selected before all three hold");
             AddScenarioStep(steps, "open-wardrobe", "call", 0f,
                 "open the native wardrobe through WardrobeInputHandler.TryOpenWardrobe (the same helper " +
@@ -5108,10 +5180,10 @@ internal static class GameConsole
             return true;
         }
 
-        // Model A is the roster's own classic entry (the one name the roster API promises), and model B
-        // is the first non-demo entry after it. Derived, not hardcoded: a roster edit moves the pair with
-        // it instead of leaving a slug that no longer exists.
-        var specA = ModelRoster.Classic;
+        // Model A is the roster's first entry (ModelRoster.Default), and model B is the first
+        // non-demo entry after it. Derived, not hardcoded: a roster edit moves the pair with it
+        // instead of leaving a slug that no longer exists.
+        var specA = ModelRoster.Default;
         ModelSpec specB = null;
         var all = ModelRoster.All;
         for (int i = 0; all != null && i < all.Length; i++)
@@ -5127,7 +5199,7 @@ internal static class GameConsole
         if (!string.Equals(scene, "Lobby", StringComparison.OrdinalIgnoreCase))
             problems.Add($"scene='{scene}' (the wardrobe controller is Lobby-only)");
         if (local == null) problems.Add($"no local player ({via})");
-        if (specA == null) problems.Add("the roster has no classic entry (ModelRoster.Classic is null)");
+        if (specA == null) problems.Add("the roster has no default entry (ModelRoster.Default is null)");
         else if (specB == null) problems.Add("the roster has no second non-demo entry");
 
         observed = $"scene='{scene}' active='{ActiveSceneName()}' local={(local == null ? "none" : via)} " +
@@ -5569,7 +5641,7 @@ internal static class GameConsole
         else { m.Text("a", run.ModelA); m.Text("aLabel", run.LabelA); }
         if (string.IsNullOrEmpty(run.ModelB)) m.Absent("b", "the preconditions step resolved no model B");
         else { m.Text("b", run.ModelB); m.Text("bLabel", run.LabelB); }
-        m.Raw("source", "roster: classic entry (a), then the first non-demo entry after it (b)");
+        m.Raw("source", "roster: first entry (a), then the first non-demo entry after it (b)");
 
         for (int i = 0; i < run.Steps.Count; i++)
         {
@@ -6650,6 +6722,43 @@ internal static class GameConsole
     {
         var v = GetProperty(o, member);
         return v == null ? "" : v.ToString();
+    }
+
+    // Explicit local developer transport: exec <request-id> <QC command>. Filesystem access to
+    // this instance is the trust boundary; no network endpoint, keystroke, pause menu, or persistent
+    // unlock. Always use QC's real parser/processor, with the same native-row invocation bridge.
+    private static void ExecuteDeveloperCommand(IHostContext host, string arg)
+    {
+        int space = arg.IndexOf(' ');
+        if (space <= 0 || !Guid.TryParseExact(arg.Substring(0, space), "N", out var requestId))
+            throw new ArgumentException("exec requires a 32-hex request id followed by a console command");
+        string id = requestId.ToString("N");
+        string command = arg.Substring(space + 1).Trim();
+        host.LogInfo($"[qc:direct] id={id} state=begin");
+        try
+        {
+            if (command.Length == 0) throw new ArgumentException("empty console command");
+            QcAccess.WithDeveloperCommand(() =>
+            {
+                Resolve(host);
+                TestRowsSync(host);
+                if (LoadedCount() <= 0) throw new InvalidOperationException("QC command table is not ready; retry after scene initialization");
+                var invoke = FindMethod(_proc, "InvokeCommand", 1);
+                if (invoke == null) throw new MissingMethodException("QuantumConsoleProcessor.InvokeCommand(string)");
+                object result = invoke.Invoke(null, new object[] { command });
+                string output = result is Il2CppSystem.Object native &&
+                                native.GetIl2CppType()?.FullName == "System.String"
+                    ? IL2CPP.Il2CppStringToManaged(native.Pointer)
+                    : result?.ToString() ?? "null";
+                host.LogInfo($"[qc:direct] id={id} result={output}");
+            });
+            // Dispatch complete is not an assertion that an asynchronous game action succeeded.
+            host.LogInfo($"[qc:direct] id={id} state=dispatched playerAccess={QcAccess.Summary}");
+        }
+        catch (Exception e)
+        {
+            host.LogWarning($"[qc:direct] id={id} state=error error={Describe(e)} playerAccess={QcAccess.Summary}");
+        }
     }
 
     private static void Invoke(IHostContext host, string command)

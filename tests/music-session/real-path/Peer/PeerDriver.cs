@@ -116,6 +116,8 @@ namespace AlterumModelSwap.Hot
             slot[0] = next;
         }
 
+        public static void SetScene(string scene) => UnityEngine.SceneManagement.SceneManager.Active = scene;
+
         public static void Tick(double now)
         {
             UnityEngine.Time.SetNow(now);

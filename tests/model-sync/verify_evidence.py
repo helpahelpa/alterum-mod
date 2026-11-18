@@ -616,14 +616,14 @@ def self_test():
 
     add("failed-build-hidden",
         BASE + "[sahur:build] FAILED 'Golubiro': boom - tearing the partial body down and restoring the native body\n"
-               "[sahur:dump] on=0 bat=1 builds=0 binds=0 hides=1 restores=0 bodyRoot=none bodyRenderersSnapshot=6 hidden=6\n",
+               "[sahur:dump] on=0 builds=0 binds=0 hides=1 restores=0 bodyRoot=none bodyRenderersSnapshot=6 hidden=6\n",
         {"checks": {"build_failure_restores": "fail"}},
         cfg_before=WANTED_BEFORE, cfg_after=WANTED_AFTER)
 
     add("failed-build-restored",
         BASE + "[sahur:build] FAILED 'Golubiro': boom - tearing the partial body down and restoring the native body\n"
                "[sahur:body] restored 6 body renderer(s) (why=build-failed)\n"
-               "[sahur:dump] on=0 bat=1 builds=0 binds=0 hides=6 restores=6 bodyRoot=none bodyRenderersSnapshot=0 hidden=0\n",
+               "[sahur:dump] on=0 builds=0 binds=0 hides=6 restores=6 bodyRoot=none bodyRenderersSnapshot=0 hidden=0\n",
         {}, cfg_before=WANTED_BEFORE, cfg_after=WANTED_AFTER)
 
     pending = BASE.replace("readiness=ready", "readiness=pending") + \

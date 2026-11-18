@@ -13,18 +13,21 @@ using UnityEngine.Rendering;
 
 namespace AlterumModelSwap.Hot;
 
-// Playable Sahur body: the CC0 "Tung Tung Tung Sahur" mesh (models/sahur/dl/tttsaur/, @BakaFoxArt,
-// CC0 1.0) bound rigidly to the game's own third-person skeleton, built at runtime from an
-// embedded binary. No Blender, no asset bundle, no FBX at runtime: `sahur.mset` is baked offline
-// by tracks/merged/tools/bake_sahur.py (8 rigid pieces, per-vertex bone region) and
-// `sahur_albedo.png` is a byte copy of the model's own texture (which also removes the FBX's
-// absolute Windows material path).
+// Playable rigid body: a baked mesh with one rigid piece per game bone region, bound to the
+// game's own third-person skeleton and built at runtime from an embedded binary. No Blender, no
+// asset bundle, no FBX at runtime: the roster spec names the `.mset` blob and its albedo, which
+// the offline bake writes (tracks/merged/tools/bake_*.py).
+//
+// This module began as the original rigid Sahur body. That entry is retired, and the module is now
+// the shared rigid path for every `ModelKind.Rigid` roster entry (Golubiro today), so the asset,
+// region table and portraits all come from that entry's `ModelSpec`. `SahurRig` remains the
+// separate rigged path (Sahur/Roblox and Capuchino).
 //
 // Why a Mesh built here rather than a game asset: the source has no bones, no skin and one welded
-// surface. The bake splits it at the measured joints (neck 118 cm, shoulder band 100..133 cm,
-// hip hem 62 cm) so every emitted vertex belongs to exactly one region, and each region is bound
-// 1.0 to one of the game's bones. Wood does not bend: rigid pieces with hard transitions are the
-// intended result, and the boundary split means no triangle is smeared across two bones.
+// surface. The bake splits it at measured joints so every emitted vertex belongs to exactly one
+// region, and each region is bound 1.0 to one of the game's bones. A wooden statue does not bend:
+// rigid pieces with hard transitions are the intended result, and the boundary split means no
+// triangle is smeared across two bones.
 //
 // What it drives and what it must not break:
 //   * bones are `ThirdViewPlayerModel.Bones._allBones` of the LOCAL player only
@@ -35,17 +38,14 @@ namespace AlterumModelSwap.Hot;
 //     "third person + mirror, never first person". The renderers are also registered with
 //     CosmeticMarkers so the mirror's body sweep and the cosmetic census treat them as ours -
 //     that is what keeps this from fighting the layer-6 / layer-14 rules;
-//   * the bat is built from primitives under the right hand bone, so it follows every emote.
 //
-// Hotkey F3 toggles the body, F2 the bat (F4 is the reel placement shortcut). Unattended control:
+// Hotkey F3 toggles the body (F4 is the reel placement shortcut). Unattended control:
 //   "<ScreensDir>/sahur.request", deleted on pickup, line-oriented:
 //     on|off|toggle     the body (bare word on the first line works too)
-//     bat=on|off|toggle the bat
 //     dump=1            log the full state (pieces, bones, height, what is hidden)
 internal static class SahurModel
 {
     public const Key BodyKey = Key.F3;
-    public const Key BatKey = Key.F2;
 
     private const string RequestFileName = "sahur.request";
     private const float PollSeconds = 0.1f;
@@ -59,7 +59,7 @@ internal static class SahurModel
     private const float Scale = 0.01f;             // source is centimetres, 179.62 cm tall
 
     // bone names on the game's rig (UE-style, same names EmoteRuntime probes for), per spec:
-    // RequiredBones = every region bone of the spec (all must exist) + "hand_r" when it has a bat.
+    // RequiredBones = every region bone of the spec (all must exist).
     private static string[] RequiredBones;          // rebuilt from _spec before each build
 
     private static bool _announced;
@@ -74,7 +74,7 @@ internal static class SahurModel
     internal static Renderer LiveRenderer => _smr;
 
     // The EFFECTIVE body, the same contract SahurRig exposes (the identity line reports one shape for
-    // both kinds). A module that is merely ON is not a body: the classic body object with a mesh is.
+    // both kinds). A module that is merely ON is not a body: the rigid body object with a mesh is.
     private static bool _buildFailed;
     private static string _buildFailWhy = "";
     internal static bool BodyLive
@@ -99,11 +99,9 @@ internal static class SahurModel
     private static Asset _asset;                     // == _assets[_spec.Slug] once built
     private static ThirdViewPlayerModel _model;
     private static Transform _owner;
-    private static GameObject _bodyRoot;            // "Sahur_Body" under the model root
+    private static GameObject _bodyRoot;            // spec.BodyName under the model root
     private static Mesh _bodyMesh;                  // this body's PRIVATE clone (bindposes live on it)
     private static SkinnedMeshRenderer _smr;
-    private static GameObject _batRoot;
-    private static bool _bat = true;
     private static readonly List<BodyRenderer> _body = new();
     private static readonly List<Transform> _bones = new();
     private static int _hides, _restores, _binds, _builds;
@@ -118,12 +116,10 @@ internal static class SahurModel
         public Mesh Mesh;
         public Texture2D Albedo;
         public Material Body;
-        public Material Handle, Barrel, Band;
         public int VertexCount, TriangleCount, Pieces;
         public float HeightCm, MinY, MaxY;
         public bool Flip;                           // 180 deg yaw about Y (source faces -Z)
         public string[] RegionBoneName;             // region -> game bone name
-        public Mesh BatHandle, BatBarrel, BatBand;
         public long DecodedBytes;                   // albedo mip chain held by this asset
     }
 
@@ -150,7 +146,7 @@ internal static class SahurModel
             try
             {
                 log.LogInfo($"[sahur] ready trigger=none (request file only) request={RequestPath(log)} " +
-                            "values=on/off/toggle, bat=on/off/toggle, dump=1");
+                            "values=on/off/toggle, dump=1");
             }
             catch { }
         }
@@ -186,8 +182,6 @@ internal static class SahurModel
 
     // The wardrobe selects a model through the game's own model index; the visible body is still this
     // module. Only called on a selection edge, so a manual F3 press is never fought.
-    internal static void SetFromWardrobe(IHostContext log, bool on) => SetFromWardrobe(log, ModelRoster.Classic, on);
-
     internal static void SetFromWardrobe(IHostContext log, ModelSpec spec, bool on)
     {
         if (on && spec != null && !ReferenceEquals(spec, _spec))
@@ -217,7 +211,6 @@ internal static class SahurModel
         try { CustomEnhancements.Dispose(log); } catch { }
         try { Restore(log, "dispose"); } catch { }
         try { DestroyBody(log); } catch { }
-        try { DestroyBat(log); } catch { }
         try { DespawnHuman(log); } catch { }
         _assets.Dispose(); // outstanding preview leases release after runtime teardown
         _asset = null;
@@ -255,17 +248,6 @@ internal static class SahurModel
             string val = eq > 0 ? line.Substring(eq + 1).Trim().ToLowerInvariant() : line.ToLowerInvariant();
             switch (key)
             {
-                case "bat":
-                    switch (val)
-                    {
-                        case "on": case "1": case "yes": SetBat(log, true, "request"); break;
-                        case "off": case "0": case "no": SetBat(log, false, "request"); break;
-                        case "toggle":
-                            SetBat(log, !_bat, "request");
-                            break;
-                        default: log.LogWarning($"[sahur] request bat={val} is not on/off/toggle"); break;
-                    }
-                    break;
                 case "dump":
                     Dump(log, val != "0");
                     break;
@@ -300,10 +282,8 @@ internal static class SahurModel
                                             $"smr bounds world={wbRef.size.ToString("F2")} center={wbRef.center.ToString("F2")}");
                             }
                             if (_smr != null) _smr.enabled = false;
-                            if (_batRoot != null) _batRoot.SetActive(false);
                             Capture(log, "ref");
                             if (_smr != null) _smr.enabled = true;
-                            if (_batRoot != null) _batRoot.SetActive(_bat);
                         }
                         finally { try { if (refGo != null) UnityEngine.Object.Destroy(refGo); } catch { } }
                     }
@@ -311,10 +291,8 @@ internal static class SahurModel
                 case "nobody":
                     // negative control: same frame with every renderer of ours switched off
                     if (_smr != null) _smr.enabled = false;
-                    if (_batRoot != null) _batRoot.SetActive(false);
                     Capture(log, "nobody");
                     if (_smr != null) _smr.enabled = true;
-                    if (_batRoot != null) _batRoot.SetActive(_bat);
                     break;
                 case "probe":
                     Probe(log);
@@ -358,7 +336,7 @@ internal static class SahurModel
                     }
                     break;
                 default:
-                    log.LogWarning($"[sahur] request key '{key}' is not body/bat/dump");
+                    log.LogWarning($"[sahur] request key '{key}' is not body/dump");
                     break;
             }
         }
@@ -378,17 +356,10 @@ internal static class SahurModel
         {
             // Deliberate body choice outside the wardrobe: tell the wardrobe so the map path records
             // it as the wanted entry and stops forcing the game's row onto the same skeleton.
-            try { SahurWardrobe.NoteBodyRequest(log, _spec ?? ModelRoster.Classic, true); }
+            try { SahurWardrobe.NoteBodyRequest(log, _spec ?? ModelRoster.DefaultRigid, true); }
             catch (Exception e) { log.LogWarning($"[sahur] wardrobe note failed: {e.Message}"); }
         }
         if (!on) { Restore(log, why); DestroyBody(log); }
-    }
-
-    private static void SetBat(IHostContext log, bool on, string why)
-    {
-        _bat = on;
-        if (_batRoot != null) _batRoot.SetActive(on);
-        log.LogInfo($"[sahur:bat] {(on ? "ON" : "OFF")} (from {why})");
     }
 
     // ================================================================== apply
@@ -471,7 +442,8 @@ internal static class SahurModel
         if (model == null) return;
         var root = model.transform;
         if (root == null) return;
-        var spec = _spec ?? (_spec = ModelRoster.Classic);
+        var spec = _spec ?? (_spec = ModelRoster.DefaultRigid);
+        if (spec == null) { log.LogWarning("[sahur:build] no rigid roster entry to build"); return; }
         RequiredBones = RequiredFor(spec);
 
         var bones = BoneMap(model);
@@ -620,14 +592,6 @@ internal static class SahurModel
             return;
         }
 
-        // The bat is a prop, not the body: a failure there must neither be reported as a body build
-        // failure nor skip HideBody below (which would leave the native body visible behind ours).
-        if (_bat && spec.Bat)
-        {
-            try { BuildBat(log, asset, bones["hand_r"]); }
-            catch (Exception e) { log.LogWarning($"[sahur] bat build failed ('{spec.Label}'): {e.Message}"); }
-        }
-
         log.LogInfo($"[sahur:bind] '{spec.Label}' native={fromBind}/{_bones.Count} live={fromLive} " +
                     $"worstLiveVsNative={(worstDeg < 0f ? "n/a" : worstDeg.ToString("F2", CultureInfo.InvariantCulture) + "deg/" +
                                                            worstMm.ToString("F1", CultureInfo.InvariantCulture) + "mm")} " +
@@ -637,7 +601,7 @@ internal static class SahurModel
                     $"bones={string.Join(",", _bones.ConvertAll(b => b == null ? "null" : b.name).ToArray())} " +
                     $"height={(asset.HeightCm * Scale):F3}m scale={Scale} yaw={(asset.Flip ? 180 : 0)} " +
                     $"yRange=[{asset.MinY:F2},{asset.MaxY:F2}]cm yOffset={spec.YOffset:F3}m " +
-                    $"bat={(_batRoot != null)} builds={_builds}");
+                    $"builds={_builds}");
         _binds++;
         HideBody(log);
     }
@@ -757,10 +721,6 @@ internal static class SahurModel
 
     private static void DestroyBody(IHostContext log)
     {
-        // The bat is parented to hand_r, not to _bodyRoot, so the body teardown must take it too.
-        // Before the null guard: a generation that lost its body but not its bat would otherwise
-        // never reach the destroy below.
-        DestroyBat(log);
         try
         {
             if (_smr != null) _smr.enabled = false;
@@ -786,7 +746,7 @@ internal static class SahurModel
 
     // ================================================================== preview build
     //
-    // The classic mesh on another model's skeleton (the wardrobe preview). Same asset, same rigid
+    // The rigid mesh on another model's skeleton (the wardrobe preview). Same asset, same rigid
     // 1.0 weights, same per-submesh material rule: the only thing that differs is where the bind
     // pose comes from. The player build reads it from the live bones, which is safe because it
     // happens on a freshly spawned body; a preview has already been idling for a while, so the
@@ -802,7 +762,8 @@ internal static class SahurModel
         if (model == null) return null;
         var root = model.transform;
         if (root == null) return null;
-        if (spec == null) spec = _spec ?? ModelRoster.Classic;
+        if (spec == null) spec = _spec ?? ModelRoster.DefaultRigid;
+        if (spec == null) { note = "no rigid roster entry"; return null; }
         var bones = BoneMap(model);
         string missing = null;
         foreach (var want in RequiredFor(spec))
@@ -880,7 +841,7 @@ internal static class SahurModel
         CosmeticMarkers.AddRoot(go.transform);
         CosmeticMarkers.Add(smr);
         note = $"bindposes={fromBindposes}/{bindBones.Count} live={fromLive}";
-        log.LogInfo($"[sahur:preview] classic body under '{PathOf(root)}' layer={go.layer} " +
+        log.LogInfo($"[sahur:preview] rigid body under '{PathOf(root)}' layer={go.layer} " +
                     $"verts={asset.VertexCount} pieces={asset.Pieces} materials={matCount} " +
                     $"bones={string.Join(",", bindBones.ConvertAll(x => x == null ? "null" : x.name).ToArray())} " +
                     $"{note}");
@@ -911,9 +872,9 @@ internal static class SahurModel
                 UnityEngine.Object.Destroy(go);
             }
             if (mesh != null) UnityEngine.Object.Destroy(mesh);
-            log?.LogInfo("[sahur:preview] classic body destroyed");
+            log?.LogInfo("[sahur:preview] rigid body destroyed");
         }
-        catch (Exception e) { log?.LogWarning($"[sahur:preview] classic destroy failed: {e.Message}"); }
+        catch (Exception e) { log?.LogWarning($"[sahur:preview] rigid destroy failed: {e.Message}"); }
         finally
         {
             if (_previewAssetUses.TryGetValue(key, out var use))
@@ -1038,69 +999,12 @@ internal static class SahurModel
         try { if (_bodyRoot != null) _bodyRoot.SetActive(false); } catch { }
     }
 
-    // ================================================================== bat
-
-    private static void BuildBat(IHostContext log, Asset asset, Transform hand)
-    {
-        DestroyBat(log);
-        if (hand == null) { log.LogWarning("[sahur:bat] no hand_r bone; bat not built"); return; }
-        var root = new GameObject("Sahur_Bat");
-        root.transform.SetParent(hand, false);
-        root.transform.localPosition = Vector3.zero;
-        root.transform.localRotation = Quaternion.identity;
-        root.transform.localScale = Vector3.one;
-        root.layer = ModelLayer;
-        CosmeticMarkers.AddRoot(root.transform);
-
-        // Handle in the fist, barrel and two bands above it, all along the hand bone's +Y.
-        AddPart(root.transform, asset.BatHandle, asset.Handle, Vector3.zero);
-        AddPart(root.transform, asset.BatBarrel, asset.Barrel, Vector3.zero);
-        AddPart(root.transform, asset.BatBand, asset.Band, Vector3.zero);
-        AddPart(root.transform, asset.BatBand, asset.Band, new Vector3(0f, 0.42f, 0f));
-        _batRoot = root;
-        log.LogInfo($"[sahur:bat] built under '{PathOf(hand)}' parts=4 (handle, barrel, 2 bands) " +
-                    $"length=0.86m active={_bat}");
-    }
-
-    private static void AddPart(Transform parent, Mesh mesh, Material mat, Vector3 offset)
-    {
-        var go = new GameObject("Sahur_Bat_Part");
-        go.transform.SetParent(parent, false);
-        go.transform.localPosition = offset;
-        go.layer = ModelLayer;
-        var mf = go.AddComponent(Il2CppType.Of<MeshFilter>()).TryCast<MeshFilter>();
-        var mr = go.AddComponent(Il2CppType.Of<MeshRenderer>()).TryCast<MeshRenderer>();
-        if (mf == null || mr == null) return;
-        mf.sharedMesh = mesh;
-        mr.sharedMaterial = mat;
-        mr.shadowCastingMode = ShadowCastingMode.On;
-        CosmeticMarkers.Add(mr);
-    }
-
-    private static void DestroyBat(IHostContext log)
-    {
-        if (_batRoot == null) return;
-        try
-        {
-            var rends = _batRoot.GetComponentsInChildren(Il2CppType.Of<Renderer>(), true);
-            for (int i = 0; i < rends.Length; i++)
-            {
-                var r = rends[i]?.TryCast<Renderer>();
-                if (r != null) CosmeticMarkers.Remove(r.Pointer);
-            }
-            CosmeticMarkers.RemoveRoot(_batRoot.transform.Pointer);
-            UnityEngine.Object.Destroy(_batRoot);
-            log?.LogInfo("[sahur:bat] destroyed");
-        }
-        catch (Exception e) { log?.LogWarning($"[sahur:bat] destroy failed: {e.Message}"); }
-        _batRoot = null;
-    }
-
     // ================================================================== asset load
 
     private static ModelAssetCache<Asset>.Lease AcquireAsset(IHostContext log, ModelSpec spec, Dictionary<string, Transform> bones, Transform root)
     {
-        spec ??= ModelRoster.Classic;
+        spec ??= ModelRoster.DefaultRigid;
+        if (spec == null) return null;
         return _assets.Acquire(spec.Slug, () => LoadAsset(log, spec, bones, root));
     }
 
@@ -1116,12 +1020,10 @@ internal static class SahurModel
         }
     }
 
-    // Every region bone of the spec, plus the bat socket when the spec builds a bat.
+    // Every region bone of the spec (all must exist on the game rig).
     private static string[] RequiredFor(ModelSpec spec)
     {
-        var list = new List<string>(spec.RegionBones ?? new string[0]);
-        if (spec.Bat) list.Add("hand_r");
-        return list.ToArray();
+        return new List<string>(spec.RegionBones ?? new string[0]).ToArray();
     }
 
     private static Asset LoadAsset(IHostContext log, ModelSpec spec, Dictionary<string, Transform> bones, Transform root)
@@ -1155,7 +1057,7 @@ internal static class SahurModel
         try
         {
             // Per-spec orientation: the variants2 bakes are mirrored to the game's handedness at bake
-            // time (manifest mirror_x) and need no yaw; the classic Sahur bake is not and needs 180.
+            // time (manifest mirror_x) and need no yaw; a bake that is not mirrored needs 180.
             bool flip = spec.Yaw180;
             if (flip) flip = DecideFlip(log, bones, root);
             else log.LogInfo($"[sahur:orient] '{spec.Slug}' baked mirrored to the game's handedness => yaw=0 deg, scale={Scale}");
@@ -1178,33 +1080,16 @@ internal static class SahurModel
             int levels;
             var chain = PngDecoder.BuildMipChain(rgba, w, h, out levels);
             asset.DecodedBytes = chain.Length;
-            var tex = new Texture2D(w, h, TextureFormat.RGBA32, true, false);
+            var tex = ModelAssetLifetime.Own(new Texture2D(w, h, TextureFormat.RGBA32, true, false));
             tex.name = "Cosmetic_" + spec.Tag + "Albedo";
             tex.LoadRawTextureData(new Il2CppStructArray<byte>(chain));
             tex.Apply(true, true);
             asset.Albedo = tex;
             asset.Body = LitMaterial(log, "Cosmetic_" + spec.Tag + "Albedo", tex, new Color(1f, 1f, 1f, 1f));
-            asset.Handle = LitMaterial(log, "Cosmetic_" + spec.Tag + "BatHandle", null, new Color(0.22f, 0.13f, 0.08f, 1f));
-            asset.Barrel = LitMaterial(log, "Cosmetic_" + spec.Tag + "BatBarrel", null, new Color(0.62f, 0.44f, 0.24f, 1f));
-            asset.Band = LitMaterial(log, "Cosmetic_" + spec.Tag + "BatBand", null, new Color(0.13f, 0.10f, 0.09f, 1f));
         }
         catch (Exception e)
         {
             log.LogError($"[sahur:asset] texture/material failed: {e}");
-            DestroyAsset(asset);
-            return null;
-        }
-
-        try
-        {
-            // handle in the fist (y 0 .. 0.36), barrel above it (0.36 .. 0.86), bands on the taper
-            asset.BatHandle = Cylinder("Sahur_BatHandle", 0.017f, 0.019f, 0.36f, 8, 0f);
-            asset.BatBarrel = Cylinder("Sahur_BatBarrel", 0.046f, 0.060f, 0.50f, 10, 0.36f);
-            asset.BatBand = Cylinder("Sahur_BatBand", 0.052f, 0.052f, 0.026f, 10, 0.372f);
-        }
-        catch (Exception e)
-        {
-            log.LogError($"[sahur:asset] bat mesh failed: {e}");
             DestroyAsset(asset);
             return null;
         }
@@ -1237,7 +1122,7 @@ internal static class SahurModel
         }
     }
 
-    private static string TagOf(ModelSpec s) => (s ?? ModelRoster.Classic).Tag;
+    private static string TagOf(ModelSpec s) => (s ?? ModelRoster.DefaultRigid)?.Tag ?? "Sahur";
 
     private static byte[] ReadAll(Stream s)
     {
@@ -1349,7 +1234,7 @@ internal static class SahurModel
             for (int i = 0; i < src.Pos.Length; i++) src.Pos[i].y += spec.YOffset;
             log.LogInfo($"[sahur:mesh] '{spec.Slug}' lifted {spec.YOffset:F3} m so its feet sit on the model root");
         }
-        var mesh = new Mesh { name = spec.MeshName };
+        var mesh = ModelAssetLifetime.Own(new Mesh { name = spec.MeshName });
         mesh.vertices = new Il2CppStructArray<Vector3>(src.Pos);
         mesh.uv = new Il2CppStructArray<Vector2>(src.Uv);
         mesh.normals = new Il2CppStructArray<Vector3>(src.Nrm);
@@ -1413,6 +1298,7 @@ internal static class SahurModel
             log.LogWarning($"[sahur:shader] no game URP/Lit template; Shader.Find found={sh != null}");
             mat = new Material(sh);
         }
+        ModelAssetLifetime.Own(mat);
         mat.name = name;
         if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", tex != null ? (Texture)tex : Texture2D.whiteTexture);
         if (mat.HasProperty("_BumpMap")) mat.SetTexture("_BumpMap", null);
@@ -1424,75 +1310,12 @@ internal static class SahurModel
         return mat;
     }
 
-    // Cylinder along +Y, base at y=0, flat caps, smooth sides.
-    private static Mesh Cylinder(string name, float rBottom, float rTop, float len, int sides, float yBase)
-    {
-        var verts = new List<Vector3>();
-        var nrms = new List<Vector3>();
-        var uvs = new List<Vector2>();
-        for (int ring = 0; ring < 2; ring++)
-        {
-            float y = yBase + (ring == 0 ? 0f : len);
-            float r = ring == 0 ? rBottom : rTop;
-            for (int i = 0; i < sides; i++)
-            {
-                float a = i / (float)sides * Mathf.PI * 2f;
-                float cx = Mathf.Cos(a), cz = Mathf.Sin(a);
-                verts.Add(new Vector3(cx * r, y, cz * r));
-                nrms.Add(new Vector3(cx, 0f, cz));
-                uvs.Add(new Vector2(i / (float)sides, ring));
-            }
-        }
-        var tris = new List<int>();
-        for (int i = 0; i < sides; i++)
-        {
-            int a = i, b = (i + 1) % sides, c = sides + i, d = sides + (i + 1) % sides;
-            tris.Add(a); tris.Add(c); tris.Add(b);
-            tris.Add(b); tris.Add(c); tris.Add(d);
-        }
-        // caps (fan around a centre vertex so the silhouette is closed from every angle)
-        for (int cap = 0; cap < 2; cap++)
-        {
-            float y = yBase + (cap == 0 ? 0f : len);
-            float r = cap == 0 ? rBottom : rTop;
-            var n = new Vector3(0f, cap == 0 ? -1f : 1f, 0f);
-            int centre = verts.Count;
-            verts.Add(new Vector3(0f, y, 0f)); nrms.Add(n); uvs.Add(new Vector2(0.5f, 0.5f));
-            int ringBase = verts.Count;
-            for (int i = 0; i < sides; i++)
-            {
-                float a = i / (float)sides * Mathf.PI * 2f;
-                verts.Add(new Vector3(Mathf.Cos(a) * r, y, Mathf.Sin(a) * r)); nrms.Add(n); uvs.Add(new Vector2(0.5f, 0.5f));
-            }
-            for (int i = 0; i < sides; i++)
-            {
-                int a = ringBase + i, b = ringBase + (i + 1) % sides;
-                tris.Add(centre);
-                if (cap == 0) { tris.Add(a); tris.Add(b); }
-                else { tris.Add(b); tris.Add(a); }
-            }
-        }
-        var mesh = new Mesh { name = name };
-        mesh.vertices = new Il2CppStructArray<Vector3>(verts.ToArray());
-        mesh.normals = new Il2CppStructArray<Vector3>(nrms.ToArray());
-        mesh.uv = new Il2CppStructArray<Vector2>(uvs.ToArray());
-        mesh.SetTriangles(new Il2CppStructArray<int>(tris.ToArray()), 0, false);
-        mesh.RecalculateBounds();
-        return mesh;
-    }
-
     private static void DestroyAsset(Asset a)
     {
         if (a == null) return;
         try { if (a.Mesh != null) UnityEngine.Object.Destroy(a.Mesh); } catch { }
         try { if (a.Albedo != null) UnityEngine.Object.Destroy(a.Albedo); } catch { }
         try { if (a.Body != null) UnityEngine.Object.Destroy(a.Body); } catch { }
-        try { if (a.Handle != null) UnityEngine.Object.Destroy(a.Handle); } catch { }
-        try { if (a.Barrel != null) UnityEngine.Object.Destroy(a.Barrel); } catch { }
-        try { if (a.Band != null) UnityEngine.Object.Destroy(a.Band); } catch { }
-        try { if (a.BatHandle != null) UnityEngine.Object.Destroy(a.BatHandle); } catch { }
-        try { if (a.BatBarrel != null) UnityEngine.Object.Destroy(a.BatBarrel); } catch { }
-        try { if (a.BatBand != null) UnityEngine.Object.Destroy(a.BatBand); } catch { }
     }
 
     // ================================================================== dump
@@ -1503,7 +1326,7 @@ internal static class SahurModel
         try
         {
             var sb = new StringBuilder();
-            sb.Append($"[sahur:dump] on={_on} bat={_bat} builds={_builds} binds={_binds} hides={_hides} restores={_restores} ");
+            sb.Append($"[sahur:dump] on={_on} builds={_builds} binds={_binds} hides={_hides} restores={_restores} ");
             sb.Append($"bodyRoot={(_bodyRoot == null ? "none" : PathOf(_bodyRoot.transform))} ");
             sb.Append($"bodyRenderersSnapshot={_body.Count} hidden={CountHidden()} ");
             sb.Append($"model={(_model == null || _model.gameObject == null ? "none" : PathOf(_model.transform))} ");
@@ -1513,7 +1336,7 @@ internal static class SahurModel
             if (_smr != null)
                 sb.Append($"smr layer={_smr.gameObject.layer} ('{LayerMask.LayerToName(_smr.gameObject.layer)}') " +
                           $"bones={_smr.bones.Length} visible={_smr.enabled} submeshes={_smr.sharedMesh.subMeshCount} ");
-            sb.Append($"batRoot={(_batRoot == null ? "none" : PathOf(_batRoot.transform))}");
+            sb.Append($"spec='{(_spec == null ? "none" : _spec.Slug)}'");
             log.LogInfo(sb.ToString());
             if (verbose && _smr != null && _smr.sharedMesh != null)
             {

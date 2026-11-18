@@ -52,6 +52,8 @@ public class HostPlugin : BasePlugin
     public static ConfigEntry<float> ClickStepDelay;
 
     internal static string InstanceName = "";
+    // The config actually bound into Snapshot(), not BasePlugin.Config on a named instance.
+    internal static string ActiveConfigPath => Instance?._cfgFile?.ConfigFilePath;
     private ConfigFile _cfgFile;
     internal static string ScreensDir;
     private DateTime _cfgMtime = DateTime.MinValue;
@@ -119,7 +121,7 @@ public class HostPlugin : BasePlugin
         ScreenshotInterval = _cfgFile.Bind("Debug", "ScreenshotIntervalSeconds", 6f, "Seconds between screenshots.");
 
         ForceWindowed = _cfgFile.Bind("Window", "ForceWindowed", true,
-            "Keep the window windowed (the game re-applies its own fullscreen setting at startup).");
+            "Keep the game windowed when launched with -alterumDevMode.");
         WindowX = _cfgFile.Bind("Window", "WindowX", 0, "Screen X position for the game window.");
         WindowY = _cfgFile.Bind("Window", "WindowY", 0, "Screen Y position for the game window.");
         Quiet = _cfgFile.Bind("Window", "Quiet", false, "Also park the window off-screen and give focus back.");

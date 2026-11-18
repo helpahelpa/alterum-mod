@@ -48,6 +48,7 @@ internal sealed class MusicStream
 
     private Sound _sound;
     private Channel _channel;
+    private long _lastChannelPositionMs;
     private bool _haveSound, _haveChannel;
 
     private string _path;
@@ -219,6 +220,7 @@ internal sealed class MusicStream
             Stop();
             _sound = candidateSound; _haveSound = true;
             _channel = candidateChannel; _haveChannel = true;
+            _lastChannelPositionMs = absoluteMs;
             _path = path; _snapBytes = snapshotBytes; _snapLengthMs = snapLengthMs; _openMs = openMs;
             _paused = paused;
             _log?.LogInfo($"{Tag} START '{Path.GetFileName(path)}' bytes={snapshotBytes} snapLen={_snapLengthMs}ms " +
@@ -303,6 +305,7 @@ internal sealed class MusicStream
         ReleaseSound();
         _sound = nextSound; _haveSound = true;
         _channel = nextChannel; _haveChannel = true;
+        _lastChannelPositionMs = absoluteMs;
         _path = path; _snapBytes = snapshotBytes;
         var lr = _sound.getLength(out uint lenMs, TIMEUNIT.MS);
         _snapLengthMs = lr == RESULT.OK ? lenMs : snapshotBytes / BytesPerMs;
@@ -382,6 +385,7 @@ internal sealed class MusicStream
         }
         long delta = (long)now - absoluteMs;
         bool ok = r == RESULT.OK && gr == RESULT.OK && Math.Abs(delta) <= CorrectionToleranceMs;
+        if (ok) _lastChannelPositionMs = now;
         _log?.LogInfo($"{Tag} seek({absoluteMs}ms) -> {r} ({Error.String(r)}) in {Elapsed(t0)}ms; " +
                       $"getPosition={gr} now={now}ms delta={delta}ms tolerance={CorrectionToleranceMs}ms " +
                       $"ok={ok} snapLen={_snapLengthMs}ms");
@@ -423,7 +427,10 @@ internal sealed class MusicStream
         {
             if (!_haveChannel) return 0;
             var r = _channel.getPosition(out uint pos, TIMEUNIT.MS);
-            return r == RESULT.OK ? pos : 0;
+            // FMOD invalidates a naturally finished channel; the out-param then reads as 0.
+            // Retain the last successful sample, not the failed query's default value.
+            if (r == RESULT.OK) _lastChannelPositionMs = pos;
+            return _lastChannelPositionMs;
         }
     }
 

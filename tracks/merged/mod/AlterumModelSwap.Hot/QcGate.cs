@@ -79,13 +79,13 @@ internal static class QcGate
         if (_qc == null) { host.LogWarning($"[gate] type {QcTypeName} not found - no lifecycle hooks installed"); return; }
 
         var h = new Harmony("com.user0.alterum.qcgate." + Guid.NewGuid().ToString("N"));
-        void Patch(Type owner, string name, int argc, HarmonyMethod pre, HarmonyMethod post)
+        void Patch(Type owner, string name, int argc, HarmonyMethod pre, HarmonyMethod post, HarmonyMethod finalizer = null)
         {
             try
             {
                 var m = FindMethod(owner, name, argc);
                 if (m == null) { host.LogWarning($"[gate] {owner?.FullName}.{name}/{argc} not found"); _failed++; return; }
-                h.Patch(m, pre, post);
+                h.Patch(m, pre, post, finalizer: finalizer);
                 _installed++;
             }
             catch (Exception e) { host.LogWarning($"[gate] {name}/{argc} patch failed: {e.GetType().Name}: {e.Message}"); _failed++; }
@@ -110,7 +110,8 @@ internal static class QcGate
         {
             // The processor executes on its own (Help/Invoke fall back to it when Instance is null),
             // so the console's own seam is not the only way a command can run.
-            Patch(_proc, "InvokeCommand", 1, new HarmonyMethod(typeof(QcGate), nameof(P_ProcessorInvoke)), null);
+            Patch(_proc, "InvokeCommand", 1, new HarmonyMethod(typeof(QcGate), nameof(P_ProcessorInvoke)), null,
+                  new HarmonyMethod(typeof(QcGate), nameof(F_ProcessorInvoke)));
         }
         else host.LogWarning($"[gate] type {ProcTypeName} not found - the processor seam is not gated");
 
@@ -251,6 +252,14 @@ internal static class QcGate
     private static bool P_TestRowInvoke(Il2CppInterop.Runtime.InteropTypes.Il2CppObjectBase __instance,
         Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<Il2CppSystem.Object> __0)
         => !GameConsole.TryInvokeTestRow(__instance, __0);
+
+    private static Exception F_ProcessorInvoke(Exception __exception)
+    {
+        // IL2CPP's native->managed trampoline logs and swallows exceptions before reflection
+        // sees them. Capture inside the patched processor so direct callers get an honest error.
+        if (__exception != null) QcAccess.NoteDeveloperFailure(__exception);
+        return __exception;
+    }
 
     private static bool P_ProcessorInvoke(string commandString)
     {
@@ -424,7 +433,34 @@ internal static class QcAccess
     private static bool _unlocked;
     private static int _denied;
 
-    internal static bool IsUnlocked { get { Initialize(null); return _unlocked; } }
+    // A local developer mailbox may execute one command without opening/unlocking the player UI.
+    // Thread-local, synchronous scope only: exceptions/nested calls cannot leak access to later
+    // frames, other threads, or the ordinary console key/input paths.
+    [ThreadStatic] private static int _developerCommandDepth;
+    [ThreadStatic] private static Exception _developerFailure;
+    internal static void NoteDeveloperFailure(Exception error)
+    {
+        if (_developerCommandDepth > 0) _developerFailure = error;
+    }
+
+    internal static void WithDeveloperCommand(Action action)
+    {
+        var previous = _developerFailure;
+        _developerFailure = null;
+        _developerCommandDepth++;
+        try
+        {
+            action();
+            if (_developerFailure != null)
+                throw new InvalidOperationException("QC processor rejected the command", _developerFailure);
+        }
+        finally { _developerCommandDepth--; _developerFailure = previous; }
+    }
+
+    internal static bool IsUnlocked
+    {
+        get { Initialize(null); return _developerCommandDepth > 0 || _unlocked; }
+    }
 
     internal static string Summary =>
         $"state={(_unlocked ? "unlocked" : "locked")} storage={(_storageOk ? "process" : "unavailable")} " +

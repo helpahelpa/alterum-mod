@@ -325,9 +325,8 @@ internal static class ReelDraw
     }
 }
 
-// Never bet, never won. Runes are consumed by quest steps; the lantern is the X-selected special
-// light (the game's own "Lantern Slot"). Both are out of the card pool (ReelPool.g.cs weight 0)
-// and refused as the inserted item by ReelLogic before anything is consumed.
+// Never bet, never won. Runes and crucifixes are quest items; the lantern is the X-selected special
+// light. All are out of the card pool (ReelPool.g.cs weight 0) and refused as inserted items.
 internal static class ReelExclusions
 {
     internal static string ReasonFor(string id, string name)
@@ -337,6 +336,7 @@ internal static class ReelExclusions
 
         if (i == "lantern" || n.Contains("lantern")) return "quest-lantern";
         if (i.Contains("rune") || n.Contains("rune") || n.Contains("curse dispelling")) return "quest-rune";
+        if (i.Contains("crucifix") || n.Contains("crucifix") || n.Contains("сrucifix")) return "quest-crucifix";
 
         int idx = ReelPool.IndexOf(id ?? "");
         if (idx >= 0 && rowIsExcluded(idx)) return ReelPool.All[idx].Exclusion.Split(':')[0];

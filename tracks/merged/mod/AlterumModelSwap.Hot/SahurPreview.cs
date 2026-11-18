@@ -33,7 +33,8 @@ namespace AlterumModelSwap.Hot;
 //
 //   rigged bakes (Sahur, Capuchino, the Nordbo set) -> SahurRig.AttachExternal (own skeleton,
 //                                retargeted from this preview's game bones)
-//   rigid bakes (Sahur Classic, Golubiro) -> SahurModel.BuildPreviewBody (pieces bound to
+//   rigid bakes (Golubiro and the other ModelKind.Rigid entries) -> SahurModel.BuildPreviewBody
+//                                (pieces bound to
 //                                this preview's bones, bindposes from its own renderers)
 //
 // The preview is destroyed/recreated by the displayer on selection changes, so every tick compares
@@ -48,8 +49,8 @@ internal static class SahurPreview
     private static ThirdViewPlayerModel _model;      // preview instance we are attached to
     private static int _entry = -1;                  // SahurWardrobe entry index, -1 = none
     private static SahurRig.RigLease _rig;           // entry 0
-    private static GameObject _classicGo;            // entry 1
-    private static Mesh _classicMesh;
+    private static GameObject _rigidGo;            // any ModelKind.Rigid entry
+    private static Mesh _rigidMesh;
     private static float _nextPoll;
     private static WardrobeModelDisplayer _mapFor;   // displayer whose map we last verified
     private static int _mapLen = -1;                 // database length at that verification
@@ -71,7 +72,7 @@ internal static class SahurPreview
 
     internal static int Builds => _builds;
     internal static int Disposes => _disposes;
-    internal static bool Attached => _rig != null || _classicGo != null;
+    internal static bool Attached => _rig != null || _rigidGo != null;
 
     // True while a live preview body is drawing from that spec's decoded asset. The asset caches
     // consult this before evicting, so a selection change cannot pull a texture out from under the
@@ -486,8 +487,8 @@ internal static class SahurPreview
                 // The rigid mesh does not hide the host itself (the player module owns that
                 // bookkeeping for the player body), so the preview does it here.
                 HideHost(log, preview);
-                _classicGo = SahurModel.BuildPreviewBody(log, spec, preview, PreviewLayer(preview), out _classicMesh, out var note);
-                if (_classicGo == null)
+                _rigidGo = SahurModel.BuildPreviewBody(log, spec, preview, PreviewLayer(preview), out _rigidMesh, out var note);
+                if (_rigidGo == null)
                 {
                     log.LogWarning($"[sahur:preview] rigid build failed for '{(spec == null ? "?" : spec.Label)}': {note}");
                     _model = null;
@@ -511,15 +512,15 @@ internal static class SahurPreview
 
     private static void Teardown(IHostContext log, string why)
     {
-        bool had = _rig != null || !ReferenceEquals(_classicMesh, null);
+        bool had = _rig != null || !ReferenceEquals(_rigidMesh, null);
         var model = _model;
         var rig = _rig;
-        var classic = _classicGo;
-        var mesh = _classicMesh;
+        var rigid = _rigidGo;
+        var mesh = _rigidMesh;
         int entry = _entry;
         _rig = null;
-        _classicGo = null;
-        _classicMesh = null;
+        _rigidGo = null;
+        _rigidMesh = null;
         _model = null;
         _entry = -1;
         if (!had) return;
@@ -531,7 +532,7 @@ internal static class SahurPreview
             if (!ReferenceEquals(mesh, null))
             {
                 // Unity's destroyed-object == null must not skip releasing the managed asset lease.
-                SahurModel.DestroyPreviewBody(log, classic, mesh);
+                SahurModel.DestroyPreviewBody(log, rigid, mesh);
                 _restores++;
             }
             RestoreHost(log, why);
@@ -557,7 +558,7 @@ internal static class SahurPreview
             try { log.LogInfo($"[sahur:preview] disposed builds={_builds} disposes={_disposes} restores={_restores} last='{_lastWhy}'"); } catch { }
     }
 
-    // Snapshot + disable the host instance's own body renderers (classic variant only; the rigged
+    // Snapshot + disable the host instance's own body renderers (rigid variant only; the rigged
     // variant's Build does the same on its own snapshot). Disabled, never destroyed, and restored
     // to their previous state on teardown.
     private static void HideHost(IHostContext log, ThirdViewPlayerModel model)
@@ -751,7 +752,7 @@ internal static class SahurPreview
         {
             log.LogInfo($"[sahur:preview] attached={Attached} entry={_entry} " +
                         $"host='{(_model == null ? "none" : PathOf(_model.transform))}' " +
-                        $"rig={(_rig != null)} classic={(_classicGo != null)} builds={_builds} disposes={_disposes} " +
+                        $"rig={(_rig != null)} rigid={(_rigidGo != null)} builds={_builds} disposes={_disposes} " +
                         $"last='{_lastWhy}' selection={SahurWardrobe.SelectedIndex}");
             if (_rig != null && _model != null) DumpBones(log, _model);
             var d = _displayer ?? FindDisplayer();

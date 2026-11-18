@@ -825,7 +825,7 @@ internal sealed class MusicStreamHost
         }
         if (nearEnd && !_cutBusy && !_producerDone) RequestCut("end-of-snapshot");
 
-        if (!starvingNow && _phase == Phase.Playing && !e.Playing())
+        if (_phase == Phase.Playing && !e.Playing() && (_producerDone || !starvingNow))
         {
             if (_producerDone)
             {
@@ -835,8 +835,6 @@ internal sealed class MusicStreamHost
                     // its length must never be reported as the track's length and the request is not
                     // over. Retry the handoff (it keeps its own backoff, so a chain of rejections
                     // cannot spin) and keep the request alive.
-                    _log?.LogWarning($"{Tag} the prefix channel stopped at {pos}ms while the handoff to the " +
-                                     "finished file is still pending; the prefix is not the track, retrying");
                     RetryHandoff(now);
                     return;
                 }
@@ -851,8 +849,8 @@ internal sealed class MusicStreamHost
                 }
                 else
                 {
-                    _log?.LogWarning($"{Tag} the finished track's channel stopped at {pos}ms of {full}ms; " +
-                                     "nothing follows it (phase kept, controls stay honest)");
+                    _log?.LogWarning($"{Tag} the finished track's channel stopped early at {pos}ms of {full}ms; releasing it");
+                    Cancel("channel stopped early");
                 }
                 return;
             }
@@ -1361,7 +1359,7 @@ internal sealed class MusicStreamHost
                       $"retiredDirs={RetiredCount()}");
     }
 
-    private int RetiredCount() { lock (_retireGate) return _retire.Count; }
+    internal int RetiredCount() { lock (_retireGate) return _retire.Count; }
 
     private static string ThreadStateOf(Thread t)
     {

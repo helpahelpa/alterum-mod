@@ -18,7 +18,8 @@ namespace AlterumModelSwap.Hot;
 // Modified: retextured (4K PBR downscaled, roughness/AO folded into constants), mesh mirrored in X
 // to match the game's handedness, skin weights reduced to 4 influences.
 //
-// Unlike SahurModel (the classic, rigid 6-piece bind onto the game's own bones), this one keeps the
+// Unlike SahurModel (the shared rigid path, which binds baked pieces onto the game's own bones),
+// this one keeps the
 // model's OWN 71-bone Mixamo skeleton as real Transform objects and drives it from the game's rig
 // every frame. `sahur_roblox.rset` is baked offline by tools/bake_sahur_roblox.py: geometry +
 // 4-influence skin + the bone hierarchy (local transforms = the bind pose) + the authored walk clip.
@@ -40,13 +41,13 @@ namespace AlterumModelSwap.Hot;
 //
 // Unattended control: "<ScreensDir>/sahurrig.request", deleted on pickup, line-oriented:
 //     on|off|toggle      this body (bare word works too)
-//     variant=classic|roblox   hand the body over to the other Sahur module
+//     variant=<roster entry>   hand the body over to the other module (roblox|golubiro|...)
 //     walk=on|off|toggle play/stop the baked Mixamo walk clip (debug action, proves the clip survived)
 //     human=on|off|toggle spawn/despawn a real game character beside the model for scale
 //     view=front|back|side|left|compare[:orthoSize]   private 640x360 capture on the cosmetic layer
 //     mats=1             dump the renderer/material/bone state
 //     dump=1             full state, bone map, unmapped game bones
-// Hotkey F1 toggles it (F2/F3 stay with the classic module, F4 is the reel).
+// Hotkey F1 toggles it (F3 stays with the rigid module, F4 is the reel).
 internal static class SahurRig
 {
     public const Key ToggleKey = Key.F1;
@@ -547,7 +548,7 @@ internal static class SahurRig
         log.LogInfo($"[sahurrig] {(on ? "ON" : "OFF")} (from {why})");
         if (on)
         {
-            // Same rule as the classic module: a body switched on by request is a deliberate choice,
+            // Same rule as the rigid module: a body switched on by request is a deliberate choice,
             // so the wardrobe adopts it as the wanted entry instead of forcing another row.
             try { SahurWardrobe.NoteBodyRequest(log, _spec ?? ModelRoster.All[0], true); }
             catch (Exception e) { log.LogWarning($"[sahurrig] wardrobe note failed: {e.Message}"); }
@@ -1123,7 +1124,7 @@ internal static class SahurRig
         if (asset.Mesh != null) return;
         try
         {
-            var mesh = new Mesh { name = "Sahur_RiggedBody" };
+            var mesh = ModelAssetLifetime.Own(new Mesh { name = "Sahur_RiggedBody" });
             mesh.vertices = new Il2CppStructArray<Vector3>(asset.Pos);
             // un-mirror handled at bake; the mesh is already in the game's space
             mesh.uv = new Il2CppStructArray<Vector2>(asset.Uv);
@@ -1673,7 +1674,7 @@ internal static class SahurRig
         var rgba = PngDecoder.DecodeRgbaBottomUp(png, out w, out h);
         var chain = PngDecoder.BuildMipChain(rgba, w, h, out levels);
         decoded = chain.Length;
-        var tex = new Texture2D(w, h, TextureFormat.RGBA32, true, false);
+        var tex = ModelAssetLifetime.Own(new Texture2D(w, h, TextureFormat.RGBA32, true, false));
         tex.name = name;
         tex.LoadRawTextureData(new Il2CppStructArray<byte>(chain));
         tex.Apply(true, true);
@@ -1708,6 +1709,7 @@ internal static class SahurRig
             log.LogWarning($"[sahurrig:shader] no game URP/Lit template; Shader.Find found={sh != null}");
             mat = new Material(sh);
         }
+        ModelAssetLifetime.Own(mat);
         mat.name = name;
         if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", albedo != null ? (Texture)albedo : Texture2D.whiteTexture);
         if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", Color.white);
@@ -2033,7 +2035,7 @@ internal static class SahurRig
         return n;
     }
 
-    // ================================================================== scale human (same trick as the classic module)
+    // ================================================================== scale human (same trick as the rigid module)
 
     private static void DespawnHuman(IHostContext log)
     {

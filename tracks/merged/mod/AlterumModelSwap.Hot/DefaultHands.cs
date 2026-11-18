@@ -424,7 +424,7 @@ internal static class DefaultHands
         var third = HandHelper.ThirdModel(player);
         var first = HandHelper.FirstModel(player);
 
-        log.LogInfo($"[hands:census] why={why} pov={pov} custom=(classic={SahurModel.Active},rigged={SahurRig.Active}," +
+        log.LogInfo($"[hands:census] why={why} pov={pov} custom=(rigid={SahurModel.Active},rigged={SahurRig.Active}," +
                     $"slug={CustomEnhancements.CurrentSlug ?? "-"}) held='{(item != null ? item.name : "-")}' " +
                     $"handsObject='{(hands != null && hands.gameObject != null ? hands.gameObject.name : "-")}' " +
                     $"third='{HandHelper.PathOf(third != null ? third.transform : null)}' " +

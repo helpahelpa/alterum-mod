@@ -228,9 +228,6 @@ def parse_rset(path, spec):
 SPECS = [
     dict(slug="sahur-roblox", label="Sahur", kind="rigged", blob="sahur_roblox.rset",
          head_bone="Head"),
-    dict(slug="sahur-classic", label="Sahur (Classic)", kind="rigid", blob="sahur.mset",
-         yaw180=True, yoffset=0.0,
-         region_bones=["spine_01", "head", "upperarm_l", "upperarm_r", "thigh_l", "thigh_r"]),
     dict(slug="golubiro", label="Golubiro", kind="rigid", blob="shpioniro-golubiro.mset",
          yaw180=False, yoffset=0.0054,
          region_bones=["spine_01", "head", "upperarm_l", "upperarm_r", "thigh_l", "thigh_r"]),

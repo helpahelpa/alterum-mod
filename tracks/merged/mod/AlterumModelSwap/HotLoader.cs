@@ -214,7 +214,7 @@ internal static class HotLoader
         }
 
         public ConfigSnapshot Config => HostPlugin.Snapshot();
-        public string ConfigPath => HostPlugin.Instance?.Config?.ConfigFilePath;
+        public string ConfigPath => HostPlugin.ActiveConfigPath;
         public string ScreensDir => HostPlugin.ScreensDir;
         public string InstanceName => HostPlugin.InstanceName;
         public bool ReloadConfig() { try { HostPlugin.Instance.Config.Reload(); return true; } catch { return false; } }
