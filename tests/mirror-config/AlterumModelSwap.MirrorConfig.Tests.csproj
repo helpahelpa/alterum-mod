@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- Same target as the permanent host, so the linked config source is compiled under the
+         framework the game will load it with. These tests use a real BepInEx ConfigFile in a
+         temp directory; they never start Unity, BepInEx or the game. -->
+    <TargetFramework>net6.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <IsPackable>false</IsPackable>
+    <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
+    <RootNamespace>AlterumModelSwap.MirrorConfigTests</RootNamespace>
+    <AssemblyName>AlterumModelSwap.MirrorConfigTests</AssemblyName>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- The same absolute data root the mod's props use (see LAYOUT.md): the game interop refs live
+         outside the repository. -p:RefsDir=... overrides, as for the host build. -->
+    <AlterumDataDir Condition="'$(AlterumDataDir)' == ''">$(HOME)/assets/monorepo/alterum-data/</AlterumDataDir>
+    <RefsDir Condition="'$(RefsDir)' == ''">$(AlterumDataDir)refs/</RefsDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The production binding/migration code, compiled straight from the host source. -->
+    <Compile Include="../../tracks/merged/mod/AlterumModelSwap/MirrorConfig.cs" Link="MirrorConfig.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- A real BepInEx ConfigFile is the point of this test: it exercises the parser, the orphan
+         handling and the save path, not a reimplementation of them. -->
+    <Reference Include="BepInEx.Core">
+      <HintPath>$(RefsDir)BepInEx.Core.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>

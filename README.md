@@ -238,6 +238,14 @@ runtime deployment boundary, tested invocation and tests: `notes/diagnostic-bund
 
 Config edits need no rebuild at all: the host polls the cfg mtime and reloads it live.
 
+## Mirror self-reflection
+
+`[Mirror] ReflectLocalPlayer` (default `true`) makes the mirror show your own body. Set it to
+`false` to opt out. It replaces the pre-fix `[Mirror] ShowLocalPlayer`, which defaulted to `false`
+and was labelled "does not work". On upgrade the old key is removed and its value is **not**
+carried over, because a generated `false` cannot be distinguished from a deliberate pre-fix
+opt-out; set `ReflectLocalPlayer = false` after upgrading if you want it off.
+
 ## Standing rule
 
 **When work on this game is finished, launch it headed (visible window) and let the automation
@@ -246,7 +254,7 @@ create a Private lobby, so the user can check the result himself.**
 That means the config must end in this state:
 
 ```
-[Mirror] AutoPlace = true, LobbyOnly = true, ShowLocalPlayer = false
+[Mirror] AutoPlace = true, LobbyOnly = true, ReflectLocalPlayer = true
 [Window] Quiet = false                      <- headed, not parked off-screen
 [Automation] ClickSequence = Create Lobby Menu Button|@LobbyPrivate|Lobby Creator/Vertical Sectors/Buttons/Gothic
 [Debug] Screenshots = false
@@ -287,7 +295,9 @@ cd mod && dotnet build AlterumModelSwap -c Release && dotnet build AlterumModelS
 - `SkinnedMeshRenderer` is a `Renderer`, not a `MonoBehaviour`.
 - Several enabled cameras are tagged `MainCamera` (menu + lobby) — `Camera.main` is not safe here.
 - The game re-applies its own fullscreen setting ~6 s into startup, overriding `-screen-fullscreen 0`.
-- The owner's third-person body is never drawn (first-view proxy), so the mirror cannot show you.
+- The owner's third-person body is hidden by the game's first-view proxy; the mirror temporarily
+  binds the native body renderers and adds the body layer to its camera mask, so it can show you.
+  `[Mirror] ReflectLocalPlayer = false` opts out.
 
 ## Proof images
 

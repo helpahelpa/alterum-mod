@@ -89,9 +89,11 @@ multiplayer-diagnosis blockers; unknown hashes/versions stay unknown. No repair 
 The collector works against the existing `exec <request-id> <command>` transport and uses only
 `alterum.test.snapshot <unique-tag>`. The source additions to snapshot/1 are additive:
 
-* `[config] path, showLocalPlayer, source`: host-context effective values; `path` fails closed on
-  older permanent hosts whose ConfigPath accessor reported BasePlugin.Config instead of the
-  named-instance file. `HostPlugin.ActiveConfigPath` and `HostContext.ConfigPath` fix that accessor.
+* `[config] path, showLocalPlayer, source`: host-context effective values; `showLocalPlayer` is
+  the stable snapshot/1 key for the effective `[Mirror] ReflectLocalPlayer` value. `path` fails
+  closed on older permanent hosts whose ConfigPath accessor reported BasePlugin.Config instead of
+  the named-instance file. `HostPlugin.ActiveConfigPath` and `HostContext.ConfigPath` fix that
+  accessor.
 * `[loaded]`: loaded host/contracts assembly path, MVID, SHA-256 of the backing file and hash scope.
 * `[view]`: current local POV and counts of local renderers/enabled/active-enabled renderers.
   Counts include all renderers under the local actor; they are not proof of body visibility.

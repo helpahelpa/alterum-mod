@@ -30,7 +30,9 @@ public class HostPlugin : BasePlugin
     public static ConfigEntry<bool> MirrorSnapToWall;
     public static ConfigEntry<float> MirrorEyeHeight;
     public static ConfigEntry<bool> MirrorLobbyOnly;
-    public static ConfigEntry<bool> MirrorShowPlayer;
+    // [Mirror] ReflectLocalPlayer. The ConfigSnapshot field keeps the old MirrorShowPlayer name
+    // so snapshot/1 diagnostics and the hot module stay unchanged.
+    public static ConfigEntry<bool> MirrorReflectLocalPlayer;
     public static ConfigEntry<bool> MirrorOverlay;
     public static ConfigEntry<bool> AutoMirror;
     public static ConfigEntry<float> AutoMirrorDelay;
@@ -110,7 +112,7 @@ public class HostPlugin : BasePlugin
         MirrorSnapToWall = _cfgFile.Bind("Mirror", "SnapToWall", true, "Slide it back to the wall in front of you.");
         MirrorEyeHeight = _cfgFile.Bind("Mirror", "EyeHeight", 1.75f, "Fallback floor offset.");
         MirrorLobbyOnly = _cfgFile.Bind("Mirror", "LobbyOnly", true, "Only in the Lobby scene.");
-        MirrorShowPlayer = _cfgFile.Bind("Mirror", "ShowLocalPlayer", false, "Does not work - the game never draws your own body.");
+        MirrorReflectLocalPlayer = MirrorConfig.BindReflectLocalPlayer(_cfgFile, m => Log.LogInfo(m));
         MirrorOverlay = _cfgFile.Bind("Mirror", "ShowOverlayButtons", false, "On-screen placement buttons.");
         AutoMirror = _cfgFile.Bind("Mirror", "AutoPlace", true, "Place it automatically in the lobby.");
         AutoMirrorDelay = _cfgFile.Bind("Mirror", "AutoPlaceDelaySeconds", 1.5f, "Delay before AutoPlace first tries.");
@@ -255,7 +257,7 @@ public class HostPlugin : BasePlugin
         MirrorSnapToWall = MirrorSnapToWall.Value,
         MirrorEyeHeight = MirrorEyeHeight.Value,
         MirrorLobbyOnly = MirrorLobbyOnly.Value,
-        MirrorShowPlayer = MirrorShowPlayer.Value,
+        MirrorShowPlayer = MirrorReflectLocalPlayer.Value,
         MirrorOverlay = MirrorOverlay.Value,
         AutoMirror = AutoMirror.Value,
         AutoMirrorDelay = AutoMirrorDelay.Value,

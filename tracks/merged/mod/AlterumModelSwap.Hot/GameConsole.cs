@@ -4027,6 +4027,8 @@ internal static class GameConsole
             if (string.IsNullOrEmpty(activePath) || activePath != host.ConfigPath)
                 m.Absent("path", "permanent host lacks a verified active-profile ConfigPath; host update required");
             else m.Text("path", activePath);
+            // The manifest key stays `showLocalPlayer` for snapshot/1 compatibility; its value is
+            // the host's effective [Mirror] ReflectLocalPlayer setting.
             m.Flag("showLocalPlayer", host.Config.MirrorShowPlayer);
             m.Raw("source", "in-memory-host-context");
         }

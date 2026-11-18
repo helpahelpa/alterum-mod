@@ -83,13 +83,16 @@ class DiagnosticFixtures(unittest.TestCase):
         current = state()
         current['after']['config.showLocalPlayer'] = current['before']['config.showLocalPlayer'] = '0'
         # Inactive disk config must never override the host's effective snapshot.
-        current['diskOnlyConfig'] = {'path': 'inactive-pinned.cfg', 'ShowLocalPlayer': True}
+        current['diskOnlyConfig'] = {'path': 'inactive-pinned.cfg', 'ReflectLocalPlayer': True}
         rep = report(current)
         d.diagnose(rep)
         config = current['config']
         self.assertEqual(d.value(config['showLocalPlayer']), '0')
         self.assertTrue(d.value(config['path']).endswith('active-main.cfg'))
         self.assertIn('local-visibility-disabled', codes(rep))
+        finding = next(f for f in rep['findings'] if f['code'] == 'local-visibility-disabled')
+        self.assertIn('ReflectLocalPlayer=false', finding['message'])
+        self.assertNotIn('ShowLocalPlayer', finding['message'])
 
     def test_game_mismatch_is_prominent_blocker_no_repair(self):
         a, b = state(), state('secondary')

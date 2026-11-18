@@ -589,7 +589,7 @@ def diagnose(report):
             complete = False
             add('effective-config-unavailable', role, 'runtime lacks active in-memory config/path observations; disk configs cannot substitute', evidence=source)
         elif value(state['config']['showLocalPlayer']) == '0':
-            add('local-visibility-disabled', role, 'effective ShowLocalPlayer=false at '+str(value(state['config']['path'])), evidence=source)
+            add('local-visibility-disabled', role, 'effective [Mirror] ReflectLocalPlayer=false (self-reflection opted out) at '+str(value(state['config']['path'])), evidence=source)
         if value(state['pov']) is None:
             complete = False
             add('pov-unavailable', role, state['pov']['reason'], evidence=source)
