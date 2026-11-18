@@ -152,7 +152,11 @@ namespace AudioPlayer.UI
         public void OnLoadClicked() { }
         public void OnPlayClicked() { }
         public void OnPauseClicked() { }
-        public void OnCloseClicked() { }
+        public void OnCloseClicked()
+        {
+            if (HarmonyLib.Harmony.RunPrefix(typeof(AudioPlayerUI), nameof(OnCloseClicked), this))
+                _isShown = false;
+        }
         public void Show(IAudioPlayerController controller, object data) { _controller = controller; _isShown = true; }
     }
 }
@@ -164,19 +168,33 @@ namespace HarmonyLib
 
     public sealed class HarmonyMethod
     {
-        public HarmonyMethod(Type type, string method) { }
+        internal readonly MethodInfo Method;
+        public HarmonyMethod(Type type, string method) =>
+            Method = type.GetMethod(method, BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
     }
 
     public sealed class Harmony
     {
+        private static readonly Dictionary<MethodInfo, MethodInfo> Prefixes = new();
         public Harmony(string id) { }
-        public void Patch(MethodInfo target, HarmonyMethod prefix = null, HarmonyMethod postfix = null) { }
-        public void UnpatchSelf() { }
+        public void Patch(MethodInfo target, HarmonyMethod prefix = null, HarmonyMethod postfix = null)
+        {
+            if (prefix?.Method != null) Prefixes[target] = prefix.Method;
+        }
+        public void UnpatchSelf() => Prefixes.Clear();
+
+        internal static bool RunPrefix(Type type, string name, object instance)
+        {
+            var target = AccessTools.Method(type, name, Type.EmptyTypes);
+            return !Prefixes.TryGetValue(target, out var prefix) || (bool)prefix.Invoke(null, new[] { instance });
+        }
     }
 
     public static class AccessTools
     {
-        public static MethodInfo Method(Type type, string name, Type[] parameters = null) => null;
+        public static MethodInfo Method(Type type, string name, Type[] parameters = null) =>
+            type.GetMethod(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static,
+                           null, parameters ?? Type.EmptyTypes, null);
     }
 }
 

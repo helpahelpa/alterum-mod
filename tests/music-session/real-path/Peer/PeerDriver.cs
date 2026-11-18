@@ -80,15 +80,10 @@ namespace AlterumModelSwap.Hot
             _isServer = isServer;
             _localId = localId;
             _serverId = serverId;
-            _host = new MusicStreamHost(Log);
-
             LobbyMusicNet.Reset();
-            LobbyMusicNet.SetLog(Log);
+            LobbyMusicHooks.Install(Log);
             LobbyMusicNet.Bind(Net, true, isServer, localId, serverId, 1u);
-
-            var hooks = typeof(LobbyMusicHooks);
-            hooks.GetField("_host", BindingFlags.NonPublic | BindingFlags.Static).SetValue(null, _host);
-            hooks.GetField("_log", BindingFlags.NonPublic | BindingFlags.Static).SetValue(null, Log);
+            _host = LobbyMusicHooks.Host;
         }
 
         // Shipping Bind with a new bridge epoch: same transport object, same role, new session.
@@ -153,6 +148,9 @@ namespace AlterumModelSwap.Hot
 
         public static bool ClickPause() => InvokePrefix("PauseClickedPrefix");
         public static bool ClickPlay() => InvokePrefix("PlayClickedPrefix");
+        public static void OpenPlayer() => Ui.Show(Ui._controller, null);
+        public static void ClosePlayer() => Ui.OnCloseClicked();
+        public static bool PlayerIsShown() => Ui._isShown;
 
         public static bool ClickSeek(double fraction)
         {

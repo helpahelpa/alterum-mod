@@ -52,6 +52,7 @@ namespace MusicSession.RealPath
             Run("process-wide ids survive a reload without overlap", IdSpaceAcrossReload);
             Run("id space exhaustion is an explicit refusal, not a wrap", IdSpaceExhaustion);
             Run("host session nonce/caches reset on leave-rehost and epoch change", SessionEpochIsolation);
+            Run("closing the player is not a playback action", PlayerCloseKeepsPlayback);
             Run("map entry releases lobby playback and rejects delayed state", LobbySceneScope);
             Run("wire sizes and mixed protocol rejection", WireBudget);
 
@@ -765,6 +766,46 @@ namespace MusicSession.RealPath
 
         private static uint U32(byte[] frame, int offset) => BitConverter.ToUInt32(frame, offset);
 
+        private static void PlayerCloseKeepsPlayback()
+        {
+            using var rig = new Rig();
+            rig.Host.Call("OpenPlayer");
+            rig.Host.Call("ClosePlayer");
+            Check("close still hides the native panel", !rig.Host.CallB("PlayerIsShown"));
+
+            rig.StartXAndFollow();
+            rig.Pump(6);
+            var before = rig.LastStateFromHost();
+            Check("both copies are playing before either panel closes", before?.Intent == 1 &&
+                  rig.Host.Snap()["channel"] == "1" && rig.B.Snap()["channel"] == "1");
+
+            rig.B.Call("OpenPlayer");
+            rig.B.Call("ClosePlayer");
+            Check("follower panel hides without dropping its channel", !rig.B.CallB("PlayerIsShown") &&
+                  rig.B.Snap()["channel"] == "1");
+
+            rig.Host.Call("OpenPlayer");
+            rig.Host.Call("ClosePlayer");
+            Check("host panel hides without dropping its channel", !rig.Host.CallB("PlayerIsShown") &&
+                  rig.Host.Snap()["channel"] == "1");
+            rig.Pump(8);
+            var after = rig.LastStateFromHost();
+            Check("hidden panels keep the same playing revision on both peers", after?.Intent == 1 &&
+                  after.Revision == before?.Revision && rig.Host.Snap()["channel"] == "1" &&
+                  rig.B.Snap()["channel"] == "1");
+
+            rig.Host.Call("OpenPlayer");
+            rig.Step();
+            Check("reopened panel can still pause the track", rig.Host.CallB("PlayerIsShown") &&
+                  rig.Host.Snap()["uiPause"] == "1" && !rig.Host.ClickPause());
+            rig.Route();
+            rig.Step();
+            rig.Host.Call("ClosePlayer");
+            rig.Pump(6);
+            Check("closing a paused panel keeps both channels paused", !rig.Host.CallB("PlayerIsShown") &&
+                  rig.Host.Snap()["enginePaused"] == "1" && rig.B.Snap()["enginePaused"] == "1");
+        }
+
         private static void LobbySceneScope()
         {
             using var rig = new Rig();
@@ -1130,10 +1171,10 @@ namespace MusicSession.RealPath
             var dir = new DirectoryInfo(baseDir);
             for (int i = 0; i < 7 && dir != null; i++, dir = dir.Parent)
             {
-                var peer = Path.Combine(dir.FullName, "Peer");
-                if (Directory.Exists(peer))
+                var peerBin = Path.Combine(dir.FullName, "Peer", "bin");
+                if (Directory.Exists(peerBin))
                 {
-                    var found = Directory.GetFiles(peer, "MusicSession.Peer.dll", SearchOption.AllDirectories)
+                    var found = Directory.GetFiles(peerBin, "MusicSession.Peer.dll", SearchOption.AllDirectories)
                         .OrderByDescending(File.GetLastWriteTimeUtc)
                         .FirstOrDefault();
                     if (found != null) return found;

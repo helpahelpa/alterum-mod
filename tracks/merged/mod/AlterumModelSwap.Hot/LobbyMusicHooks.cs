@@ -39,6 +39,7 @@ namespace AlterumModelSwap.Hot;
 //
 // Takeover is explicit (the game's own track is stopped through its controller first) and so is
 // relinquishment (a direct link stops our stream, tells peers, and hands the panel back).
+// Closing the panel is not relinquishment: the native UI can hide while the lobby stream continues.
 internal static class LobbyMusicHooks
 {
     internal const string Tag = "[music:ui]";
@@ -53,7 +54,7 @@ internal static class LobbyMusicHooks
     private static string _lastTimeText;      // what we last put in the clock widget
     private static string _lastDrift;         // last "something else wrote the panel" line
     private static bool _applyingState;       // re-entrancy guard for our own ApplyState call
-    private static int _prefixHits, _directPass, _takeovers, _closeStops, _playHits, _pauseHits,
+    private static int _prefixHits, _directPass, _takeovers, _playHits, _pauseHits,
                        _pauseRefused, _resumeRefused, _nativeStops, _refreshSkips, _seeks, _volumes,
                        _handbacks;
 
@@ -99,7 +100,6 @@ internal static class LobbyMusicHooks
             Prefix(load, nameof(LoadClickedPrefix));
             Prefix(AccessTools.Method(typeof(AudioPlayerUI), "OnPlayClicked", Type.EmptyTypes), nameof(PlayClickedPrefix));
             Prefix(AccessTools.Method(typeof(AudioPlayerUI), "OnPauseClicked", Type.EmptyTypes), nameof(PauseClickedPrefix));
-            Prefix(AccessTools.Method(typeof(AudioPlayerUI), "OnCloseClicked", Type.EmptyTypes), nameof(CloseClickedPrefix));
             // The panel's own view of its controller. While we own playback these all describe a
             // track that is not the audible one.
             Prefix(AccessTools.Method(typeof(AudioPlayerUI), "RefreshFromController", Type.EmptyTypes), nameof(RefreshFromControllerPrefix));
@@ -494,20 +494,6 @@ internal static class LobbyMusicHooks
         return false;
     }
 
-    private static bool CloseClickedPrefix(AudioPlayerUI __instance)
-    {
-        var h = _host;
-        if (h == null || (!h.OwnsPanel && !h.OwnsPlayback)) return true;
-        _closeStops++;
-        long pos = h.PositionMs;
-        h.Stop("panel closed");                  // publishes the stop through NoteTransport
-        LobbyMusicNet.ResetFollow("panel closed");
-        Invalidate();
-        _log?.LogInfo($"{Tag} panel closed -> our stream stopped at {pos}ms (stop #{_closeStops}); " +
-                      "the game's close path proceeds");
-        return true;                                  // native close/hide is the game's again
-    }
-
     // ---- native callbacks that would describe the wrong track
 
     private static bool RefreshFromControllerPrefix(AudioPlayerUI __instance)
@@ -875,7 +861,7 @@ internal static class LobbyMusicHooks
     internal static string Counters =>
         $"hits={_prefixHits} takeovers={_takeovers} passthrough={_directPass} play={_playHits} pause={_pauseHits} " +
         $"pauseRefused={_pauseRefused} resumeRefused={_resumeRefused} nativeStops={_nativeStops} " +
-        $"closeStops={_closeStops} handbacks={_handbacks} diverted={_refreshSkips} seeks={_seeks} volumes={_volumes}";
+        $"handbacks={_handbacks} diverted={_refreshSkips} seeks={_seeks} volumes={_volumes}";
 
     // ================================================================ log helpers
 
