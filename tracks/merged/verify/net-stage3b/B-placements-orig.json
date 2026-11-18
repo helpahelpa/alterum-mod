@@ -1,0 +1,24 @@
+{
+  "version": 2,
+  "note": "Reel of Fortune placements, keyed by game map identity (GameMapData asset + scene). Written by the mod; safe to hand-edit.",
+  "maps": {
+    "Necropolis_GameMapData|Necropolis Map Scene": {
+      "scene": "Necropolis Map Scene",
+      "mapData": "Necropolis_GameMapData",
+      "placements": [
+        { "name": "necropolis-1", "position": [98.28, 2.255, 80.58], "yaw": 0.9, "isDefault": false, "savedAt": "2026-11-14T06:52:00Z" },
+        { "name": "necropolis-2", "position": [53.74, -3.13, 46.43], "yaw": -90.9, "isDefault": false, "savedAt": "2026-11-14T07:05:00Z" }
+      ]
+    },
+    "LairOfOccultists_GameMapData|Lair Of Occultists Map Scene": {
+      "scene": "Lair Of Occultists Map Scene",
+      "mapData": "LairOfOccultists_GameMapData",
+      "scenePath": "Assets/Scenes/_Release/Maps/Lair Of Occultists/Lair Of Occultists Map Scene.unity",
+      "buildIndex": 9,
+      "placements": [
+        { "name": "lair-1", "position": [-34.35, 0.582, -2.48], "yaw": 89.1, "isDefault": false, "savedAt": "2026-11-14T07:40:00Z" },
+        { "name": "lair-2", "position": [-25.251, 0.567, -2.337], "yaw": 89.102, "isDefault": true, "savedAt": "2026-11-14T17:50:59Z" }
+      ]
+    }
+  }
+}

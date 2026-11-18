@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>ModelPolicyProbe</AssemblyName>
+    <RootNamespace>ModelPolicyProbe</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- The SHIPPING decision, linked not copied: this harness compiles the production file, so a
+         policy change cannot pass here while the game runs a different branch. -->
+    <Compile Include="../../../tracks/merged/mod/AlterumModelSwap.Hot/ModelWantedPolicy.cs" Link="ModelWantedPolicy.cs" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- Two copies of this assembly are loaded at runtime (one per role) so LobbyMusicNet's static
+         host/follower state is independent. The SHIPPING LobbyMusicNet.cs and LobbyMusicHooks.cs are
+         linked, not copied: the test drives the real click prefixes, the real control protocol and
+         the real publication/apply path. Only the game world around them is stubbed. -->
+    <TargetFramework>net6.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <AssemblyName>MusicSession.Peer</AssemblyName>
+    <RootNamespace>AlterumModelSwap.Hot</RootNamespace>
+    <NoWarn>$(NoWarn);CS0436;CS0169;CS0649;CS0067;CS0414;CS0219</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="PeerDriver.cs" />
+    <Compile Include="Stubs/*.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../../../../tracks/merged/mod/AlterumModelSwap.Hot/LobbyMusicNet.cs" Link="LobbyMusicNet.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../../../../tracks/merged/mod/AlterumModelSwap.Hot/LobbyMusicHooks.cs" Link="LobbyMusicHooks.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../../../../tracks/merged/mod/AlterumModelSwap.Hot/MusicRequest.cs" Link="MusicRequest.cs" />
+  </ItemGroup>
+</Project>

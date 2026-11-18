@@ -1,0 +1,43 @@
+# REAL EXCERPT - not fabricated. Source: B instance log
+#   C:\AlterumB\BepInEx\logs\b.log (copied to .temp/alterum-live/20261116T192223Z/models/logs/b.log)
+#   lines 90015-90775, 2026-11-17 03:50:29 .. 03:51:42 (JST); A-side lines from
+#   C:\AlterumB\..\AlterumPinned\BepInEx\LogOutput.log (models/logs/a.log) line 99676.
+# The event: B (client 4) joins the lobby, the game's own spawn applies TC2 Demoman
+# (index 17, one of the mod's rows) while B's wanted record is an explicit NATIVE row.
+# B keeps native (no body module), the HUD/wardrobe follow the game's applied row, and
+# B advertises <native> so A never builds a Demoman body. Screenshot: user 04:16,
+# .t3/userdata/attachments/26b1caf3-...png (Demoman portrait, James plaid body).
+
+# b.log:90015
+[Info   ] [join:trace] SpawnPlayerModelOnClient(client=4) models=25 from ?.DMD<Network.Spawners.PlayersModelSetuper::SpawnPlayerModelOnClient> <- ?.(il2cpp -> managed) SpawnPlayerModelOnClient
+# b.log:90017
+[Info   ] [join:trace] PlayerModelSetuper.SetupModel('TC2 Demoman') models=25
+# b.log:90022
+[Info   ] [join:trace] SpawnPlayerModelOnClient(client=4) models=25 from ?.DMD<Network.Spawners.PlayersModelSetuper::SpawnPlayerModelOnClient> <- ?.(il2cpp -> managed) SpawnPlayerModelOnClient
+# b.log:90542
+[Info   ] [sahur:map] lobby: keeping the explicit wanted entry 'none' - the game re-applied 'TC2 Demoman' (index=17), which is an unprovenanced applied row (no wardrobe pick behind it); not adopting it
+# b.log:90543
+[Info   ] [model:identity] actor=local wantedSlug=- advertisedSlug=- resolvedDb=17 appliedRow=TC2 Demoman bodySlug=- hudRow=- wardrobeRow=TC2 Demoman provenance=native:explicit readiness=native
+# b.log:90544
+[Info   ] [model:identity] refresh why='game applied row changed' hudDrift=no wardrobeDrift=no watch=0/4 hudWrites=0 wardrobeMoves=0 dbGen=18 remoteRev=12
+# b.log:90621
+[Info   ] [random:join] no roll: reason=an explicit model choice is persisted (the game's own (native) row, explicit=1), and it outranks the roll on a fresh join - re-applied=yes (pool=15, lobby=109775242449737778 client=4, pid=35564)
+# b.log:90717
+[Info   ] [sahurrig] spec 'none' -> 'tc2-demoman' (rigged delta-retarget, label 'TC2 Demoman', 24 mapped pairs)
+# b.log:90718
+[Info   ] [sahurrig] ON (from wardrobe selection, 'TC2 Demoman')
+# b.log:90719
+[Info   ] [sahur:wardrobe] 'TC2 Demoman' tab activated by the user -> body on
+# b.log:90720
+[Info   ] [sahur:preview] DisplayModel('TC2 Demoman') key=yes map=25 current='Female_1_Emma_PlayerModelData'
+# b.log:90721
+[Info   ] [sahurrig:bind] model='3P_ConcreteModel_Male_04_James(Clone)' owner='LobbyPlayer_Separated | Owner: 4'
+# b.log:90732
+[Info   ] [sahurrig:build] 'TC2 Demoman' root=========== BASE/Model/Third Person Model/Third Person Concrete Model Parent/3P_ConcreteModel_Male_04_James(Clone) layer=6 ('InteractableLookable') verts=6526 tris=8585 submeshes=2 materials=2 bones=24 yaw=0 mats=2 height=1.800m (source baked 1.807m) bounds y[0.000,1.800] blob=189778 tex=656401 builds=1
+# b.log:90766
+[Info   ] [sahurrig:build] 'TC2 Demoman' root=Lobby Global/Wardrobe/Wardrobe Scene/Models/3P_ConcreteModel_Male_04_James(Clone) layer=2 ('Ignore Raycast') verts=6526 tris=8585 submeshes=2 materials=2 bones=24 yaw=0 mats=2 height=1.800m (source baked 1.807m) bounds y[0.000,1.800] blob=189778 tex=656401 builds=1
+# b.log:90775
+[Info   ] [sahur:wardrobe] wardrobe selection is NOT 'TC2 Demoman' (applied 'TC2 Demoman' index=17, why=lobby) -> body off
+
+# A side, same join (host): B's advert is native, so no Demoman body is built for B.
+ # a.log [Info   :Alterum Model Swap (host)] [swap:net] recv client=4 slug='<native>' cosmetics=[builtin.partyhat] chest=on hips=off from=4 flags=0x01 bytes=29

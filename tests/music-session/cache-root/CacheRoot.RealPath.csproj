@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- Drives the SHIPPING YtDlpPipeline.CacheRoot resolver from a real process command line.
+         Only the engine surface Application.dataPath (fallback game-root probe) is stubbed. -->
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <AssemblyName>MusicCacheRoot.RealPath</AssemblyName>
+    <RootNamespace>MusicCacheRoot.RealPath</RootNamespace>
+    <UseSharedCompilation>false</UseSharedCompilation>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="Stubs.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../../../tracks/merged/mod/AlterumModelSwap.Hot/YtDlpPipeline.cs" Link="YtDlpPipeline.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="$(MSBuildThisFileDirectory)../../../tracks/merged/mod/AlterumModelSwap.Contracts/AlterumModelSwap.Contracts.csproj" />
+  </ItemGroup>
+</Project>

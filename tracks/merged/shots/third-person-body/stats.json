@@ -1,0 +1,46 @@
+{
+ "thirdperson-screen": {
+  "diff": 15062,
+  "mean": 3.9246,
+  "mx": 252,
+  "bbox": [
+   292,
+   80,
+   445,
+   359
+  ]
+ },
+ "firstperson-screen": {
+  "diff": 15097,
+  "mean": 3.8655,
+  "mx": 216,
+  "bbox": [
+   293,
+   90,
+   445,
+   359
+  ]
+ },
+ "thirdperson-mirror": {
+  "diff": 51513,
+  "mean": 16.6055,
+  "mx": 252,
+  "bbox": [
+   212,
+   65,
+   505,
+   359
+  ]
+ },
+ "firstperson-mirror": {
+  "diff": 51328,
+  "mean": 16.4481,
+  "mx": 252,
+  "bbox": [
+   215,
+   65,
+   505,
+   359
+  ]
+ }
+}

@@ -1,0 +1,10 @@
+{
+  "case": "20261116-integration-live-models-client (REAL models pair, integration candidate 278cf510)",
+  "log": "log.txt",
+  "expect_remote": true,
+  "custom_rows": {
+    "TC2 Demoman": "tc2-demoman",
+    "TC2 Engineer": "tc2-engineer"
+  },
+  "checks": {}
+}

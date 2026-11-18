@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "note": "Seed placements recorded by hand before the named-placement feature landed. Keyed by stable map identity; 'scene' is the Unity scene name observed in the log.",
+  "placements": [
+    {
+      "name": "necropolis-1",
+      "map": "Necropolis Map Scene",
+      "mapData": "Necropolis_GameMapData",
+      "pos": [
+        98.28,
+        2.255,
+        80.58
+      ],
+      "yaw": 0.9,
+      "floorY": 2.255,
+      "colliders": 0,
+      "savedFrom": "F4 placement, user-positioned",
+      "savedAt": "2026-11-14T06:52:00Z"
+    },
+    {
+      "name": "necropolis-2",
+      "map": "Necropolis Map Scene",
+      "mapData": "Necropolis_GameMapData",
+      "pos": [
+        53.74,
+        -3.13,
+        46.43
+      ],
+      "yaw": -90.9,
+      "floorY": -3.13,
+      "colliders": 0,
+      "savedFrom": "F4 placement, user-positioned (second spot, lower level)",
+      "savedAt": "2026-11-14T07:05:00Z"
+    },
+    {
+      "name": "lair-1",
+      "map": "Lair Of Occultists Map Scene",
+      "mapData": "LairOfOccultists_GameMapData",
+      "pos": [
+        -34.35,
+        0.582,
+        -2.48
+      ],
+      "yaw": 89.1,
+      "floorY": 0.582,
+      "colliders": 0,
+      "savedFrom": "F4 placement, user-positioned",
+      "savedAt": "2026-11-14T07:40:00Z"
+    },
+    {
+      "name": "lair-2",
+      "map": "Lair Of Occultists Map Scene",
+      "mapData": "LairOfOccultists_GameMapData",
+      "pos": [
+        -113.97,
+        4.655,
+        63.55
+      ],
+      "yaw": 1.2,
+      "floorY": 4.655,
+      "colliders": 0,
+      "savedFrom": "F4 placement, user-positioned (second Lair anchor)",
+      "savedAt": "2026-11-14T23:00:00Z"
+    }
+  ]
+}

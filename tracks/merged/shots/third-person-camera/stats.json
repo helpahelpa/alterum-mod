@@ -1,0 +1,107 @@
+{
+  "build": {
+    "tree": "tracks/merged/mod",
+    "hot_dll_md5": "d3feaec8a14cfe1469a6aec00911363e",
+    "hot_dll_bytes": 21431808,
+    "deployment": "hot reload only, install A (C:\\Program Files (x86)\\Steam\\steamapps\\common\\Alterum), private lobby, 640x360 headed, 15 fps cap; no restart, no host/Contracts change",
+    "files_changed": [
+      "AlterumModelSwap.Hot/ThirdPersonCamera.cs",
+      "AlterumModelSwap.Hot/MirrorPlayerVisibility.cs",
+      "AlterumModelSwap.Hot/CosmeticsRuntime.cs",
+      "AlterumModelSwap.Hot/ModelSwapRuntime.cs"
+    ],
+    "contracts_untouched": true
+  },
+  "candidates": [
+    { "index": 0, "name": "behind",             "back_m": 2.30, "up_m": 0.42, "yaw_deg": 0,   "ray_m": 2.338, "elevation_deg": 10.35, "floor_m": 0.90 },
+    { "index": 1, "name": "behind-elevated",    "back_m": 2.00, "up_m": 1.15, "yaw_deg": 0,   "ray_m": 2.307, "elevation_deg": 29.90, "floor_m": 0.90 },
+    { "index": 2, "name": "overshoulder-left",  "back_m": 1.90, "up_m": 0.55, "yaw_deg": 35,  "ray_m": 1.978, "elevation_deg": 16.14, "floor_m": 0.90 },
+    { "index": 3, "name": "overshoulder-right", "back_m": 1.90, "up_m": 0.55, "yaw_deg": -35, "ray_m": 1.978, "elevation_deg": 16.14, "floor_m": 0.90 },
+    { "index": 4, "name": "elevated-close",     "back_m": 0.30, "up_m": 0.95, "yaw_deg": 0,   "ray_m": 0.996, "elevation_deg": 72.47, "floor_m": 0.55 },
+    { "index": 5, "name": "beside-left",        "back_m": 1.45, "up_m": 0.30, "yaw_deg": 72,  "ray_m": 1.481, "elevation_deg": 11.69, "floor_m": 0.90 },
+    { "index": 6, "name": "beside-right",       "back_m": 1.45, "up_m": 0.30, "yaw_deg": -72, "ray_m": 1.481, "elevation_deg": 11.69, "floor_m": 0.90 }
+  ],
+  "rules": {
+    "order": "first candidate in table order with usable room wins; 'behind' is first, so the fallbacks never replace it",
+    "accept": "full ray from the eye: room = firstHit - 0.20 m (or infinite), must be >= the candidate's own floor (+ 0.30 m hysteresis while the rig is refusing), and the sight line from the pose to the body centre and to the head must be clear of foreign colliders",
+    "distance": "min(candidate ray, room) - a hard maximum, never lengthened; approach immediate, pull-back smoothed at 12/s",
+    "aim": "body bound centre, pitch fitted to the camera's own vertical fov; head kept below the frame top by a 5 deg margin",
+    "projection": "never written: fov 70.000, near 0.010, far 500 in every dump"
+  },
+  "spawn": {
+    "eye": [5.354, 1.737, -7.568],
+    "view_yaw_deg": 267.964,
+    "chosen": "elevated-close",
+    "dist_m": 0.996,
+    "ray_m": 0.996,
+    "pitch_down_deg": 77.9,
+    "head_below_frame_top_deg": 23.2,
+    "camera": [5.654, 2.687, -7.557],
+    "camera_to_head_m": 1.03,
+    "refused": {
+      "behind":            { "room_m": 0.268, "hit": "Palatka_Low/Colliders/Collider (3)", "hit_m": 0.468 },
+      "behind-elevated":   { "room_m": 0.331, "hit": "Collider (3)", "hit_m": 0.531 },
+      "overshoulder-left": { "room_m": 0.386, "hit": "Collider (3)", "hit_m": 0.586 },
+      "overshoulder-right":{ "room_m": 0.384, "hit": "Collider (3)", "hit_m": 0.584 },
+      "beside-left":       { "room_m": null,  "blocked_by": "sight line, Плоскость" },
+      "beside-right":      { "room_m": 0.125, "hit": "Collider (6)", "hit_m": 0.325 }
+    },
+    "geometry": {
+      "wall": "Palatka_Low/Colliders/Collider (3), size (0.301, 2.250, 4.540), face 0.34 m behind the eye, top 0.594 m above it",
+      "ceiling": "Collider (6) 1.06 m above the eye at the wall line, 1.14-1.26 m along a 70 deg ray",
+      "probe_room_behind_eye_m": { "elev0": 0.260, "elev15": 0.276, "elev30": 0.331, "elev45": 0.451, "elev55": 0.602, "elev65": 1.061, "elev70": 1.016, "elev80": 0.961, "elev_60": "clear to 3.0 (passes above the roof line)" }
+    },
+    "stability_60_frames_idle": { "max_dpos_m": 0.0, "max_drot_deg": 0.343, "note": "position exact; the aim pitch follows the idle-animated body bounds by <=0.34 deg" },
+    "no_room_frames": 0,
+    "inside_body_frames": 0
+  },
+  "midroom": {
+    "spot": "2.0 m forward of the spawn",
+    "eye": [3.409, 1.737, -7.625],
+    "chosen": "behind",
+    "dist_m": 2.338,
+    "ray_m": 2.338,
+    "pitch_down_deg": 23.8,
+    "head_below_frame_top_deg": 10.8,
+    "camera": [5.711, 2.157, -7.540],
+    "camera_to_head_m": 2.34,
+    "stability_60_frames_idle": { "max_dpos_m": 0.0, "max_drot_deg": 0.0 }
+  },
+  "shortened_behind": {
+    "spot": "1.2 m forward of the spawn",
+    "chosen": "behind",
+    "ray_hit_m": 1.633,
+    "margin_m": 0.20,
+    "applied_m": 1.433,
+    "head_below_frame_top_deg": 2.771
+  },
+  "masks": {
+    "first_person": "0x4DDB8F87",
+    "third_person_body_and_hat": "0x4DDBCFC7",
+    "third_person_body_withdrawn_hat_withdrawn": "0x4DDB8F87",
+    "mirror_camera_both_povs": "0x4CDB4FC7",
+    "first_person_is_pristine": true,
+    "after_reload_restore": "0x4DDB8F87 (every generation records this as its pristine mask)"
+  },
+  "pixels_same_frame_mask_pairs": {
+    "spawn_third_person": { "body_layer_px": 15971, "hat_layer_px": 19233, "masks": { "on": "0x4DDBCFC7", "body_off": "0x4DDB8FC7", "hat_off": "0x4DDB8F87" } },
+    "room_third_person": { "body_layer_px": 29511, "hat_layer_px": 1757 },
+    "first_person": { "body_layer_px": 0, "hat_layer_px": 0, "note": "on/off masks are both 0x4DDB8F87, so the pair is byte-identical" },
+    "no_room_fallback": { "hat_layer_px": 0, "note": "forced-fallback build: the game's eye pose, both bits withdrawn" }
+  },
+  "mirror": {
+    "third_person": "reflection shows body + hat (screen camera has both bits)",
+    "first_person": "reflection shows body + hat (screen camera has neither)",
+    "binding_condition": "the mirror keeps the body in first person only when its binding captured the owner-hide key, i.e. when it was bound while first person was active (keys=2). A mirror bound in third person has keys=0 and the game's first-person hide passes through; one POV cycle then leaves the body renderers disabled until the next rebind. Pre-existing, unchanged by this work."
+  },
+  "invariants": {
+    "grep_c_SWAP": 0,
+    "mirror_body_isolated": 8,
+    "mirror_body_driven": 8,
+    "mirror_body_selected": 8,
+    "mirror_body_renderers": 8,
+    "note": "this session's local model is 3P_ConcreteModel_Female_03_Diana(Clone) with 8 body renderers; the 9-of-9 figure in earlier notes was a 9-renderer rig. isolated == driven == renderers holds.",
+    "emote_50_clip_path": "untouched (no edit to EmotePack/EmoteRuntime/PosePlayer); hot reload of the same tree keeps [emote] catalogue 50 entries",
+    "jiggle_lease": "untouched (no edit to JiggleSolver/JiggleProbe)"
+  }
+}

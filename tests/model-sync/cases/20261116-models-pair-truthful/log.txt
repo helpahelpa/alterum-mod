@@ -1,0 +1,16 @@
+05:59:20.133 [Info   ] [sahurrig:body] restored 0 body renderer(s) (why=dispose) already=0 lost=0 untracked=0
+05:59:20.135 [Info   ] [sahurrig:human] removed the scale reference
+05:59:20.135 [Info   ] [sahurrig] disposed builds=0 hides=0 restores=0 frames=0
+05:59:20.695 [Info   ] [sahurrig] ready trigger=none (request file only) request=C:\AlterumAgentRuns\20261116T195614Z\models-host\BepInEx\screens\models-host\sahurrig.request values=on/off/toggle, walk=on|off, human=on|off, view=front|back|side|compare, mats=1, dump=1
+05:59:20.695 [Info   ] [sahurrig] model: 'Tung Sahur Game 3D model (Roblox)' by alex.cgwarrior, CC BY 4.0 - modified (4K maps downscaled, roughness/AO folded into constants, mesh mirrored in X, weights reduced to 4 influences)
+05:59:22.011 [Info   ] [sahur:map] wanted entry restored from 'C:\AlterumAgentRuns\20261116T195614Z\models-host\BepInEx\config\alterum-wanted-model.models-host.cfg': 7 'TC2 Demoman' (tc2-demoman) [explicit] db=17 row-state=ready
+05:59:22.058 [Info   ] [model:identity] actor=local wantedSlug=tc2-demoman advertisedSlug=- resolvedDb=17 appliedRow=- bodySlug=- hudRow=tc2-demoman wardrobeRow=- provenance=wanted:explicit readiness=ready bodyState=pending
+05:59:22.072 [Info   ] [model:identity] refresh why='accepted remote state' hudDrift=no wardrobeDrift=no watch=0/4 hudWrites=0 wardrobeMoves=0 dbGen=15 remoteRev=0
+--- client ---
+05:59:24.256 [Info   ] [sahurrig:body] restored 0 body renderer(s) (why=dispose) already=0 lost=0 untracked=0
+05:59:24.258 [Info   ] [sahurrig:human] removed the scale reference
+05:59:24.258 [Info   ] [sahurrig] disposed builds=0 hides=0 restores=0 frames=0
+05:59:25.396 [Info   ] [sahurrig] ready trigger=none (request file only) request=C:\AlterumAgentRuns\20261116T195614Z\models-client\BepInEx\screens\models-client\sahurrig.request values=on/off/toggle, walk=on|off, human=on|off, view=front|back|side|compare, mats=1, dump=1
+05:59:25.397 [Info   ] [sahurrig] model: 'Tung Sahur Game 3D model (Roblox)' by alex.cgwarrior, CC BY 4.0 - modified (4K maps downscaled, roughness/AO folded into constants, mesh mirrored in X, weights reduced to 4 influences)
+05:59:26.106 [Info   ] [model:identity] actor=local wantedSlug=- advertisedSlug=- resolvedDb=- appliedRow=- bodySlug=- hudRow=- wardrobeRow=- provenance=none readiness=native bodyState=native
+05:59:26.118 [Info   ] [model:identity] refresh why='accepted remote state' hudDrift=no wardrobeDrift=no watch=0/4 hudWrites=0 wardrobeMoves=0 dbGen=15 remoteRev=0

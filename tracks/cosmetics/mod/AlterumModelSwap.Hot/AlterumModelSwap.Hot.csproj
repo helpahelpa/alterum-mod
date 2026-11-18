@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <AssemblyName>AlterumModelSwap.Hot</AssemblyName>
+    <RootNamespace>AlterumModelSwap.Hot</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
+    <NoWarn>$(NoWarn);CS0436;NU1701</NoWarn>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+  <Import Project="../Alterum.References.props" />
+  <!-- After the import on purpose: this group derives from $(AlterumDataDir), which the import
+       defines. The binary payload (apack/mset/rset/png) lives outside the repo, in the data tree
+       at the mirrored path, and only the .cs/.csproj sources are tracked (see LAYOUT.md).
+       -p:AlterumDataDir=... moves $(HotAssetsDir) with it; -p:HotAssetsDir=<dir>/ overrides the
+       payload alone (keep the trailing slash). -->
+  <PropertyGroup>
+    <HotAssetsDir Condition="'$(HotAssetsDir)' == ''">$(AlterumDataDir)tracks/cosmetics/mod/AlterumModelSwap.Hot/</HotAssetsDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Extracted MoreCompany cosmetic data (see tools/extract_cosmetics.py). Embedded so the
+         normal build+deploy of the hot dll carries the assets atomically. -->
+    <EmbeddedResource Include="$(HotAssetsDir)cosmetics.apack" LogicalName="AlterumModelSwap.Hot.cosmetics.apack" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Needed to inspect RenderingController._disableKeys (Il2CppSystem.Collections.Generic.HashSet). -->
+    <Reference Include="Il2CppSystem.Core">
+      <HintPath>$(RefsDir)Il2CppSystem.Core.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- Contracts is provided by the host at runtime; never copy a second copy here. -->
+    <ProjectReference Include="../AlterumModelSwap.Contracts/AlterumModelSwap.Contracts.csproj">
+      <Private>false</Private>
+    </ProjectReference>
+  </ItemGroup>
+</Project>

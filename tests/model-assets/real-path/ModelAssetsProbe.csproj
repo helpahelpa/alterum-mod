@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework></PropertyGroup>
+  <ItemGroup><Compile Include="../../../tracks/merged/mod/AlterumModelSwap.Hot/ModelAssetCache.cs" Link="ModelAssetCache.cs" /></ItemGroup>
+</Project>

@@ -1,0 +1,15 @@
+{
+  "case": "20261117-demoman-join (REAL b.log/a.log excerpt, pre-fix red baseline)",
+  "log": "log.txt",
+  "expect_remote": false,
+  "custom_rows": {
+    "TC2 Demoman": "tc2-demoman",
+    "TC2 Soldier": "tc2-soldier",
+    "TC2 Scout": "tc2-scout",
+    "Golubiro": "golubiro",
+    "TC2 Spy": "tc2-spy"
+  },
+  "checks": {
+    "assignment_converges": "fail"
+  }
+}

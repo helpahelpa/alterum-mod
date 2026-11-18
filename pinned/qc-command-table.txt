@@ -1,0 +1,243 @@
+# mod console dump
+utc=2026-11-14T10:00:43.3396620Z scene=Lair Of Occultists Map Scene
+commands=109 runs=3 game=1 mod=0
+
+## game command table (name / declaring type / method / parameters)
+gamecycle.start	ConsoleCommands.Network.LocationsCommandsWrapper	StartLocationsTransitioning	()
+debug.print-voice-chat-log	ConsoleCommands.DebugCommandsWrapper	PrintVoiceChatSystemLog	()
+handhelds.print-items-indexes	ConsoleCommands.Network.HandheldPoolFactoryCommandsWrapper	PrintAllItemsIndexes	()
+po.print-roles	ConsoleCommands.Network.PlayerObjectCommandsWrapper	PrintRoles	()
+effects.describe	ConsoleCommands.Network.ImposedEffectCommandsWrapper	Description	effectId effectVariantId
+handhelds.to-inventory	ConsoleCommands.Network.HandheldPoolFactoryCommandsWrapper	GetItemToPlayerInventoryConsoleCommand	itemId number clientId
+settings.game.set-sensitivity	ConsoleCommands.GameSettingsCommandsWrapper	SetSensitivity	sensitivity
+debug.log	ConsoleCommands.DebugCommandsWrapper	Log	log
+roles-distribution.print-data	Gameplay.Cycle.RolesDistributionCommandsWrapper	PrintAllData	()
+goto.place	ConsoleCommands.Network.GotoCommandsWrapper	GotoPlace	placeIndex
+blessing-totem	ConsoleCommands.GotoGameCommandsWrapper	GotoBlessingTotem	totemIndex locationIndex
+po.assign-role	ConsoleCommands.Network.PlayerObjectCommandsWrapper	AssignRole	roleIndex
+goto.player	ConsoleCommands.Network.GotoCommandsWrapper	GotoPlayer	nickname
+kcc.noclip	ConsoleCommands.Network.CharacterControllersCommandsWrapper	ToggleNoclip	()
+map.generate-maze	ConsoleCommands.MapCommandsWrapper	GenerateMaze	()
+occultist.enchant-dagger	ConsoleCommands.Network.OccultistCommandsWrapper	ChangeStateOfBladeOfDeath	activate occultistClientId
+effects.remove	ConsoleCommands.Network.ImposedEffectCommandsWrapper	Remove	effectHolderClientId targetClientId effectId effectVariantId
+occultist.take-energy	ConsoleCommands.Network.OccultistCommandsWrapper	TakeEnergy	energyToTake occultistClientId
+occultist.take-energy	ConsoleCommands.Network.OccultistCommandsWrapper	TakeEnergy	energyToTake
+occultist.take-energy	ConsoleCommands.Network.OccultistCommandsWrapper	TakeEnergy	()
+csp.set-target-slack-ticks	ConsoleCommands.Network.ClientsidePredictionCommandsWrapper	SetTargetSlackTicks	targetSlackTicks
+quest.complete-subtask	ConsoleCommands.Network.QuestsCommandsWrapper	CompleteSubTask	locationIndex subTaskId
+handhelds.get	ConsoleCommands.Network.HandheldPoolFactoryCommandsWrapper	GetItemConsoleCommand	itemId
+host	ConsoleCommands.Network.Connection.UnityTransportConnectionCommandsWrapper	StartLocalHost	()
+debug.log-foot-sound-state	ConsoleCommands.DebugCommandsWrapper	LogFootSoundState	()
+gamecycle.bless-all-totems	ConsoleCommands.Network.LocationsCommandsWrapper	BlessAllTotems	locationIndex
+po.despawn	ConsoleCommands.Network.PlayerObjectCommandsWrapper	DespawnPlayer	()
+kcc.get-position	ConsoleCommands.Network.CharacterControllersCommandsWrapper	GetPosition	()
+sabotages.start	ConsoleCommands.Network.SabotagesCommandsWrapper	StartSabotage	locationIndex sabotageIndex state
+roles-distribution.add-rounds-since	Gameplay.Cycle.RolesDistributionCommandsWrapper	AddRoundsSince	clientId rounds
+health.damage	ConsoleCommands.Network.HealthCommandsWrapper	Damage	hp targetClientId
+health.damage	ConsoleCommands.Network.HealthCommandsWrapper	Damage	hp
+effects.describe	ConsoleCommands.Network.ImposedEffectCommandsWrapper	Description	effectId
+occultist.add-energy	ConsoleCommands.Network.OccultistCommandsWrapper	AddEnergy	energyToAdd
+roles-distribution.reset-rounds-since	Gameplay.Cycle.RolesDistributionCommandsWrapper	ResetRoundsSince	clientId
+quest.complete-task	ConsoleCommands.Network.QuestsCommandsWrapper	CompleteCurrentTask	locationIndex
+gamecycle.stop	ConsoleCommands.Network.LocationsCommandsWrapper	StopLocationsTransitioning	()
+stats.player	ConsoleCommands.StatisticsCommandsWrapper	PrintPlayer	playerId entriesLimit
+disconnect	ConsoleCommands.Network.Connection.UnityTransportConnectionCommandsWrapper	Disconnect	()
+po.spawn-lobbier	ConsoleCommands.LobbyPlayerObjectCommandsWrapper	SpawnPlayerAndAssignLobbier	()
+po.switch-pov	ConsoleCommands.Network.PlayerObjectCommandsWrapper	SwitchPOV	()
+stats.trigger-time	ConsoleCommands.StatisticsCommandsWrapper	PrintTriggerTime	playerId
+po.switch-model	ConsoleCommands.Network.PlayerObjectCommandsWrapper	SwitchPlayerModel	modelIndex
+stats.trigger-time-all	ConsoleCommands.StatisticsCommandsWrapper	PrintTriggerTimeAll	windowMinutes
+blessing-totem	ConsoleCommands.GotoGameCommandsWrapper	GotoBlessingTotem	totemIndex
+debug.foot-replay	ConsoleCommands.DebugCommandsWrapper	FootReplay	()
+health.heal	ConsoleCommands.Network.HealthCommandsWrapper	Heal	hp targetClientId
+health.heal	ConsoleCommands.Network.HealthCommandsWrapper	Heal	hp
+camera.cinematic.disable-current	Cinemachine.CinematicCamerasCommandsWrapper	Disable	()
+health.print	ConsoleCommands.Network.HealthCommandsWrapper	PrintHealth	clientId
+effects.print-all	ConsoleCommands.Network.ImposedEffectCommandsWrapper	PrintAll	()
+exit	ConsoleCommands.GotoGameCommandsWrapper	GotoExit	exitIndex locationIndex
+camera.cinematic.enable	Cinemachine.CinematicCamerasCommandsWrapper	Enable	cameraId
+host-from-menu	ConsoleCommands.Network.Connection.MenuConnectionCommandsWrapper	StartLocalHost	()
+handhelds.to-inventory	ConsoleCommands.Network.HandheldPoolFactoryCommandsWrapper	GetItemToPlayerInventoryConsoleCommand	itemId number
+walkietalkie.start-talking-all-walkies	Gameplay.Radio.WalkieTalkieTestingCommandsWrapper	StartTalkingAllWalkies	()
+quest.uncomplete-subtask	ConsoleCommands.Network.QuestsCommandsWrapper	UncompleteSubTask	locationIndex subTaskId
+gamecycle.start-resulting	ConsoleCommands.Network.LocationsCommandsWrapper	StartResulting	explorersWin
+effects.remove-all	ConsoleCommands.Network.ImposedEffectCommandsWrapper	RemoveAll	effectHolderClientId
+csp.get-reconciliation-enabled	ConsoleCommands.Network.ClientsidePredictionCommandsWrapper	GetReconciliationEnabled	()
+stats.all	ConsoleCommands.StatisticsCommandsWrapper	PrintAll	entriesLimit
+stats.all	ConsoleCommands.StatisticsCommandsWrapper	PrintAll	()
+occultist.enchant-dagger	ConsoleCommands.Network.OccultistCommandsWrapper	ChangeStateOfBladeOfDeath	activate
+po.return-nickname	ConsoleCommands.Network.PlayerObjectCommandsWrapper	ReturnNickname	()
+settings.game.get-sensitivity	ConsoleCommands.GameSettingsCommandsWrapper	GetSensitivity	()
+debug.set-cursor-lock-state	ConsoleCommands.DebugCommandsWrapper	SetCursorLockedState	mode
+effects.impose	ConsoleCommands.Network.ImposedEffectCommandsWrapper	Impose	casterClientId effectId effectVariantId
+health.set	ConsoleCommands.Network.HealthCommandsWrapper	SetHealth	hp
+csp.set-target-slack-ticks	ConsoleCommands.Network.ClientsidePredictionCommandsWrapper	SetTargetSlackTicks	()
+connect	ConsoleCommands.Network.Connection.UnityTransportConnectionCommandsWrapper	ConnectTo	ip
+connect	ConsoleCommands.Network.Connection.UnityTransportConnectionCommandsWrapper	ConnectToLocal	()
+occultist.add-energy	ConsoleCommands.Network.OccultistCommandsWrapper	AddEnergy	energyToAdd occultistClientId
+host	ConsoleCommands.Network.Connection.UnityTransportConnectionCommandsWrapper	StartHost	ip
+quest.complete-all	ConsoleCommands.Network.QuestsCommandsWrapper	CompleteAllTask	locationIndex
+csp.set-guest-simulation-delay	ConsoleCommands.Network.ClientsidePredictionCommandsWrapper	SetGuestSimulationDelaySec	delaySec
+abilities.reset-all-cooldowns	_Scripts.ConsoleCommands.Network.AbilitiesCommandsWrapper	ResetCooldown	()
+connect-from-menu	ConsoleCommands.Network.Connection.MenuConnectionCommandsWrapper	ConnectToLocal	()
+interactable.interact-ignore-constraints	ConsoleCommands.Network.InteractableCommandsWrapper	InteractIgnoreConstraints	()
+stats.trigger-time	ConsoleCommands.StatisticsCommandsWrapper	PrintTriggerTime	playerId windowMinutes
+csp.set-predict-weapon-hit-effects	ConsoleCommands.Network.ClientsidePredictionCommandsWrapper	SetPredictWeaponHitEffects	isEnabled
+po.return-nickname	ConsoleCommands.Network.PlayerObjectCommandsWrapper	ReturnNickname	clientId
+csp.set-reconciliation-enabled	ConsoleCommands.Network.ClientsidePredictionCommandsWrapper	SetReconciliationEnabled	isEnabled
+debug.debug-cursor	ConsoleCommands.DebugCommandsWrapper	DebugCursor	()
+gamecycle.start-night	ConsoleCommands.Network.LocationsCommandsWrapper	StartTransitionToNight	locationIndex
+health.set	ConsoleCommands.Network.HealthCommandsWrapper	SetHealth	hp targetClientId
+goto.position	ConsoleCommands.Network.GotoCommandsWrapper	GotoPosition	position
+exit	ConsoleCommands.GotoGameCommandsWrapper	GotoExit	exitIndex
+po.set-nickname	ConsoleCommands.Network.PlayerObjectCommandsWrapper	SetNickname	newNickname
+po.set-nickname	ConsoleCommands.Network.PlayerObjectCommandsWrapper	SetNickname	newNickname clientId
+handhelds.release	ConsoleCommands.Network.HandheldPoolFactoryCommandsWrapper	ReleaseCurrentHandheldItem	clientId
+po.spawn-player	ConsoleCommands.Network.PlayerObjectCommandsWrapper	SpawnPlayer	()
+po.spawn-player	ConsoleCommands.Network.PlayerObjectCommandsWrapper	SpawnPlayer	spawnDelay
+csp.set-guest-simulation-delay	ConsoleCommands.Network.ClientsidePredictionCommandsWrapper	SetGuestSimulationDelaySec	()
+stats.players	ConsoleCommands.StatisticsCommandsWrapper	PrintPlayers	()
+stats.trigger-time-all	ConsoleCommands.StatisticsCommandsWrapper	PrintTriggerTimeAll	()
+debug.debug-connection-indicator	ConsoleCommands.DebugCommandsWrapper	DebugConnectionIndicator	()
+kcc.get-position	ConsoleCommands.Network.CharacterControllersCommandsWrapper	GetPosition	clientId
+debug.set-cursor-visibility	ConsoleCommands.DebugCommandsWrapper	SetCursorVisibility	visible
+quest.complete-task-wait	ConsoleCommands.Network.QuestsCommandsWrapper	CompleteCurrentTask	locationIndex secondsToComplete
+po.print-players	ConsoleCommands.Network.PlayerObjectCommandsWrapper	PrintPlayers	()
+health.print	ConsoleCommands.Network.HealthCommandsWrapper	PrintHealth	()
+occultist.add-energy	ConsoleCommands.Network.OccultistCommandsWrapper	AddEnergy	()
+handhelds.to-inventory	ConsoleCommands.Network.HandheldPoolFactoryCommandsWrapper	GetItemToPlayerInventoryConsoleCommand	itemId
+debug.print-steam-connection-log	ConsoleCommands.DebugCommandsWrapper	PrintSteamConnectionLog	()
+po.assign-role	ConsoleCommands.Network.PlayerObjectCommandsWrapper	AssignRole	roleIndex modelIndex
+stats.player	ConsoleCommands.StatisticsCommandsWrapper	PrintPlayer	playerId
+po.spawn-lobbier	ConsoleCommands.LobbyPlayerObjectCommandsWrapper	SpawnPlayerAndAssignLobbier	modelIndex
+csp.set-reconciliation-debuglog-enabled	ConsoleCommands.Network.ClientsidePredictionCommandsWrapper	SetReconciliationDebugEnabled	isEnabled
+gamecycle.open-all-exits	ConsoleCommands.Network.LocationsCommandsWrapper	OpenAllExits	locationIndex
+
+## interop signature back end (static, Assembly-CSharp)
+quest.complete-all	ConsoleCommands.Network.QuestsCommandsWrapper.CompleteAllTask(byte locationIndex)
+quest.complete-task	ConsoleCommands.Network.QuestsCommandsWrapper.CompleteCurrentTask(byte locationIndex)
+quest.complete-task-wait	ConsoleCommands.Network.QuestsCommandsWrapper.CompleteCurrentTask(byte locationIndex, int secondsToComplete)
+quest.complete-subtask	ConsoleCommands.Network.QuestsCommandsWrapper.CompleteSubTask(byte locationIndex, string subTaskId)
+quest.uncomplete-subtask	ConsoleCommands.Network.QuestsCommandsWrapper.UncompleteSubTask(byte locationIndex, string subTaskId)
+gamecycle.open-all-exits	ConsoleCommands.Network.LocationsCommandsWrapper.OpenAllExits(byte locationIndex)
+gamecycle.bless-all-totems	ConsoleCommands.Network.LocationsCommandsWrapper.BlessAllTotems(byte locationIndex)
+gamecycle.start-night	ConsoleCommands.Network.LocationsCommandsWrapper.StartTransitionToNight(byte locationIndex)
+gamecycle.start-resulting	ConsoleCommands.Network.LocationsCommandsWrapper.StartResulting(bool explorersWin)
+handhelds.get	ConsoleCommands.Network.HandheldPoolFactoryCommandsWrapper.GetItemConsoleCommand(string itemId)
+handhelds.to-inventory	ConsoleCommands.Network.HandheldPoolFactoryCommandsWrapper.GetItemToPlayerInventoryConsoleCommand(string itemId, int number, int clientId)
+handhelds.release	ConsoleCommands.Network.HandheldPoolFactoryCommandsWrapper.ReleaseCurrentHandheldItem(ulong clientId) / ReleaseCurrentHandheldItem()
+handhelds.print-items-indexes	ConsoleCommands.Network.HandheldPoolFactoryCommandsWrapper.PrintAllItemsIndexes()
+effects.impose	ConsoleCommands.Network.ImposedEffectCommandsWrapper.Impose(ulong casterClientId, ushort effectId, ushort effectVariantId)
+effects.remove	ConsoleCommands.Network.ImposedEffectCommandsWrapper.Remove(ulong effectHolderClientId, ulong targetClientId, ushort effectId, ushort effectVariantId)
+effects.remove-all	ConsoleCommands.Network.ImposedEffectCommandsWrapper.RemoveAll(ulong effectHolderClientId)
+effects.describe	ConsoleCommands.Network.ImposedEffectCommandsWrapper.Description(ushort effectId, ushort effectVariantId) / Description(ushort effectId)
+goto.place	ConsoleCommands.Network.GotoCommandsWrapper.GotoPlace(string placeIndex)
+goto.player	ConsoleCommands.Network.GotoCommandsWrapper.GotoPlayer(string nickname)
+goto.position	ConsoleCommands.Network.GotoCommandsWrapper.GotoPosition(UnityEngine.Vector3 position)
+health.set	ConsoleCommands.Network.HealthCommandsWrapper.SetHealth(float hp, ulong targetClientId) / SetHealth(float hp)
+health.damage	ConsoleCommands.Network.HealthCommandsWrapper.Damage(float hp, ulong targetClientId) / Damage(float hp)
+health.heal	ConsoleCommands.Network.HealthCommandsWrapper.Heal(float hp, ulong targetClientId) / Heal(float hp)
+health.print	ConsoleCommands.Network.HealthCommandsWrapper.PrintHealth(ulong clientId) / PrintHealth()
+kcc.noclip	ConsoleCommands.Network.CharacterControllersCommandsWrapper.ToggleNoclip()
+kcc.get-position	ConsoleCommands.Network.CharacterControllersCommandsWrapper.GetPosition(ulong clientId) / GetPosition()
+map.generate-maze	ConsoleCommands.MapCommandsWrapper.GenerateMaze()
+po.spawn-player	ConsoleCommands.Network.PlayerObjectCommandsWrapper.SpawnPlayer(ushort spawnDelay) / SpawnPlayer()
+po.spawn-lobbier	ConsoleCommands.LobbyPlayerObjectCommandsWrapper.SpawnPlayerAndAssignLobbier(ushort modelIndex)
+po.print-players	ConsoleCommands.Network.PlayerObjectCommandsWrapper.PrintPlayers()
+po.set-nickname	ConsoleCommands.Network.PlayerObjectCommandsWrapper.SetNickname(string newNickname, ulong clientId)
+po.return-nickname	ConsoleCommands.Network.PlayerObjectCommandsWrapper.ReturnNickname(ulong clientId)
+po.switch-pov	ConsoleCommands.Network.PlayerObjectCommandsWrapper.SwitchPOV()
+po.switch-model	ConsoleCommands.Network.PlayerObjectCommandsWrapper.SwitchPlayerModel(ushort modelIndex)
+po.assign-role	ConsoleCommands.Network.PlayerObjectCommandsWrapper.AssignRole(byte roleIndex, ushort modelIndex)
+po.print-roles	ConsoleCommands.Network.PlayerObjectCommandsWrapper.PrintRoles()
+po.despawn	ConsoleCommands.Network.PlayerObjectCommandsWrapper.DespawnPlayer()
+occultist.add-energy	ConsoleCommands.Network.OccultistCommandsWrapper.AddEnergy(byte energyToAdd, int occultistClientId)
+occultist.take-energy	ConsoleCommands.Network.OccultistCommandsWrapper.TakeEnergy(byte energyToTake, int occultistClientId)
+occultist.enchant-dagger	ConsoleCommands.Network.OccultistCommandsWrapper.ChangeStateOfBladeOfDeath(bool activate, int occultistClientId)
+sabotages.start	ConsoleCommands.Network.SabotagesCommandsWrapper.StartSabotage(byte locationIndex, int sabotageIndex, ConsoleCommands.Network.SabotageState state)
+stats.all	ConsoleCommands.StatisticsCommandsWrapper.PrintAll(int entriesLimit)
+stats.player	ConsoleCommands.StatisticsCommandsWrapper.PrintPlayer(ulong playerId, int entriesLimit)
+stats.players	ConsoleCommands.StatisticsCommandsWrapper.PrintPlayers()
+stats.trigger-time	ConsoleCommands.StatisticsCommandsWrapper.PrintTriggerTime(ulong playerId, int windowMinutes)
+stats.trigger-time-all	ConsoleCommands.StatisticsCommandsWrapper.PrintTriggerTimeAll(int windowMinutes)
+settings.game.set-sensitivity	ConsoleCommands.GameSettingsCommandsWrapper.SetSensitivity(float sensitivity)
+settings.game.get-sensitivity	ConsoleCommands.GameSettingsCommandsWrapper.GetSensitivity()
+debug.log	ConsoleCommands.DebugCommandsWrapper.Log(string log)
+debug.log-foot-sound-state	ConsoleCommands.DebugCommandsWrapper.LogFootSoundState()
+debug.foot-replay	ConsoleCommands.DebugCommandsWrapper.FootReplay()
+debug.debug-connection-indicator	ConsoleCommands.DebugCommandsWrapper.DebugConnectionIndicator()
+debug.debug-cursor	ConsoleCommands.DebugCommandsWrapper.DebugCursor()
+debug.set-cursor-lock-state	ConsoleCommands.DebugCommandsWrapper.SetCursorLockedState(UnityEngine.CursorLockMode mode)
+debug.set-cursor-visibility	ConsoleCommands.DebugCommandsWrapper.SetCursorVisibility(bool visible)
+debug.print-steam-connection-log	ConsoleCommands.DebugCommandsWrapper.PrintSteamConnectionLog()
+debug.print-voice-chat-log	ConsoleCommands.DebugCommandsWrapper.PrintVoiceChatSystemLog()
+csp.set-reconciliation-enabled	ConsoleCommands.Network.ClientsidePredictionCommandsWrapper.SetReconciliationEnabled(bool isEnabled)
+csp.get-reconciliation-enabled	ConsoleCommands.Network.ClientsidePredictionCommandsWrapper.GetReconciliationEnabled()
+csp.set-reconciliation-debuglog-enabled	ConsoleCommands.Network.ClientsidePredictionCommandsWrapper.SetReconciliationDebugEnabled(bool isEnabled)
+csp.set-predict-weapon-hit-effects	ConsoleCommands.Network.ClientsidePredictionCommandsWrapper.SetPredictWeaponHitEffects(bool isEnabled)
+csp.set-target-slack-ticks	ConsoleCommands.Network.ClientsidePredictionCommandsWrapper.SetTargetSlackTicks(int targetSlackTicks)
+csp.set-guest-simulation-delay	ConsoleCommands.Network.ClientsidePredictionCommandsWrapper.SetGuestSimulationDelaySec(float delaySec)
+interactable.interact-ignore-constraints	ConsoleCommands.Network.InteractableCommandsWrapper.InteractIgnoreConstraints()
+connect	ConsoleCommands.Network.Connection.UnityTransportConnectionCommandsWrapper.ConnectTo(string ip)
+disconnect	ConsoleCommands.Network.Connection.UnityTransportConnectionCommandsWrapper.Disconnect()
+host	ConsoleCommands.Network.Connection.UnityTransportConnectionCommandsWrapper.StartHost(string ip)
+connect-from-menu	ConsoleCommands.Network.Connection.MenuConnectionCommandsWrapper.ConnectAsClientWithPreloading()
+host-from-menu	ConsoleCommands.Network.Connection.MenuConnectionCommandsWrapper.StartLocalHost()
+camera.cinematic.enable	Cinemachine.CinematicCamerasCommandsWrapper.Enable(string cameraId)
+camera.cinematic.disable-current	Cinemachine.CinematicCamerasCommandsWrapper.Disable()
+roles-distribution.add-rounds-since	Gameplay.Cycle.RolesDistributionCommandsWrapper.AddRoundsSince(ulong clientId, int rounds)
+roles-distribution.reset-rounds-since	Gameplay.Cycle.RolesDistributionCommandsWrapper.ResetRoundsSince(ulong clientId)
+roles-distribution.print-data	Gameplay.Cycle.RolesDistributionCommandsWrapper.PrintAllData()
+walkietalkie.start-talking-all-walkies	Gameplay.Radio.WalkieTalkieTestingCommandsWrapper.StartTalkingAllWalkies()
+abilities.reset-all-cooldowns	_Scripts.ConsoleCommands.Network.AbilitiesCommandsWrapper.ResetCooldown()
+blessing-totem	ConsoleCommands.GotoGameCommandsWrapper.GotoBlessingTotem(int totemIndex, int locationIndex)
+
+## console buffer
+mod console ready - 'help' lists the game's 109 commands and the mod commands
+--- console open ('help' for commands, Esc closes) ---
+> exit 0 0
+= null
+--- console open ('help' for commands, Esc closes) ---
+> help
+109 game commands (from QuantumConsoleProcessor) - '<name>' runs one:
+gamecycle.start   debug.print-voice-chat-log   handhelds.print-items-indexes   po.print-roles   
+effects.describe effectId effectVariantId   handhelds.to-inventory itemId number clientId   
+settings.game.set-sensitivity sensitivity   debug.log log   roles-distribution.print-data   
+goto.place placeIndex   blessing-totem totemIndex locationIndex   po.assign-role roleIndex   
+goto.player nickname   kcc.noclip   map.generate-maze   
+occultist.enchant-dagger activate occultistClientId   
+effects.remove effectHolderClientId targetClientId effectId effectVariantId   
+occultist.take-energy energyToTake occultistClientId   occultist.take-energy energyToTake   
+occultist.take-energy   csp.set-target-slack-ticks targetSlackTicks   
+quest.complete-subtask locationIndex subTaskId   handhelds.get itemId   host   
+debug.log-foot-sound-state   gamecycle.bless-all-totems locationIndex   po.despawn   
+kcc.get-position   sabotages.start locationIndex sabotageIndex state   
+roles-distribution.add-rounds-since clientId rounds   health.damage hp targetClientId   
+health.damage hp   effects.describe effectId   occultist.add-energy energyToAdd   
+roles-distribution.reset-rounds-since clientId   quest.complete-task locationIndex   gamecycle.stop   
+stats.player playerId entriesLimit   disconnect   po.spawn-lobbier   po.switch-pov   
+stats.trigger-time playerId   po.switch-model modelIndex   stats.trigger-time-all windowMinutes   
+blessing-totem totemIndex   debug.foot-replay   health.heal hp targetClientId   health.heal hp   
+camera.cinematic.disable-current   health.print clientId   effects.print-all   
+exit exitIndex locationIndex   camera.cinematic.enable cameraId   host-from-menu   
+handhelds.to-inventory itemId number   walkietalkie.start-talking-all-walkies   
+quest.uncomplete-subtask locationIndex subTaskId   gamecycle.start-resulting explorersWin   
+effects.remove-all effectHolderClientId   csp.get-reconciliation-enabled   stats.all entriesLimit   
+stats.all   occultist.enchant-dagger activate   po.return-nickname   settings.game.get-sensitivity   
+debug.set-cursor-lock-state mode   effects.impose casterClientId effectId effectVariantId   
+health.set hp   csp.set-target-slack-ticks   connect ip   connect   
+occultist.add-energy energyToAdd occultistClientId   host ip   quest.complete-all locationIndex   
+csp.set-guest-simulation-delay delaySec   abilities.reset-all-cooldowns   connect-from-menu   
+interactable.interact-ignore-constraints   stats.trigger-time playerId windowMinutes   
+csp.set-predict-weapon-hit-effects isEnabled   po.return-nickname clientId   
+csp.set-reconciliation-enabled isEnabled   debug.debug-cursor   gamecycle.start-night locationIndex   
+health.set hp targetClientId   goto.position position   exit exitIndex   po.set-nickname newNickname   
+po.set-nickname newNickname clientId   handhelds.release clientId   po.spawn-player   
+po.spawn-player spawnDelay   csp.set-guest-simulation-delay   stats.players   stats.trigger-time-all   
+debug.debug-connection-indicator   kcc.get-position clientId   debug.set-cursor-visibility visible   
+quest.complete-task-wait locationIndex secondsToComplete   po.print-players   health.print   
+occultist.add-energy   handhelds.to-inventory itemId   debug.print-steam-connection-log   
+po.assign-role roleIndex modelIndex   stats.player playerId   po.spawn-lobbier modelIndex   
+csp.set-reconciliation-debuglog-enabled isEnabled   gamecycle.open-all-exits locationIndex   
+mod commands: give <itemId> | quest state|completeall | reel place|save <n>|load <n>|list | dump | cmds [filter] | man <cmd>
+> dump

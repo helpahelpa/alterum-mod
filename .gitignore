@@ -1,0 +1,27 @@
+# Build output of the mod projects (dotnet). Nothing here is source.
+bin/
+obj/
+**/bin/
+**/obj/
+
+# The binary payload for tracks/*/mod/* is gitignored and lives outside the repo, in
+# ~/assets/monorepo/alterum-data/ at the same relative path. These guards catch a stray asset
+# that a script wrote next to the source.
+*.dll
+*.pdb
+*.apack
+*.mset
+*.rset
+*.png
+*.jpg
+*.jpeg
+*.mp4
+*.gif
+*.webm
+*.zip
+*.7z
+*.log
+*.bin
+*.cache
+__pycache__/
+*.pyc

@@ -1,0 +1,82 @@
+[Info   ] [model:identity] actor=local wantedSlug=- advertisedSlug=- resolvedDb=- appliedRow=- bodySlug=- hudRow=- wardrobeRow=- provenance=none readiness=native
+[Info   ] [model:identity] refresh why='accepted remote state' hudDrift=no wardrobeDrift=no watch=0/4 hudWrites=0 wardrobeMoves=0 dbGen=30 remoteRev=0
+[Info   ] [join:trace] scene -> 'Bootstrap'
+[Info   ] [join:trace] scene -> 'Menu'
+[Info   ] [sahurrig:body] restored 0 body renderer(s) (why=dispose) already=0 lost=0 untracked=0
+[Info   ] [model:identity] actor=local wantedSlug=- advertisedSlug=- resolvedDb=- appliedRow=- bodySlug=- hudRow=- wardrobeRow=- provenance=none readiness=native bodyState=native
+[Info   ] [model:identity] refresh why='accepted remote state' hudDrift=no wardrobeDrift=no watch=0/4 hudWrites=0 wardrobeMoves=0 dbGen=15 remoteRev=0
+[Info   ] [join:trace] scene -> 'Menu'
+[Info   ] [sahurrig:body] restored 0 body renderer(s) (why=dispose) already=0 lost=0 untracked=0
+[Info   ] [model:identity] actor=local wantedSlug=- advertisedSlug=- resolvedDb=- appliedRow=- bodySlug=- hudRow=- wardrobeRow=- provenance=none readiness=native bodyState=native
+[Info   ] [model:identity] refresh why='accepted remote state' hudDrift=no wardrobeDrift=no watch=0/4 hudWrites=0 wardrobeMoves=0 dbGen=15 remoteRev=0
+[Info   ] [join:trace] scene -> 'Menu'
+[Info   ] [sahurrig:body] restored 0 body renderer(s) (why=dispose) already=0 lost=0 untracked=0
+[Info   ] [model:identity] actor=local wantedSlug=- advertisedSlug=- resolvedDb=- appliedRow=- bodySlug=- hudRow=- wardrobeRow=- provenance=none readiness=native bodyState=native
+[Info   ] [model:identity] refresh why='accepted remote state' hudDrift=no wardrobeDrift=no watch=0/4 hudWrites=0 wardrobeMoves=0 dbGen=15 remoteRev=0
+[Info   ] [join:trace] scene -> 'Menu'
+[Info   ] [sahurrig:body] restored 0 body renderer(s) (why=dispose) already=0 lost=0 untracked=0
+[Info   ] [model:identity] actor=local wantedSlug=- advertisedSlug=- resolvedDb=- appliedRow=- bodySlug=- hudRow=- wardrobeRow=- provenance=none readiness=native bodyState=native
+[Info   ] [model:identity] refresh why='accepted remote state' hudDrift=no wardrobeDrift=no watch=0/4 hudWrites=0 wardrobeMoves=0 dbGen=15 remoteRev=0
+[Info   ] [join:trace] scene -> 'Menu'
+[Info   ] [swap:net] session up epoch=3488889210 gen=5 local=0 server=True role=client proto=3 mod=yes caps=0x07 clock=local localModel='<native>' cosmetics=1 chest=on hips=off
+[Info   ] [swap:net] role change local=0->1 server=False->False epoch=3488889210
+[Info   ] [swap:net] handshake client=0 mod=YES proto=3 caps=0x07 (unsolicited) -> custom bodies enabled
+[Info   ] [swap:net] sent model='<native>' cosmetics=1 chest=on hips=off client=1 -> [0] (heartbeat)
+[Info   ] [swap:net] recv client=0 slug='tc2-demoman' cosmetics=[builtin.partyhat] chest=on hips=off from=0 flags=0x01 bytes=40
+[Info   ] [model:identity] actor=remote=0 wantedSlug=- advertisedSlug=tc2-demoman resolvedDb=17 appliedRow=- bodySlug=- hudRow=tc2-demoman wardrobeRow=tc2-demoman provenance=remote:vouched readiness=ready bodyState=pending
+[Info   ] [model:identity] refresh why='accepted remote state' hudDrift=no wardrobeDrift=no watch=0/4 hudWrites=0 wardrobeMoves=0 dbGen=15 remoteRev=1
+[Info   ] [join:trace] scene -> 'Lobby'
+[Info   ] [sahurrig:build] 'TC2 Demoman' root=========== BASE/Model/Third Person Model/Third Person Concrete Model Parent/3P_ConcreteModel_Male_04_James(Clone) layer=2 ('Ignore Raycast') verts=6526 tris=8585 submeshes=2 materials=2 bones=24 yaw=0 mats=2 height=1.800m (source baked 1.807m) bounds y[0.000,1.800] blob=189778 tex=656401 builds=1
+[Info   ] [sahurrig:body] hid 8 body renderer(s), tracked 8 for restore (incl. ones already disabled)
+[Info   ] [sahurrig:render] intended='tc2-demoman' label='TC2 Demoman' built='Sahur_RiggedBody' verts=6526 submeshes=2 bones=24 rendererEnabled=1 hiddenNative=8 builds=2 state=native
+[Info   ] [sahurrig:preview] attached label='remote:0:tc2-demoman' model='========== BASE/Model/Third Person Model/Third Person Concrete Model Parent/3P_ConcreteModel_Male_04_James(Clone)' bones=24 hiddenHost=8 builds=1
+[Info   ] [swap:net] scene 'Menu' -> 'Lobby': dropping every remote body, states are kept
+[Info   ] [sahurrig:body] restored 8 body renderer(s) (why=remote:0:scene-change) already=0 lost=0 untracked=0
+[Info   ] [model:identity] refresh why='wardrobe UI attached' hudDrift=no wardrobeDrift=no watch=0/4 hudWrites=0 wardrobeMoves=0 dbGen=16 remoteRev=3
+[Info   ] [random:join] ROLL lobby=109775242888030308 client=1 pool=15 (all custom wardrobe entries, db 10..24) chosenEntry=7 chosenSlug='tc2-demoman' chosenDbIndex=17 chosenLabel='TC2 Demoman' reason=lobby membership active, lobby scene loaded, roster ready, game's own join apply finished (grace=3s), no manual pick, first roll for this membership (pid=37768)
+[Info   ] [model:identity] actor=local wantedSlug=tc2-demoman advertisedSlug=- resolvedDb=17 appliedRow=- bodySlug=- hudRow=tc2-demoman wardrobeRow=- provenance=wanted:explicit readiness=ready bodyState=pending
+[Info   ] [model:identity] refresh why='wanted selection changed' hudDrift=no wardrobeDrift=no watch=0/4 hudWrites=0 wardrobeMoves=0 dbGen=16 remoteRev=3
+[Info   ] [swap:net] local model -> 'tc2-demoman' (queued for peers)
+[Info   ] [model:identity] actor=local wantedSlug=tc2-demoman advertisedSlug=- resolvedDb=17 appliedRow=Male_5_Ryan_PlayerModelData bodySlug=- hudRow=tc2-demoman wardrobeRow=Male_5_Ryan_PlayerModelData provenance=wanted:explicit readiness=ready bodyState=pending
+[Info   ] [model:identity] refresh why='game applied row changed' hudDrift=no wardrobeDrift=no watch=0/4 hudWrites=0 wardrobeMoves=0 dbGen=16 remoteRev=3
+[Info   ] [cosmetic:worn] slug='native' spec=null anchor=False
+[Info   ] [sahurrig:build] 'TC2 Demoman' root=========== BASE/Model/Third Person Model/Third Person Concrete Model Parent/3P_ConcreteModel_Male_05_Ryan(Clone) layer=6 ('InteractableLookable') verts=6526 tris=8585 submeshes=2 materials=2 bones=24 yaw=0 mats=2 height=1.800m (source baked 1.807m) bounds y[0.000,1.800] blob=189778 tex=656401 builds=1
+[Info   ] [sahurrig:body] hid 0 body renderer(s), tracked 14 for restore (incl. ones already disabled)
+[Info   ] [sahurrig:render] intended='tc2-demoman' label='TC2 Demoman' built='Sahur_RiggedBody' verts=6526 submeshes=2 bones=24 rendererEnabled=1 hiddenNative=14 builds=2 state=live
+[Info   ] [sahurrig:build] 'TC2 Demoman' root=========== BASE/Model/Third Person Model/Third Person Concrete Model Parent/3P_ConcreteModel_Male_04_James(Clone) layer=2 ('Ignore Raycast') verts=6526 tris=8585 submeshes=2 materials=2 bones=24 yaw=0 mats=2 height=1.800m (source baked 1.807m) bounds y[0.000,1.800] blob=189778 tex=656401 builds=1
+[Info   ] [sahurrig:body] hid 8 body renderer(s), tracked 8 for restore (incl. ones already disabled)
+[Info   ] [sahurrig:render] intended='tc2-demoman' label='TC2 Demoman' built='Sahur_RiggedBody' verts=6526 submeshes=2 bones=24 rendererEnabled=1 hiddenNative=8 builds=2 state=live
+[Info   ] [sahurrig:preview] attached label='remote:0:tc2-demoman' model='========== BASE/Model/Third Person Model/Third Person Concrete Model Parent/3P_ConcreteModel_Male_04_James(Clone)' bones=24 hiddenHost=8 builds=1
+[Info   ] [swap:net] sent model='tc2-demoman' cosmetics=1 chest=on hips=off client=1 -> [0] (change)
+[Info   ] [model:identity] actor=local wantedSlug=tc2-demoman advertisedSlug=- resolvedDb=17 appliedRow=Male_5_Ryan_PlayerModelData bodySlug=tc2-demoman hudRow=tc2-demoman wardrobeRow=Male_5_Ryan_PlayerModelData provenance=wanted:explicit readiness=ready bodyState=live
+[Info   ] [model:identity] actor=remote=0 wantedSlug=- advertisedSlug=tc2-demoman resolvedDb=17 appliedRow=- bodySlug=tc2-demoman hudRow=tc2-demoman wardrobeRow=tc2-demoman provenance=remote:vouched readiness=ready bodyState=live
+[Info   ] [model:identity] refresh why='accepted remote state' hudDrift=no wardrobeDrift=no watch=0/4 hudWrites=0 wardrobeMoves=0 dbGen=16 remoteRev=4
+[Info   ] [cosmetic:worn] slug='tc2-demoman' spec=Sahur_Tc2Demoman_Body anchor=True
+[Info   ] [sahurrig:body] restored 8 body renderer(s) (why=remote:0:module-dispose) already=0 lost=0 untracked=0
+[Info   ] [sahurrig:body] restored 0 body renderer(s) (why=dispose) already=14 lost=0 untracked=0
+[Info   ] [swap:net] local model -> 'tc2-engineer' (queued for peers)
+[Info   ] [swap:net] session up epoch=3488889210 gen=6 local=1 server=False role=client proto=3 mod=yes caps=0x07 clock=server localModel='tc2-engineer' cosmetics=1 chest=on hips=off
+[Info   ] [swap:net] hello -> client=0 attempt=1 proto=3 caps=0x07 (session-start)
+[Info   ] [model:identity] actor=local wantedSlug=tc2-engineer advertisedSlug=- resolvedDb=19 appliedRow=Male_5_Ryan_PlayerModelData bodySlug=- hudRow=tc2-engineer wardrobeRow=Male_5_Ryan_PlayerModelData provenance=wanted:explicit readiness=ready bodyState=pending
+[Info   ] [model:identity] refresh why='wardrobe UI attached' hudDrift=yes wardrobeDrift=no watch=4/4 hudWrites=1 wardrobeMoves=0 dbGen=16 remoteRev=0
+[Info   ] [cosmetic:worn] slug='native' spec=null anchor=False
+[Info   ] [join:trace] scene -> 'Lobby'
+[Info   ] [sahurrig:build] 'TC2 Engineer' root=========== BASE/Model/Third Person Model/Third Person Concrete Model Parent/3P_ConcreteModel_Male_05_Ryan(Clone) layer=6 ('InteractableLookable') verts=10318 tris=10908 submeshes=2 materials=2 bones=24 yaw=0 mats=2 height=1.800m (source baked 1.807m) bounds y[0.000,1.800] blob=283348 tex=965526 builds=1
+[Info   ] [sahurrig:body] hid 0 body renderer(s), tracked 14 for restore (incl. ones already disabled)
+[Info   ] [sahurrig:render] intended='tc2-engineer' label='TC2 Engineer' built='Sahur_RiggedBody' verts=10318 submeshes=2 bones=24 rendererEnabled=1 hiddenNative=14 builds=2 state=live
+[Warning] [swap:net] REJECT state sender=0 claims origin=0: no matched direct handshake with the server client=0 (handshake=pending); the origin cannot be vouched for; dropped
+[Info   ] [swap:net] hello -> client=0 attempt=2 proto=3 caps=0x07 (retry)
+[Info   ] [model:identity] actor=local wantedSlug=tc2-engineer advertisedSlug=- resolvedDb=19 appliedRow=Male_5_Ryan_PlayerModelData bodySlug=tc2-engineer hudRow=tc2-engineer wardrobeRow=Male_5_Ryan_PlayerModelData provenance=wanted:explicit readiness=ready bodyState=live
+[Info   ] [model:identity] refresh why='reconcile-watch' hudDrift=no wardrobeDrift=no watch=3/4 hudWrites=1 wardrobeMoves=0 dbGen=16 remoteRev=0
+[Info   ] [cosmetic:worn] slug='tc2-engineer' spec=Sahur_Tc2Engineer_Body anchor=True
+[Info   ] [swap:net] handshake client=0 mod=YES proto=3 caps=0x07 (answered) -> custom bodies enabled
+[Info   ] [swap:net] recv client=0 slug='tc2-demoman' cosmetics=[builtin.partyhat] chest=on hips=off from=0 flags=0x01 bytes=40
+[Info   ] [sahurrig:build] 'TC2 Demoman' root=========== BASE/Model/Third Person Model/Third Person Concrete Model Parent/3P_ConcreteModel_Male_04_James(Clone) layer=2 ('Ignore Raycast') verts=6526 tris=8585 submeshes=2 materials=2 bones=24 yaw=0 mats=2 height=1.800m (source baked 1.807m) bounds y[0.000,1.800] blob=189778 tex=656401 builds=1
+[Info   ] [sahurrig:body] hid 8 body renderer(s), tracked 8 for restore (incl. ones already disabled)
+[Info   ] [sahurrig:render] intended='tc2-demoman' label='TC2 Demoman' built='Sahur_RiggedBody' verts=6526 submeshes=2 bones=24 rendererEnabled=1 hiddenNative=8 builds=2 state=live
+[Info   ] [sahurrig:preview] attached label='remote:0:tc2-demoman' model='========== BASE/Model/Third Person Model/Third Person Concrete Model Parent/3P_ConcreteModel_Male_04_James(Clone)' bones=24 hiddenHost=8 builds=1
+[Info   ] [swap:net] sent model='tc2-engineer' cosmetics=1 chest=on hips=off client=1 -> [0] (heartbeat)
+[Info   ] [model:identity] actor=remote=0 wantedSlug=- advertisedSlug=tc2-demoman resolvedDb=17 appliedRow=- bodySlug=tc2-demoman hudRow=tc2-demoman wardrobeRow=tc2-demoman provenance=remote:vouched readiness=ready bodyState=live
+[Info   ] [model:identity] refresh why='accepted remote state' hudDrift=no wardrobeDrift=no watch=2/4 hudWrites=1 wardrobeMoves=0 dbGen=16 remoteRev=2
+[Info   ] [model:identity] refresh why='reconcile-watch' hudDrift=no wardrobeDrift=no watch=1/4 hudWrites=1 wardrobeMoves=0 dbGen=16 remoteRev=2
+[Info   ] [model:identity] refresh why='reconcile-watch' hudDrift=no wardrobeDrift=no watch=0/4 hudWrites=1 wardrobeMoves=0 dbGen=16 remoteRev=2

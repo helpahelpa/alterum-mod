@@ -1,0 +1,591 @@
+{
+ "counts": {
+  "cosmetics": 21,
+  "meshes": 33,
+  "materials": 48,
+  "textures": 23
+ },
+ "packBytes": 20622292,
+ "manifestBytes": 57512,
+ "blobBytes": 20564768,
+ "sourceHead": {
+  "bounds": {
+   "space": "spine.004 local",
+   "vertices": 1203,
+   "min": [
+    -0.41747,
+    -0.072052,
+    -0.349776
+   ],
+   "max": [
+    0.417643,
+    0.765735,
+    0.398501
+   ],
+   "size": [
+    0.835114,
+    0.837787,
+    0.748277
+   ],
+   "center": [
+    8.7e-05,
+    0.346841,
+    0.024363
+   ],
+   "width": 0.835114,
+   "top": 0.765735,
+   "centerX": 8.7e-05,
+   "centerZ": 0.024363,
+   "neckToHeadDistance": 0.480051,
+   "widthPerNeckToHead": 1.739637,
+   "topPerNeckToHead": 1.595115,
+   "authoringUnitScale": 2.062579
+  },
+  "rotRelModel": [
+   0.011309,
+   0.033896,
+   -0.000384,
+   0.999361
+  ]
+ },
+ "cosmetics": [
+  {
+   "id": "builtin.3dglasses",
+   "type": 0,
+   "prefab": "3DGlassesCosmetic",
+   "rootScale": [
+    1.2000000476837158,
+    1.2000000476837158,
+    1.2000000476837158
+   ],
+   "children": 1
+  },
+  {
+   "id": "builtin.bunnyears",
+   "type": 0,
+   "prefab": "BunnyEarsCosmetic",
+   "rootScale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": 1
+  },
+  {
+   "id": "builtin.denimhat",
+   "type": 0,
+   "prefab": "DenimHatCosmetic",
+   "rootScale": [
+    1.0,
+    1.0000001192092896,
+    1.0
+   ],
+   "children": 1
+  },
+  {
+   "id": "builtin.eyeballs",
+   "type": 0,
+   "prefab": "RealisticEyeballsCosmetic",
+   "rootScale": [
+    1.2000000476837158,
+    1.2000000476837158,
+    1.2000000476837158
+   ],
+   "children": 2
+  },
+  {
+   "id": "builtin.fancyglasses",
+   "type": 0,
+   "prefab": "FancyGlassesCosmetic",
+   "rootScale": [
+    1.2000000476837158,
+    1.2000000476837158,
+    1.2000000476837158
+   ],
+   "children": 1
+  },
+  {
+   "id": "builtin.fancypants",
+   "type": 0,
+   "prefab": "MustacheAndMonocle",
+   "rootScale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": 1
+  },
+  {
+   "id": "builtin.gunholster",
+   "type": 4,
+   "prefab": "GunHolsterCosmetic",
+   "rootScale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": 1
+  },
+  {
+   "id": "builtin.hardhat",
+   "type": 0,
+   "prefab": "HardHatCosmetic",
+   "rootScale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": 1
+  },
+  {
+   "id": "builtin.jesterhat",
+   "type": 0,
+   "prefab": "JesterHatCosmetic",
+   "rootScale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": 1
+  },
+  {
+   "id": "builtin.kittyears",
+   "type": 0,
+   "prefab": "KittyEarsCosmetic",
+   "rootScale": [
+    1.0,
+    1.0000001192092896,
+    1.0
+   ],
+   "children": 1
+  },
+  {
+   "id": "builtin.mimemask",
+   "type": 0,
+   "prefab": "MimeMaskCosmetic",
+   "rootScale": [
+    1.0,
+    1.0000001192092896,
+    1.0
+   ],
+   "children": 1
+  },
+  {
+   "id": "builtin.outoforder",
+   "type": 2,
+   "prefab": "OutOfOrderCosmetic",
+   "rootScale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": 1
+  },
+  {
+   "id": "builtin.partyglasses",
+   "type": 0,
+   "prefab": "GlassesCosmetic",
+   "rootScale": [
+    1.2000000476837158,
+    1.2000000476837158,
+    1.2000000476837158
+   ],
+   "children": 1
+  },
+  {
+   "id": "builtin.partyhat",
+   "type": 0,
+   "prefab": "PartyHatCosmetic",
+   "rootScale": [
+    1.0,
+    1.0000001192092896,
+    1.0
+   ],
+   "children": 1
+  },
+  {
+   "id": "builtin.plaguemask",
+   "type": 0,
+   "prefab": "PlagueMaskCosmetic",
+   "rootScale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": 1
+  },
+  {
+   "id": "builtin.propellerhat",
+   "type": 0,
+   "prefab": "PropellerHatCosmetic",
+   "rootScale": [
+    1.0,
+    1.0000001192092896,
+    1.0
+   ],
+   "children": 1
+  },
+  {
+   "id": "builtin.rudolph",
+   "type": 0,
+   "prefab": "RudolphCosmetic",
+   "rootScale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": 1
+  },
+  {
+   "id": "builtin.santahat",
+   "type": 0,
+   "prefab": "SantaHatCosmetic",
+   "rootScale": [
+    1.0,
+    1.0000001192092896,
+    1.0
+   ],
+   "children": 1
+  },
+  {
+   "id": "builtin.slimething",
+   "type": 0,
+   "prefab": "SlimeThing",
+   "rootScale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": 1
+  },
+  {
+   "id": "builtin.tophat",
+   "type": 0,
+   "prefab": "TopHatCosmetic",
+   "rootScale": [
+    1.0,
+    1.0000001192092896,
+    1.0
+   ],
+   "children": 1
+  },
+  {
+   "id": "builtin.watch",
+   "type": 3,
+   "prefab": "WatchCosmetic",
+   "rootScale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": 1
+  }
+ ],
+ "textures": [
+  {
+   "name": "HardHat",
+   "w": 1024,
+   "h": 1024,
+   "pngBytes": 381945
+  },
+  {
+   "name": "headband_Mat_baseColor",
+   "w": 2048,
+   "h": 2048,
+   "pngBytes": 979045
+  },
+  {
+   "name": "MustacheAndMonacle",
+   "w": 2,
+   "h": 2,
+   "pngBytes": 84
+  },
+  {
+   "name": "sclera_color",
+   "w": 2048,
+   "h": 1024,
+   "pngBytes": 815628
+  },
+  {
+   "name": "Rudolph the Reindeer",
+   "w": 1024,
+   "h": 1024,
+   "pngBytes": 233906
+  },
+  {
+   "name": "Baseball_Cap_normal",
+   "w": 2048,
+   "h": 2048,
+   "pngBytes": 3877675
+  },
+  {
+   "name": "OutOfOrder_BaseColor",
+   "w": 1024,
+   "h": 1024,
+   "pngBytes": 24275
+  },
+  {
+   "name": "Normals_Holster_And_Guns",
+   "w": 2048,
+   "h": 2048,
+   "pngBytes": 388812
+  },
+  {
+   "name": "Slime",
+   "w": 8,
+   "h": 8,
+   "pngBytes": 131
+  },
+  {
+   "name": "Texture_Holster_And_Guns",
+   "w": 2048,
+   "h": 2048,
+   "pngBytes": 339008
+  },
+  {
+   "name": "headband_Mat_normal",
+   "w": 2048,
+   "h": 2048,
+   "pngBytes": 22902
+  },
+  {
+   "name": "Mask",
+   "w": 128,
+   "h": 128,
+   "pngBytes": 3559
+  },
+  {
+   "name": "ScavengerPlayerModel",
+   "w": 2048,
+   "h": 2048,
+   "pngBytes": 506947
+  },
+  {
+   "name": "Bufoon Hat",
+   "w": 1024,
+   "h": 1024,
+   "pngBytes": 379919
+  },
+  {
+   "name": "propellerhattexture",
+   "w": 128,
+   "h": 64,
+   "pngBytes": 401
+  },
+  {
+   "name": "earstex",
+   "w": 16,
+   "h": 16,
+   "pngBytes": 158
+  },
+  {
+   "name": "OutOfOrder_Normal",
+   "w": 1024,
+   "h": 1024,
+   "pngBytes": 230904
+  },
+  {
+   "name": "Baseball_Cap_roughness",
+   "w": 2048,
+   "h": 2048,
+   "pngBytes": 1520140
+  },
+  {
+   "name": "iris_color",
+   "w": 1024,
+   "h": 1024,
+   "pngBytes": 629352
+  },
+  {
+   "name": "03-Santa",
+   "w": 256,
+   "h": 256,
+   "pngBytes": 25812
+  },
+  {
+   "name": "mimemasktexture",
+   "w": 1024,
+   "h": 1024,
+   "pngBytes": 176885
+  },
+  {
+   "name": "Baseball_Cap_albedoMelon",
+   "w": 2048,
+   "h": 2048,
+   "pngBytes": 3551679
+  },
+  {
+   "name": "Party_Hat_DefaultMaterial_BaseMap",
+   "w": 2048,
+   "h": 2048,
+   "pngBytes": 118224
+  }
+ ],
+ "meshes": [
+  {
+   "name": "Lethal_Company_Astronaut",
+   "verts": 8043,
+   "indices": 24048
+  },
+  {
+   "name": "Propeller",
+   "verts": 430,
+   "indices": 1344
+  },
+  {
+   "name": "Cube",
+   "verts": 870,
+   "indices": 1548
+  },
+  {
+   "name": "MustacheAndMonacle",
+   "verts": 118,
+   "indices": 492
+  },
+  {
+   "name": "Mball.004",
+   "verts": 720,
+   "indices": 2172
+  },
+  {
+   "name": "default",
+   "verts": 6,
+   "indices": 12
+  },
+  {
+   "name": "default",
+   "verts": 2249,
+   "indices": 7431
+  },
+  {
+   "name": "default",
+   "verts": 2120,
+   "indices": 12288
+  },
+  {
+   "name": "default",
+   "verts": 384,
+   "indices": 1152
+  },
+  {
+   "name": "default",
+   "verts": 745,
+   "indices": 2640
+  },
+  {
+   "name": "default",
+   "verts": 1825,
+   "indices": 10752
+  },
+  {
+   "name": "default",
+   "verts": 1837,
+   "indices": 10752
+  },
+  {
+   "name": "default",
+   "verts": 18892,
+   "indices": 109632
+  },
+  {
+   "name": "default",
+   "verts": 40863,
+   "indices": 243852
+  },
+  {
+   "name": "default",
+   "verts": 426,
+   "indices": 1512
+  },
+  {
+   "name": "default",
+   "verts": 483,
+   "indices": 1416
+  },
+  {
+   "name": "default",
+   "verts": 1035,
+   "indices": 5472
+  },
+  {
+   "name": "default",
+   "verts": 2398,
+   "indices": 11124
+  },
+  {
+   "name": "default",
+   "verts": 578,
+   "indices": 1728
+  },
+  {
+   "name": "Bufoon Hat",
+   "verts": 416,
+   "indices": 1248
+  },
+  {
+   "name": "Cube.002",
+   "verts": 84,
+   "indices": 252
+  },
+  {
+   "name": "Hard Hatt",
+   "verts": 951,
+   "indices": 3249
+  },
+  {
+   "name": "Cone",
+   "verts": 52,
+   "indices": 138
+  },
+  {
+   "name": "OutOfOrder",
+   "verts": 472,
+   "indices": 1020
+  },
+  {
+   "name": "Cube.001",
+   "verts": 274,
+   "indices": 1188
+  },
+  {
+   "name": "Sphere",
+   "verts": 510,
+   "indices": 2160
+  },
+  {
+   "name": "Mask.002",
+   "verts": 448,
+   "indices": 1242
+  },
+  {
+   "name": "mimemask",
+   "verts": 382,
+   "indices": 1704
+  },
+  {
+   "name": "Hat",
+   "verts": 3304,
+   "indices": 10560
+  },
+  {
+   "name": "Mask",
+   "verts": 607,
+   "indices": 1872
+  },
+  {
+   "name": "Rudolf Nose",
+   "verts": 764,
+   "indices": 3300
+  },
+  {
+   "name": "BezierCircle",
+   "verts": 585,
+   "indices": 3168
+  },
+  {
+   "name": "Mask.001",
+   "verts": 448,
+   "indices": 1242
+  }
+ ]
+}

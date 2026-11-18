@@ -1,0 +1,568 @@
+--- merged/mod/AlterumModelSwap.Hot/Mirror.cs	2026-11-11 21:59:13.477123958 +0900
++++ cosmetics/merge/AlterumModelSwap.Hot/Mirror.cs	2026-11-12 10:27:45.171092696 +0900
+@@ -205,6 +205,10 @@
+     // Explicit invalidation for a pipeline/renderer-asset change at runtime.
+     internal static void InvalidateRenderableLayers() => _renderableLayers = null;
+ 
++    // Shared per-generation renderable-layer map for the cosmetics runtime (the local-cosmetic
++    // layer must be one the pipeline actually renders, same probe, same result).
++    internal static bool[] LayerRenderability(IHostContext log) => RenderableLayers(log);
++
+     private static bool[] RenderableLayers(IHostContext log)
+     {
+         if (_renderableLayers != null)
+--- merged/mod/AlterumModelSwap.Hot/CosmeticsRuntime.cs	2026-11-11 22:27:11.493104237 +0900
++++ cosmetics/merge/AlterumModelSwap.Hot/CosmeticsRuntime.cs	2026-11-12 10:29:05.870977051 +0900
+@@ -25,11 +25,19 @@
+ internal sealed class CosmeticsRuntime : IDisposable
+ {
+     // LayerMask.LayerToName(23) == "TV_PlayerModelMesh": the layer the game's third-person body
+-    // uses, present in both the screen camera and the mirror camera.
++    // uses, present in both the screen camera and the mirror camera. It is shared with the game's
++    // own third-person meshes and with other players' cosmetics, so it is never removed from the
++    // screen camera.
+     private const int TvPlayerModelLayer = 23;
++    // Per-generation local-cosmetic layer. Only the local player's cosmetics are moved here; the
++    // screen cameras carry the bit only in third person and the mirror camera always does.
++    private const int FallbackLocalCosmeticLayer = 6;
++    private const int PreferredLocalCosmeticLayer = 6;
++    private const int MirrorBodyLayer = 14;                 // MirrorPlayerVisibility's isolated body
+     private const string DefaultEquipped = "builtin.partyhat";
+     private const float BindPollSeconds = 0.5f;
+     private const float PovPollSeconds = 0.25f;
++    private const float CameraScanSeconds = 2f;
+ 
+     private readonly IHostContext _h;
+     private bool _disposed;
+@@ -88,13 +96,18 @@
+     private int _foreignHideKeys, _foreignRenderingOff;
+     private bool _screenVisible, _mirrorVisible;
+     private string _lastView = "";
+-    private readonly List<List<RendererSnapshot>> _mirrorScopes = new();
+-    private readonly Stack<List<RendererSnapshot>> _snapshotPool = new();
+-    private int _mirrorScopeDepth;
+-    private int _mirrorScopeLogs;
+-    private int _mirrorScopeEndLogs;
+     private int _assetsRolledBack;
+ 
++    // ---------------------------------------------------------------- per-camera local layer
++    private int _localLayer = -1;
++    private bool _localLayerResolved;
++    private bool _layerProbeDeferred;
++    private string _layerScene = "";
++    private float _nextCameraScan;
++    private bool _screenLayerApplied;
++    private bool _hideAll;                                  // native body hide (death/cutscene)
++    private readonly List<CameraMaskState> _screenMasks = new();
++
+     private bool _overlayOpen;
+     private string _overlayInfo = "";
+     private float _nextProof = -1f;
+@@ -121,11 +134,13 @@
+         public bool Visible;
+     }
+ 
+-    private sealed class RendererSnapshot
+-    {
+-        public Renderer Renderer;
+-        public bool Enabled, ForceOff;
+-        public ShadowCastingMode Shadows;
++    // Pristine culling mask of a screen camera, captured before the first local-layer write so a
++    // hot reload puts back exactly what the game had.
++    private sealed class CameraMaskState
++    {
++        public Camera Camera;
++        public int OriginalMask;
++        public int InstanceId;
+     }
+ 
+     internal CosmeticsRuntime(IHostContext host)
+@@ -166,6 +181,7 @@
+         if (_pack == null && _packFailure == null) LoadPack();
+         if (_pack == null) return;
+ 
++        EnsureLocalCosmeticLayer();
+         PollRequestFile();
+         PollBind();
+         PollPov();
+@@ -226,52 +242,28 @@
+                    $"instances={_instances.Count} markers={CosmeticMarkers.RendererCount}");
+     }
+ 
+-    // Called by the mirror immediately around reflectCam.Render(): hats must be in the mirror even
+-    // while the screen hides them (first person), and restored exactly afterwards. Scopes nest: an
+-    // inner end restores what the inner entry captured, so an outer mirror render keeps its state.
++    // Per-camera visibility, no renderer toggling for POV: the local player's cosmetics sit on a
++    // dedicated layer. The screen cameras add that bit in third person and clear it in first
++    // person; the mirror camera keeps it, so the same hat object is hidden from the screen and
++    // visible in the mirror in the same frame. Layer 23 (the game's TV meshes and other players'
++    // cosmetics) is never removed, so foreign hats keep rendering in first person.
+     internal IDisposable BeginMirrorView(Camera camera)
+     {
+         if (_disposed || _pack == null) return null;
+-        var snapshot = CaptureRendererState();
+-        _mirrorScopes.Add(snapshot);
+-        _mirrorScopeDepth = _mirrorScopes.Count;
+-        var scope = new MirrorScope(this, snapshot);
+-        try
+-        {
+-            ApplyMirrorState();
+-            // Diagnostics after the state change on purpose, but they must never strand the scope:
+-            // MirrorRuntime.Tick only disposes a scope it received.
+-            if (_mirrorScopeLogs++ < 2) LogMirrorScopeEntry(camera);
+-            return scope;
+-        }
+-        catch (Exception e)
+-        {
+-            _h.LogWarning($"[cosmetic:mirror-scope] enter failed, rolled back: {e.Message}");
+-            EndMirrorScope(snapshot);
+-            return null;
+-        }
+-    }
+-
+-    private void LogMirrorScopeEntry(Camera camera)
+-    {
+-        try
+-        {
+-            int mask = camera == null ? 0 : camera.cullingMask;
+-            _h.LogInfo($"[cosmetic:mirror-scope] enter depth={_mirrorScopeDepth} camera='{CameraPath(camera?.transform)}' mask=0x{mask:X8} " +
+-                       $"layer{TvPlayerModelLayer}InMask={(camera != null && (mask & (1 << TvPlayerModelLayer)) != 0)} " +
+-                       $"instances={_instances.Count} renderers={RendererCount()} enabledForMirror={_mirrorVisible} " +
+-                       $"nativeHide={_foreignHide} foreignKeys={_foreignHideKeys}");
+-        }
+-        catch (Exception e) { _h.LogWarning($"[cosmetic:mirror-scope] diagnostics failed (scope already applied): {e.Message}"); }
++        _mirrorCamera = camera;
++        EnsureMirrorLocalLayer();
++        return null;   // nothing to restore: the mirror is a mask, not a renderer-state scope
+     }
+ 
+     internal void SetMirrorCamera(Camera camera)
+     {
++        bool changed = camera != _mirrorCamera;
+         _mirrorCamera = camera;
+-        if (camera != null)
++        if (camera != null && changed)
+             _h.LogInfo($"[cosmetic:mirror-mask] camera='{CameraPath(camera?.transform)}' mask=0x{camera.cullingMask:X8} " +
+                        $"layer{TvPlayerModelLayer}={(camera.cullingMask & (1 << TvPlayerModelLayer)) != 0} " +
+-                       $"name='{LayerMask.LayerToName(TvPlayerModelLayer)}'");
++                       $"name='{LayerMask.LayerToName(TvPlayerModelLayer)}' localLayer={_localLayer}");
++        EnsureMirrorLocalLayer();
+     }
+ 
+     internal void OnGUI()
+@@ -319,9 +311,8 @@
+         _instances.Clear();
+         int markersLeft = CosmeticMarkers.RendererCount, rootsLeft = CosmeticMarkers.RootCount;
+         CosmeticMarkers.Clear();
+-        _mirrorScopes.Clear();
+-        _snapshotPool.Clear();
+-        _mirrorScopeDepth = 0;
++        RestoreScreenCameraMasks();
++        _localLayer = -1;
+         int meshCount = _meshes.Count, materialCount = _materials.Count, textureCount = _textures.Count;
+         int destroyedMeshes = 0, destroyedMaterials = 0, destroyedTextures = 0;
+         foreach (var material in _materials.Values) { try { if (material != null) { UnityEngine.Object.Destroy(material); destroyedMaterials++; } } catch { } }
+@@ -948,16 +939,25 @@
+     {
+         if (_pack == null) return;
+         bool bodyActive = _body != null && _head != null && _body.gameObject.activeInHierarchy;
+-        bool screen = _fitReady && bodyActive && !_foreignHide && _pov == POV.ThirdPerson;
+-        bool mirror = _fitReady && bodyActive && !_foreignHide;
+-        bool changed = screen != _screenVisible || mirror != _mirrorVisible;
++        // Native body hides (death, cutscene, equipment) still withdraw the hat from every camera;
++        // first person is NOT one of them, because the mirror has to keep showing the hat. The
++        // mirror's own body controllers are what distinguishes the two (see PollNativeHide).
++        bool hideAll = _foreignHide && _pov != POV.FirstPerson;
++        bool screen = _fitReady && bodyActive && !hideAll && _pov == POV.ThirdPerson;
++        bool mirror = _fitReady && bodyActive && !hideAll;
++        bool hideChanged = hideAll != _hideAll;
++        bool changed = screen != _screenVisible || mirror != _mirrorVisible || hideChanged;
+         _screenVisible = screen;
+         _mirrorVisible = mirror;
+-        foreach (var instance in _instances) SetInstanceVisible(instance, screen);
++        _hideAll = hideAll;
++        if (hideChanged)
++            foreach (var instance in _instances) SetInstanceVisible(instance, !hideAll);
++
++        ApplyScreenCameraMasks(why);
+ 
+         string view = $"pov={_pov} bodyActive={bodyActive} foreignHide={_foreignHide} " +
+                       $"(measured mirrorBound={_foreignHideBound} foreignKeys={_foreignHideKeys} renderingOff={_foreignRenderingOff}) " +
+-                      $"fit={_fitReady} screen={screen} mirror={mirror}";
++                      $"fit={_fitReady} screen={screen} mirror={mirror} hideAll={hideAll} localLayer={_localLayer}";
+         if (changed || view != _lastView)
+         {
+             _lastView = view;
+@@ -970,89 +970,225 @@
+         }
+     }
+ 
+-    private void ApplyMirrorState()
+-    {
+-        if (_pack == null) return;
+-        bool bodyActive = _body != null && _head != null && _body.gameObject.activeInHierarchy;
+-        bool mirror = _fitReady && bodyActive && !_foreignHide;
+-        foreach (var instance in _instances) SetInstanceVisible(instance, mirror);
++    // Choose the layer only the local player's cosmetics use. Requirements, all measured at
++    // runtime instead of inferred from the tag names:
++    //  * the URP renderer asset actually renders it (the mirror shares the same probe), otherwise
++    //    the mirror camera could not show the hat either;
++    //  * no live renderer sits on it, so widening/removing the screen mask bit changes nothing but
++    //    our hats;
++    //  * it is not the mirror's isolated body layer, the game's TV/FV model layers, UI, handheld,
++    //    default, or the shared TV player-mesh layer (23).
++    // Preference order: unused and outside every screen camera (then the bit is purely ours to
++    // add/remove), unused anywhere, then the least-used outside/inside with a warning.
++    private void EnsureLocalCosmeticLayer()
++    {
++        string scene = "";
++        try { scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name; } catch { }
++        // The first probe runs in the main menu, where no lobby camera exists yet. Re-probe on the
++        // scene transition so the "no live renderer on this layer" evidence is measured in the
++        // scene the cosmetics actually render in. The old bit is withdrawn before the new one.
++        if (_localLayerResolved && scene == _layerScene) return;
++        // One Update of slack on the first probe of a generation: a hot reload replaces the module
++        // inside the same frame the retiring generation's roots are scheduled for destruction.
++        if (!_layerProbeDeferred) { _layerProbeDeferred = true; return; }
++        if (_localLayer >= 0)
++        {
++            RestoreScreenCameraMasks();
++            if (_mirrorCamera != null)
++                try { _mirrorCamera.cullingMask &= ~(1 << _localLayer); } catch { }
++            _screenLayerApplied = false;
++        }
++        _localLayerResolved = true;
++        _layerScene = scene;
++        try
++        {
++            var renderable = MirrorFactory.LayerRenderability(_h);
++            var counts = new int[32];
++            int cosmeticRenderers = 0;
++            var renderers = Resources.FindObjectsOfTypeAll(Il2CppType.Of<Renderer>());
++            for (int i = 0; i < renderers.Length; i++)
++            {
++                var r = renderers[i].TryCast<Renderer>();
++                if (r == null) continue;
++                GameObject go;
++                try { go = r.gameObject; } catch { continue; }
++                if (go == null || !go.activeInHierarchy || string.IsNullOrEmpty(go.scene.name)) continue;
++                // A hot reload can probe before the retiring generation's roots are destroyed and
++                // their markers are cleared; the Cosmetic_ ancestor name keeps those stale
++                // renderers from making the layer we just used look occupied.
++                if (IsModCosmetic(r)) { cosmeticRenderers++; continue; }
++                counts[go.layer]++;
++            }
++
++            int screenMask = ScreenMask();
++            int best = -1, bestPriority = int.MaxValue, bestCount = int.MaxValue;
++            bool preferredOk = renderable[PreferredLocalCosmeticLayer] && counts[PreferredLocalCosmeticLayer] == 0 &&
++                               (screenMask & (1 << PreferredLocalCosmeticLayer)) == 0;
++            if (preferredOk)
++            {
++                best = PreferredLocalCosmeticLayer;
++                bestPriority = 0;
++                bestCount = 0;
++            }
++            for (int layer = 0; !preferredOk && layer < 32; layer++)
++            {
++                if (!renderable[layer]) continue;
++                if (layer == 0 || layer == 2 || layer == 5 || layer == 15 || layer == 23 || layer == 24 || layer == 27) continue;
++                if (layer == MirrorBodyLayer) continue;
++                bool outside = (screenMask & (1 << layer)) == 0;
++                int count = counts[layer];
++                int priority = count == 0 ? (outside ? 0 : 1) : (outside ? 2 : 3);
++                if (priority > bestPriority || (priority == bestPriority && count >= bestCount)) continue;
++                best = layer; bestPriority = priority; bestCount = count;
++            }
++
++            if (best < 0)
++            {
++                best = FallbackLocalCosmeticLayer;
++                _h.LogWarning($"[cosmetic:layer] no renderable unused layer found; falling back to {best} " +
++                              $"('{LayerMask.LayerToName(best)}'); renderable={RenderableList(renderable)} screenMask=0x{screenMask:X8}");
++            }
++            _localLayer = best;
++            int bit = 1 << best;
++            string[] why = { "unused/outside-screen", "unused/inside-screen", "least-used/outside-screen", "least-used/inside-screen" };
++            _h.LogInfo($"[cosmetic:layer] selected={best} name='{LayerMask.LayerToName(best)}' bit=0x{bit:X8} " +
++                       $"reason={why[Math.Min(bestPriority, 3)]} otherLiveRenderers={bestCount} cosmeticRenderersExcluded={cosmeticRenderers} " +
++                       $"renderable={renderable[best]} inScreenMask={(screenMask & bit) != 0}");
++            _h.LogInfo($"[cosmetic:layer] probe renderable={RenderableList(renderable)} screenMask=0x{screenMask:X8} census={CensusList(counts)}");
++
++            ApplyLocalLayerToInstances();
++            ApplyScreenCameraMasks("layer-selected");
++        }
++        catch (Exception e)
++        {
++            _localLayer = FallbackLocalCosmeticLayer;
++            _h.LogWarning($"[cosmetic:layer] probe failed ({e.Message}); using fallback layer {_localLayer} ('{LayerMask.LayerToName(_localLayer)}')");
++        }
+     }
+ 
+-    private List<RendererSnapshot> CaptureRendererState()
++    private void ApplyLocalLayerToInstances()
+     {
+-        // Pooled: this runs once per mirror render, so the snapshot must not produce garbage on the
+-        // render path. Entries are reused, only their fields are refreshed.
+-        var snapshot = _snapshotPool.Count > 0 ? _snapshotPool.Pop() : new List<RendererSnapshot>();
+-        int used = 0;
++        if (_localLayer < 0) return;
+         foreach (var instance in _instances)
+         {
+-            for (int i = 0; i < instance.Renderers.Count; i++)
++            if (instance.Root != null) instance.Root.layer = _localLayer;
++            foreach (var r in instance.Renderers)
+             {
+-                var r = instance.Renderers[i];
+                 if (r == null) continue;
+-                RendererSnapshot captured;
+-                if (used < snapshot.Count) captured = snapshot[used];
+-                else { captured = new RendererSnapshot(); snapshot.Add(captured); }
+-                try
+-                {
+-                    captured.Renderer = r;
+-                    captured.Enabled = r.enabled;
+-                    captured.ForceOff = r.forceRenderingOff;
+-                    captured.Shadows = r.shadowCastingMode;
+-                }
+-                catch { continue; }
+-                used++;
++                try { r.gameObject.layer = _localLayer; } catch { }
+             }
+         }
+-        if (used < snapshot.Count) snapshot.RemoveRange(used, snapshot.Count - used);
+-        return snapshot;
+     }
+ 
+-    private void RestoreRendererState(List<RendererSnapshot> snapshot)
++    private static bool IsModCosmetic(Renderer renderer)
+     {
+-        for (int i = 0; i < snapshot.Count; i++)
++        if (CosmeticMarkers.IsCosmetic(renderer)) return true;
++        try
+         {
+-            var captured = snapshot[i];
+-            var r = captured.Renderer;
+-            if (r == null) continue;
+-            try { r.enabled = captured.Enabled; } catch { }
+-            try { r.forceRenderingOff = captured.ForceOff; } catch { }
+-            try { r.shadowCastingMode = captured.Shadows; } catch { }
++            var t = renderer.transform;
++            for (int i = 0; t != null && i < 8; i++, t = t.parent)
++                if (!string.IsNullOrEmpty(t.name) && t.name.StartsWith("Cosmetic_", StringComparison.Ordinal)) return true;
+         }
++        catch { }
++        return false;
+     }
+ 
+-    // P2.12: scopes form a stack. Ending one restores exactly what that scope captured, so an inner
+-    // scope ending during an outer mirror render returns the renderers to the outer scope's state
+-    // instead of applying the screen policy. A scope removed while an outer one is still active
+-    // re-applies the mirror policy for the remaining renders.
+-    private void EndMirrorScope(List<RendererSnapshot> snapshot)
++    private static string RenderableList(bool[] renderable)
+     {
+-        if (snapshot == null) return;
+-        if (!_mirrorScopes.Remove(snapshot))
++        var sb = new StringBuilder("[");
++        for (int i = 0; i < renderable.Length; i++)
++            if (renderable[i]) sb.Append(i).Append(',');
++        if (sb.Length > 1) sb.Length--;
++        return sb.Append(']').ToString();
++    }
++
++    private static string CensusList(int[] counts)
++    {
++        var sb = new StringBuilder();
++        for (int i = 0; i < counts.Length; i++)
++            if (counts[i] != 0) sb.Append(i).Append('=').Append(counts[i]).Append(' ');
++        return sb.Length == 0 ? "(none)" : sb.ToString().TrimEnd();
++    }
++
++    // Per-camera, per-POV screen visibility. Only the local-cosmetic bit is written; the camera's
++    // pristine mask is recorded once and restored on Dispose. Layer 23 is never touched.
++    private void ApplyScreenCameraMasks(string why)
++    {
++        if (_localLayer < 0) return;
++        bool want = _pov == POV.ThirdPerson && _fitReady && !_foreignHide;
++        bool rescan = Time.unscaledTime >= _nextCameraScan;
++        if (want == _screenLayerApplied && !rescan) return;
++        _nextCameraScan = Time.unscaledTime + CameraScanSeconds;
++
++        int bit = 1 << _localLayer;
++        int screens = 0, changed = 0;
++        var cams = Resources.FindObjectsOfTypeAll(Il2CppType.Of<Camera>());
++        for (int i = 0; i < cams.Length; i++)
+         {
+-            _h.LogWarning("[cosmetic:mirror-scope] end ignored: scope already closed");
+-            return;
++            var c = cams[i].TryCast<Camera>();
++            if (!MirrorFactory.ScreenCamera(c)) continue;
++            screens++;
++            TrackScreenCamera(c);
++            int mask = c.cullingMask;
++            int target = want ? (mask | bit) : (mask & ~bit);
++            if (target == mask) continue;
++            try { c.cullingMask = target; changed++; }
++            catch (Exception e) { _h.LogWarning($"[cosmetic:layer] screen mask write failed: {e.Message}"); }
+         }
+-        _mirrorScopeDepth = _mirrorScopes.Count;
+-        RestoreRendererState(snapshot);
+-        if (_mirrorScopeDepth > 0)
++
++        EnsureMirrorLocalLayer();
++
++        if (want != _screenLayerApplied || changed > 0)
+         {
+-            try { ApplyMirrorState(); }
+-            catch (Exception e) { _h.LogWarning($"[cosmetic:mirror-scope] re-apply for outer scope failed: {e.Message}"); }
++            _screenLayerApplied = want;
++            _h.LogInfo($"[cosmetic:layer] screen policy why={why} pov={_pov} localLayer={_localLayer} bit=0x{bit:X8} " +
++                       $"want={want} screenCameras={screens} masksChanged={changed} hideAll={_hideAll}");
+         }
+-        if (_mirrorScopeEndLogs++ < 2)
++    }
++
++    private void TrackScreenCamera(Camera camera)
++    {
++        int id;
++        try { id = camera.GetInstanceID(); } catch { return; }
++        for (int i = 0; i < _screenMasks.Count; i++)
+         {
+-            int enabled = 0, total = 0;
+-            foreach (var instance in _instances)
+-                foreach (var r in instance.Renderers)
+-                {
+-                    total++;
+-                    try { if (r != null && r.enabled) enabled++; } catch { }
+-                }
+-            _h.LogInfo($"[cosmetic:mirror-scope] end depth={_mirrorScopeDepth} restored={snapshot.Count} " +
+-                       $"enabledAfterRestore={enabled}/{total} screenVisible={_screenVisible} mirrorVisible={_mirrorVisible}");
++            var known = _screenMasks[i];
++            if (known.InstanceId == id && known.Camera != null) return;
+         }
+-        _snapshotPool.Push(snapshot);
++        _screenMasks.Add(new CameraMaskState { Camera = camera, OriginalMask = camera.cullingMask, InstanceId = id });
++        _h.LogInfo($"[cosmetic:layer] screen camera '{CameraPath(camera.transform)}' pristineMask=0x{camera.cullingMask:X8} tracked={_screenMasks.Count}");
++    }
++
++    private void RestoreScreenCameraMasks()
++    {
++        int restored = 0;
++        for (int i = 0; i < _screenMasks.Count; i++)
++        {
++            var known = _screenMasks[i];
++            if (known.Camera == null) continue;
++            try { known.Camera.cullingMask = known.OriginalMask; restored++; }
++            catch (Exception e) { _h.LogWarning($"[cosmetic:layer] screen mask restore failed: {e.Message}"); }
++        }
++        if (_screenMasks.Count > 0)
++            _h.LogInfo($"[cosmetic:layer] restored {restored}/{_screenMasks.Count} screen camera mask(s)");
++        _screenMasks.Clear();
++    }
++
++    // The mirror camera is mod-owned: it always includes the local layer, independent of the
++    // screen's POV. Never remove layer 23 here (the merged build gates that bit separately).
++    private void EnsureMirrorLocalLayer()
++    {
++        if (_localLayer < 0 || _mirrorCamera == null) return;
++        int bit = 1 << _localLayer;
++        try
++        {
++            int mask = _mirrorCamera.cullingMask;
++            if ((mask & bit) != 0) return;
++            _mirrorCamera.cullingMask = mask | bit;
++            _h.LogInfo($"[cosmetic:layer] mirror mask 0x{mask:X8} -> 0x{_mirrorCamera.cullingMask:X8} added localLayer={_localLayer} " +
++                       $"('{LayerMask.LayerToName(_localLayer)}') layer23={(mask & (1 << TvPlayerModelLayer)) != 0}");
++        }
++        catch (Exception e) { _h.LogWarning($"[cosmetic:layer] mirror mask write failed: {e.Message}"); }
+     }
+ 
+     private void SetInstanceVisible(Instance instance, bool visible)
+@@ -1078,8 +1214,9 @@
+         try
+         {
+             int bit = 1 << TvPlayerModelLayer;
++            int localBit = _localLayer < 0 ? 0 : 1 << _localLayer;
+             var cams = Resources.FindObjectsOfTypeAll(Il2CppType.Of<Camera>());
+-            int screenCams = 0, screenWithLayer = 0;
++            int screenCams = 0, screenWithLayer = 0, screenWithLocal = 0;
+             var sb = new StringBuilder();
+             for (int i = 0; i < cams.Length; i++)
+             {
+@@ -1087,18 +1224,24 @@
+                 if (!MirrorFactory.ScreenCamera(c)) continue;
+                 screenCams++;
+                 bool has = (c.cullingMask & bit) != 0;
++                bool hasLocal = localBit != 0 && (c.cullingMask & localBit) != 0;
+                 if (has) { screenWithLayer++; if (_lastScreenCamera == null) { _lastScreenCamera = c; _lastScreenMask = c.cullingMask; } }
+-                sb.Append($"'{CameraPath(c.transform)}'=0x{c.cullingMask:X8}{(has ? "+" : "-")}; ");
++                if (hasLocal) screenWithLocal++;
++                sb.Append($"'{CameraPath(c.transform)}'=0x{c.cullingMask:X8}{(has ? "+" : "-")}{(hasLocal ? "L" : ".")}; ");
+             }
+             bool mirrorHas = _mirrorCamera != null && (_mirrorCamera.cullingMask & bit) != 0;
++            bool mirrorLocal = _mirrorCamera != null && localBit != 0 && (_mirrorCamera.cullingMask & localBit) != 0;
+             _h.LogInfo($"[cosmetic:mask] layer={TvPlayerModelLayer} ({LayerMask.LayerToName(TvPlayerModelLayer)}) bit=0x{bit:X8} " +
+                        $"screenCameras={screenCams} screenCamerasIncludingLayer={screenWithLayer} " +
+                        $"mirrorCamera={( _mirrorCamera == null ? "none" : CameraPath(_mirrorCamera.transform))} mirrorIncludesLayer={mirrorHas} " +
+                        $"renderers={RendererCount()} marked={CosmeticMarkers.RendererCount}");
++            _h.LogInfo($"[cosmetic:mask] localLayer={_localLayer} ({( _localLayer < 0 ? "none" : LayerMask.LayerToName(_localLayer))}) " +
++                       $"localBit=0x{localBit:X8} screenCamerasIncludingLocal={screenWithLocal} mirrorIncludesLocal={mirrorLocal} " +
++                       $"pov={_pov} hideAll={_hideAll}");
+             _h.LogInfo($"[cosmetic:mask] screen masks: {sb}");
+             if (screenCams > 0 && screenWithLayer == 0)
+                 _h.LogWarning($"[cosmetic:view-mismatch] camera=screen layer={TvPlayerModelLayer} mask=none-includes-layer pov={_pov} " +
+-                              $"foreignHide={_foreignHide} -> hats are mirror-only");
++                              $"foreignHide={_foreignHide} -> foreign hats are also hidden");
+         }
+         catch (Exception e) { _h.LogWarning($"[cosmetic:mask] {e.Message}"); }
+     }
+@@ -1165,8 +1308,9 @@
+         var instance = new Instance { Id = def.Id, Def = def };
+         try
+         {
++            int layer = _localLayer >= 0 ? _localLayer : TvPlayerModelLayer;
+             var root = new GameObject("Cosmetic_" + def.Id);
+-            root.layer = TvPlayerModelLayer;
++            root.layer = layer;
+             instance.Root = root;
+             instance.RootPointer = root.transform.Pointer;
+             // Registered before the tree is built, so a throw anywhere below still reaches
+@@ -1179,6 +1323,7 @@
+                 DestroyInstance(instance);
+                 return null;
+             }
++            SetInstanceVisible(instance, !_hideAll);
+             _h.LogInfo($"[cosmetic:load] id={def.Id} type={def.Type} prefabChildren={def.Children.Length} meshes={instance.MeshCount} " +
+                        $"verts={instance.Verts} tris={instance.Tris} renderers={instance.Renderers.Count} layer={root.layer} " +
+                        $"({LayerMask.LayerToName(root.layer)}) rootScale={def.RootScale.x:F4},{def.RootScale.y:F4},{def.RootScale.z:F4}");
+@@ -1195,7 +1340,7 @@
+     private void BuildNode(CosmeticPack.NodeDef node, Transform parent, Instance instance)
+     {
+         var go = new GameObject(string.IsNullOrEmpty(node.Name) ? "node" : node.Name);
+-        go.layer = TvPlayerModelLayer;
++        go.layer = _localLayer >= 0 ? _localLayer : TvPlayerModelLayer;
+         var t = go.transform;
+         t.SetParent(parent, false);
+         t.localPosition = node.Pos;
+@@ -1748,20 +1893,4 @@
+         return path;
+     }
+ 
+-    private sealed class MirrorScope : IDisposable
+-    {
+-        private CosmeticsRuntime _runtime;
+-        private readonly List<RendererSnapshot> _snapshot;
+-        internal MirrorScope(CosmeticsRuntime runtime, List<RendererSnapshot> snapshot)
+-        {
+-            _runtime = runtime;
+-            _snapshot = snapshot;
+-        }
+-        public void Dispose()
+-        {
+-            var runtime = _runtime;
+-            _runtime = null;
+-            runtime?.EndMirrorScope(_snapshot);
+-        }
+-    }
+ }

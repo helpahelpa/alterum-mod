@@ -1,0 +1,1211 @@
+{
+ "armIk": {
+  "Clap": {
+   "L": {
+    "posBlob": "Clap.ikL.pos",
+    "parent": "spine/spine.001/spine.002/spine.003",
+    "frames": 61,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.694,
+    "srcTargetDistance": [
+     0.4745,
+     0.4711,
+     0.4697,
+     0.471,
+     0.4745
+    ],
+    "posOffset": 381505,
+    "rootPosOffset": 406408,
+    "rotOffset": 381688,
+    "weightOffset": 381932
+   },
+   "R": {
+    "posBlob": "Clap.ikR.pos",
+    "parent": "spine/spine.001/spine.002/spine.003",
+    "frames": 61,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.6807,
+    "srcTargetDistance": [
+     0.4506,
+     0.4504,
+     0.4504,
+     0.4504,
+     0.4506
+    ],
+    "posOffset": 381993,
+    "rootPosOffset": 406591,
+    "rotOffset": 382176,
+    "weightOffset": 382420
+   }
+  },
+  "D_Clap": {
+   "L": {
+    "posBlob": "D_Clap.ikL.pos",
+    "parent": "spine/spine.001/spine.002/spine.003",
+    "frames": 61,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.694,
+    "srcTargetDistance": [
+     0.4745,
+     0.4711,
+     0.4697,
+     0.471,
+     0.4745
+    ],
+    "posOffset": 393969,
+    "rootPosOffset": 408299,
+    "rotOffset": 394152,
+    "weightOffset": 394396
+   },
+   "R": {
+    "posBlob": "D_Clap.ikR.pos",
+    "parent": "spine/spine.001/spine.002/spine.003",
+    "frames": 61,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.6807,
+    "srcTargetDistance": [
+     0.4506,
+     0.4504,
+     0.4504,
+     0.4504,
+     0.4506
+    ],
+    "posOffset": 394457,
+    "rootPosOffset": 408482,
+    "rotOffset": 394640,
+    "weightOffset": 394884
+   }
+  },
+  "D_Middle_Finger": {
+   "L": {
+    "posBlob": "D_Middle_Finger.ikL.pos",
+    "parent": "spine/spine.001/spine.002/spine.003",
+    "frames": 53,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.694,
+    "srcTargetDistance": [
+     0.6115,
+     0.711,
+     0.7149,
+     0.7267,
+     0.7267
+    ],
+    "posOffset": 394945,
+    "rootPosOffset": 410166,
+    "rotOffset": 395104,
+    "weightOffset": 395316
+   },
+   "R": {
+    "posBlob": "D_Middle_Finger.ikR.pos",
+    "parent": "spine/spine.001/spine.002/spine.003",
+    "frames": 53,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.6807,
+    "srcTargetDistance": [
+     0.6182,
+     0.6994,
+     0.6965,
+     0.7119,
+     0.7119
+    ],
+    "posOffset": 395369,
+    "rootPosOffset": 410325,
+    "rotOffset": 395528,
+    "weightOffset": 395740
+   }
+  },
+  "Idle1Fix": {
+   "L": {
+    "posBlob": "Idle1Fix.ikL.pos",
+    "parent": "spine/spine.001/spine.002/spine.003",
+    "frames": 243,
+    "weightCurve": false,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.694,
+    "srcTargetDistance": [
+     0.6493,
+     0.6421,
+     0.6504,
+     0.642,
+     0.6493
+    ],
+    "posOffset": 382481,
+    "rootPosOffset": 417129,
+    "rotOffset": 383210,
+    "weightOffset": 384182
+   },
+   "R": {
+    "posBlob": "Idle1Fix.ikR.pos",
+    "parent": "spine/spine.001/spine.002/spine.003",
+    "frames": 243,
+    "weightCurve": false,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.6807,
+    "srcTargetDistance": [
+     0.6452,
+     0.6389,
+     0.6462,
+     0.6389,
+     0.6452
+    ],
+    "posOffset": 384425,
+    "rootPosOffset": 417858,
+    "rotOffset": 385154,
+    "weightOffset": 386126
+   }
+  },
+  "Middle_Finger": {
+   "L": {
+    "posBlob": "Middle_Finger.ikL.pos",
+    "parent": "spine/spine.001/spine.002/spine.003",
+    "frames": 53,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.694,
+    "srcTargetDistance": [
+     0.6115,
+     0.711,
+     0.7149,
+     0.7267,
+     0.7267
+    ],
+    "posOffset": 393121,
+    "rootPosOffset": 424092,
+    "rotOffset": 393280,
+    "weightOffset": 393492
+   },
+   "R": {
+    "posBlob": "Middle_Finger.ikR.pos",
+    "parent": "spine/spine.001/spine.002/spine.003",
+    "frames": 53,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.6807,
+    "srcTargetDistance": [
+     0.6182,
+     0.4551,
+     0.4545,
+     0.4545,
+     0.4545
+    ],
+    "posOffset": 393545,
+    "rootPosOffset": 424251,
+    "rotOffset": 393704,
+    "weightOffset": 393916
+   }
+  },
+  "Prisyadka": {
+   "L": {
+    "posBlob": "Prisyadka.ikL.pos",
+    "parent": "spine/spine.001/spine.002/spine.003",
+    "frames": 406,
+    "weightCurve": true,
+    "weightMin": 0.0,
+    "weightMax": 0.0,
+    "srcReach": 0.694,
+    "srcTargetDistance": [
+     0.3035,
+     0.3035,
+     0.3035,
+     0.3035,
+     0.3035
+    ],
+    "posOffset": 386369,
+    "rootPosOffset": 426794,
+    "rotOffset": 387587,
+    "weightOffset": 389211
+   },
+   "R": {
+    "posBlob": "Prisyadka.ikR.pos",
+    "parent": "spine/spine.001/spine.002/spine.003",
+    "frames": 406,
+    "weightCurve": true,
+    "weightMin": 0.0,
+    "weightMax": 0.0,
+    "srcReach": 0.6807,
+    "srcTargetDistance": [
+     0.2386,
+     0.2386,
+     0.2386,
+     0.2386,
+     0.2386
+    ],
+    "posOffset": 389617,
+    "rootPosOffset": 428012,
+    "rotOffset": 390835,
+    "weightOffset": 392459
+   }
+  },
+  "Salute": {
+   "L": {
+    "posBlob": "Salute.ikL.pos",
+    "parent": "spine/spine.001/spine.002/spine.003",
+    "frames": 108,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.694,
+    "srcTargetDistance": [
+     0.6493,
+     0.6995,
+     0.6995,
+     0.6995
+    ],
+    "posOffset": 395793,
+    "rootPosOffset": 438486,
+    "rotOffset": 396117,
+    "weightOffset": 396549
+   },
+   "R": {
+    "posBlob": "Salute.ikR.pos",
+    "parent": "spine/spine.001/spine.002/spine.003",
+    "frames": 108,
+    "weightCurve": true,
+    "weightMin": 0.0,
+    "weightMax": 0.0,
+    "srcReach": 0.6807,
+    "srcTargetDistance": [
+     0.6452,
+     0.6452,
+     0.6452,
+     0.6452
+    ],
+    "posOffset": 396657,
+    "rootPosOffset": 438810,
+    "rotOffset": 396981,
+    "weightOffset": 397413
+   }
+  },
+  "Shy": {
+   "L": {
+    "posBlob": "Shy.ikL.pos",
+    "parent": "spine/spine.001/spine.002/spine.003",
+    "frames": 151,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.694,
+    "srcTargetDistance": [
+     0.4477,
+     0.4432,
+     0.438,
+     0.4418,
+     0.4472
+    ],
+    "posOffset": 397521,
+    "rootPosOffset": 441963,
+    "rotOffset": 397974,
+    "weightOffset": 398578
+   },
+   "R": {
+    "posBlob": "Shy.ikR.pos",
+    "parent": "spine/spine.001/spine.002/spine.003",
+    "frames": 151,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.6807,
+    "srcTargetDistance": [
+     0.4841,
+     0.4724,
+     0.4591,
+     0.4689,
+     0.4827
+    ],
+    "posOffset": 398729,
+    "rootPosOffset": 442416,
+    "rotOffset": 399182,
+    "weightOffset": 399786
+   }
+  },
+  "The_Griddy": {
+   "L": {
+    "posBlob": "The_Griddy.ikL.pos",
+    "parent": "spine/spine.001/spine.002/spine.003",
+    "frames": 393,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.694,
+    "srcTargetDistance": [
+     0.6722,
+     0.4813,
+     0.6722,
+     0.4813,
+     0.6722
+    ],
+    "posOffset": 399937,
+    "rootPosOffset": 450520,
+    "rotOffset": 401116,
+    "weightOffset": 402688
+   },
+   "R": {
+    "posBlob": "The_Griddy.ikR.pos",
+    "parent": "spine/spine.001/spine.002/spine.003",
+    "frames": 393,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.6807,
+    "srcTargetDistance": [
+     0.6506,
+     0.483,
+     0.6506,
+     0.483,
+     0.6506
+    ],
+    "posOffset": 403081,
+    "rootPosOffset": 451699,
+    "rotOffset": 404260,
+    "weightOffset": 405832
+   }
+  },
+  "Twerk": {
+   "L": {
+    "posBlob": "Twerk.ikL.pos",
+    "parent": "spine/spine.001/spine.002/spine.003",
+    "frames": 16,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.694,
+    "srcTargetDistance": [
+     0.6423,
+     0.6561,
+     0.6749,
+     0.6527
+    ],
+    "posOffset": 392865,
+    "rootPosOffset": 461572,
+    "rotOffset": 392913,
+    "weightOffset": 392977
+   },
+   "R": {
+    "posBlob": "Twerk.ikR.pos",
+    "parent": "spine/spine.001/spine.002/spine.003",
+    "frames": 16,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.6807,
+    "srcTargetDistance": [
+     0.6569,
+     0.6845,
+     0.7195,
+     0.6779
+    ],
+    "posOffset": 392993,
+    "rootPosOffset": 461620,
+    "rotOffset": 393041,
+    "weightOffset": 393105
+   }
+  }
+ },
+ "legIk": {
+  "Clap": {
+   "L": {
+    "parent": "",
+    "frames": 61,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.9758,
+    "hint": [
+     -0.205884,
+     0.545156,
+     1.374925
+    ],
+    "posOffset": 406774,
+    "rotOffset": 406957,
+    "weightOffset": 407201,
+    "rootPosOffset": 407262
+   },
+   "R": {
+    "parent": "",
+    "frames": 61,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.9758,
+    "hint": [
+     0.279116,
+     0.457156,
+     1.797925
+    ],
+    "posOffset": 407445,
+    "rotOffset": 407628,
+    "weightOffset": 407872,
+    "rootPosOffset": 407933
+   }
+  },
+  "D_Clap": {
+   "L": {
+    "parent": "",
+    "frames": 61,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.9758,
+    "hint": [
+     -0.205884,
+     0.545156,
+     1.374925
+    ],
+    "posOffset": 408665,
+    "rotOffset": 408848,
+    "weightOffset": 409092,
+    "rootPosOffset": 409153
+   },
+   "R": {
+    "parent": "",
+    "frames": 61,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.9758,
+    "hint": [
+     0.279116,
+     0.457156,
+     1.797925
+    ],
+    "posOffset": 409336,
+    "rotOffset": 409519,
+    "weightOffset": 409763,
+    "rootPosOffset": 409824
+   }
+  },
+  "D_Middle_Finger": {
+   "L": {
+    "parent": "",
+    "frames": 53,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.9758,
+    "hint": [
+     -0.205884,
+     0.545156,
+     1.374925
+    ],
+    "posOffset": 410484,
+    "rotOffset": 410643,
+    "weightOffset": 410855,
+    "rootPosOffset": 410908
+   },
+   "R": {
+    "parent": "",
+    "frames": 53,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.9758,
+    "hint": [
+     0.279116,
+     0.457156,
+     1.797925
+    ],
+    "posOffset": 411067,
+    "rotOffset": 411226,
+    "weightOffset": 411438,
+    "rootPosOffset": 411491
+   }
+  },
+  "D_Sign": {
+   "L": {
+    "parent": "",
+    "frames": 190,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.9758,
+    "hint": [
+     -0.205884,
+     0.545156,
+     1.374925
+    ],
+    "posOffset": 412220,
+    "rotOffset": 412790,
+    "weightOffset": 413550,
+    "rootPosOffset": 413740
+   },
+   "R": {
+    "parent": "",
+    "frames": 190,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.9758,
+    "hint": [
+     0.279116,
+     0.457156,
+     1.797925
+    ],
+    "posOffset": 414310,
+    "rotOffset": 414880,
+    "weightOffset": 415640,
+    "rootPosOffset": 415830
+   }
+  },
+  "Idle1Fix": {
+   "L": {
+    "parent": "",
+    "frames": 243,
+    "weightCurve": false,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.9758,
+    "hint": [
+     -0.205884,
+     0.545156,
+     1.374925
+    ],
+    "posOffset": 418587,
+    "rotOffset": 419316,
+    "weightOffset": 420288,
+    "rootPosOffset": 420531
+   },
+   "R": {
+    "parent": "",
+    "frames": 243,
+    "weightCurve": false,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.9758,
+    "hint": [
+     0.279116,
+     0.457156,
+     1.797925
+    ],
+    "posOffset": 421260,
+    "rotOffset": 421989,
+    "weightOffset": 422961,
+    "rootPosOffset": 423204
+   }
+  },
+  "Middle_Finger": {
+   "L": {
+    "parent": "",
+    "frames": 53,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.9758,
+    "hint": [
+     -0.205884,
+     0.545156,
+     1.374925
+    ],
+    "posOffset": 424410,
+    "rotOffset": 424569,
+    "weightOffset": 424781,
+    "rootPosOffset": 424834
+   },
+   "R": {
+    "parent": "",
+    "frames": 53,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.9758,
+    "hint": [
+     0.279116,
+     0.457156,
+     1.797925
+    ],
+    "posOffset": 424993,
+    "rotOffset": 425152,
+    "weightOffset": 425364,
+    "rootPosOffset": 425417
+   }
+  },
+  "Prisyadka": {
+   "L": {
+    "parent": "",
+    "frames": 406,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.9758,
+    "hint": [
+     -0.205884,
+     0.545156,
+     1.374925
+    ],
+    "posOffset": 429230,
+    "rotOffset": 430448,
+    "weightOffset": 432072,
+    "rootPosOffset": 432478
+   },
+   "R": {
+    "parent": "",
+    "frames": 406,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.9758,
+    "hint": [
+     0.279116,
+     0.457156,
+     1.797925
+    ],
+    "posOffset": 433696,
+    "rotOffset": 434914,
+    "weightOffset": 436538,
+    "rootPosOffset": 436944
+   }
+  },
+  "Salute": {
+   "L": {
+    "parent": "",
+    "frames": 108,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.9758,
+    "hint": [
+     -0.205884,
+     0.545156,
+     1.374925
+    ],
+    "posOffset": 439134,
+    "rotOffset": 439458,
+    "weightOffset": 439890,
+    "rootPosOffset": 439998
+   },
+   "R": {
+    "parent": "",
+    "frames": 108,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.9758,
+    "hint": [
+     0.279116,
+     0.457156,
+     1.797925
+    ],
+    "posOffset": 440322,
+    "rotOffset": 440646,
+    "weightOffset": 441078,
+    "rootPosOffset": 441186
+   }
+  },
+  "Shy": {
+   "L": {
+    "parent": "",
+    "frames": 151,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.9758,
+    "hint": [
+     -0.205884,
+     0.545156,
+     1.374925
+    ],
+    "posOffset": 442869,
+    "rotOffset": 443322,
+    "weightOffset": 443926,
+    "rootPosOffset": 444077
+   },
+   "R": {
+    "parent": "",
+    "frames": 151,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.9758,
+    "hint": [
+     0.279116,
+     0.457156,
+     1.797925
+    ],
+    "posOffset": 444530,
+    "rotOffset": 444983,
+    "weightOffset": 445587,
+    "rootPosOffset": 445738
+   }
+  },
+  "Sign": {
+   "L": {
+    "parent": "",
+    "frames": 126,
+    "weightCurve": false,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.9758,
+    "hint": [
+     -0.205884,
+     0.545156,
+     1.374925
+    ],
+    "posOffset": 446569,
+    "rotOffset": 446947,
+    "weightOffset": 447451,
+    "rootPosOffset": 447577
+   },
+   "R": {
+    "parent": "",
+    "frames": 126,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.9758,
+    "hint": [
+     0.279116,
+     0.457156,
+     1.797925
+    ],
+    "posOffset": 447955,
+    "rotOffset": 448333,
+    "weightOffset": 448837,
+    "rootPosOffset": 448963
+   }
+  },
+  "The_Griddy": {
+   "L": {
+    "parent": "",
+    "frames": 393,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.9758,
+    "hint": [
+     -0.205884,
+     0.545156,
+     1.374925
+    ],
+    "posOffset": 452878,
+    "rotOffset": 454057,
+    "weightOffset": 455629,
+    "rootPosOffset": 456022
+   },
+   "R": {
+    "parent": "",
+    "frames": 393,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.9758,
+    "hint": [
+     0.279116,
+     0.457156,
+     1.797925
+    ],
+    "posOffset": 457201,
+    "rotOffset": 458380,
+    "weightOffset": 459952,
+    "rootPosOffset": 460345
+   }
+  },
+  "Twerk": {
+   "L": {
+    "parent": "",
+    "frames": 16,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.9758,
+    "hint": [
+     -0.205884,
+     0.545156,
+     1.374925
+    ],
+    "posOffset": 461668,
+    "rotOffset": 461716,
+    "weightOffset": 461780,
+    "rootPosOffset": 461796
+   },
+   "R": {
+    "parent": "",
+    "frames": 16,
+    "weightCurve": true,
+    "weightMin": 1.0,
+    "weightMax": 1.0,
+    "srcReach": 0.9758,
+    "hint": [
+     0.279116,
+     0.457156,
+     1.797925
+    ],
+    "posOffset": 461844,
+    "rotOffset": 461892,
+    "weightOffset": 461956,
+    "rootPosOffset": 461972
+   }
+  }
+ },
+ "unresolved": {},
+ "coverage": {
+  "Clap": {
+   "bundleTransformBindings": 124,
+   "authoredCurves": 124,
+   "bundleOnly": 0,
+   "authoredOnly": 0
+  },
+  "D_Clap": {
+   "bundleTransformBindings": 124,
+   "authoredCurves": 124,
+   "bundleOnly": 0,
+   "authoredOnly": 0
+  },
+  "D_Middle_Finger": {
+   "bundleTransformBindings": 117,
+   "authoredCurves": 117,
+   "bundleOnly": 0,
+   "authoredOnly": 0
+  },
+  "D_Sign": {
+   "bundleTransformBindings": 150,
+   "authoredCurves": 150,
+   "bundleOnly": 0,
+   "authoredOnly": 0
+  },
+  "Idle1Fix": {
+   "bundleTransformBindings": 146,
+   "authoredCurves": 146,
+   "bundleOnly": 0,
+   "authoredOnly": 0
+  },
+  "Middle_Finger": {
+   "bundleTransformBindings": 102,
+   "authoredCurves": 102,
+   "bundleOnly": 0,
+   "authoredOnly": 0
+  },
+  "Prisyadka": {
+   "bundleTransformBindings": 158,
+   "authoredCurves": 158,
+   "bundleOnly": 0,
+   "authoredOnly": 0
+  },
+  "Salute": {
+   "bundleTransformBindings": 83,
+   "authoredCurves": 83,
+   "bundleOnly": 0,
+   "authoredOnly": 0
+  },
+  "Shy": {
+   "bundleTransformBindings": 112,
+   "authoredCurves": 112,
+   "bundleOnly": 0,
+   "authoredOnly": 0
+  },
+  "Sign": {
+   "bundleTransformBindings": 141,
+   "authoredCurves": 141,
+   "bundleOnly": 0,
+   "authoredOnly": 0
+  },
+  "The_Griddy": {
+   "bundleTransformBindings": 106,
+   "authoredCurves": 106,
+   "bundleOnly": 0,
+   "authoredOnly": 0
+  },
+  "Twerk": {
+   "bundleTransformBindings": 137,
+   "authoredCurves": 137,
+   "bundleOnly": 0,
+   "authoredOnly": 0
+  }
+ },
+ "ignoredHashes": {
+  "Clap": [],
+  "D_Clap": [],
+  "D_Middle_Finger": [],
+  "D_Sign": [
+   "0x3F4C3EC0"
+  ],
+  "Idle1Fix": [],
+  "Middle_Finger": [],
+  "Prisyadka": [
+   "0x15C0CDC1",
+   "0x4EF3E9FD",
+   "0x86FED3BB",
+   "0x9A4C8329",
+   "0xA0631A69",
+   "0xB4FCD49E",
+   "0xC3523EB0"
+  ],
+  "Salute": [],
+  "Shy": [],
+  "Sign": [
+   "0x3F4C3EC0"
+  ],
+  "The_Griddy": [],
+  "Twerk": []
+ },
+ "bonesAtRest": {
+  "Clap": [
+   "spine/spine.001",
+   "spine/spine.001/spine.002/spine.003/spine.004",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger1.L/finger1.L.001/finger1.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger2.L/finger2.L.001/finger2.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger3.L/finger3.L.001/finger3.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger4.L/finger4.L.001/finger4.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger5.L/finger5.L.001/finger5.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger1.R/finger1.R.001/finger1.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger2.R/finger2.R.001/finger2.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger3.R/finger3.R.001/finger3.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger4.R/finger4.R.001/finger4.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger5.R/finger5.R.001/finger5.R.001_end",
+   "spine/thigh.L/shin.L",
+   "spine/thigh.L/shin.L/foot.L",
+   "spine/thigh.L/shin.L/foot.L/toe.L",
+   "spine/thigh.R/shin.R",
+   "spine/thigh.R/shin.R/foot.R",
+   "spine/thigh.R/shin.R/foot.R/toe.R"
+  ],
+  "D_Clap": [
+   "spine/spine.001",
+   "spine/spine.001/spine.002/spine.003/spine.004",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger1.L/finger1.L.001/finger1.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger2.L/finger2.L.001/finger2.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger3.L/finger3.L.001/finger3.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger4.L/finger4.L.001/finger4.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger5.L/finger5.L.001/finger5.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger1.R/finger1.R.001/finger1.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger2.R/finger2.R.001/finger2.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger3.R/finger3.R.001/finger3.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger4.R/finger4.R.001/finger4.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger5.R/finger5.R.001/finger5.R.001_end",
+   "spine/thigh.L/shin.L",
+   "spine/thigh.L/shin.L/foot.L",
+   "spine/thigh.L/shin.L/foot.L/toe.L",
+   "spine/thigh.R/shin.R",
+   "spine/thigh.R/shin.R/foot.R",
+   "spine/thigh.R/shin.R/foot.R/toe.R"
+  ],
+  "D_Middle_Finger": [
+   "spine/spine.001/spine.002/spine.003/spine.004",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger1.L/finger1.L.001/finger1.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger2.L/finger2.L.001/finger2.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger3.L/finger3.L.001/finger3.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger4.L/finger4.L.001/finger4.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger5.L/finger5.L.001/finger5.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger1.R/finger1.R.001/finger1.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger2.R/finger2.R.001/finger2.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger3.R/finger3.R.001/finger3.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger4.R/finger4.R.001/finger4.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger5.R/finger5.R.001/finger5.R.001_end",
+   "spine/thigh.L/shin.L",
+   "spine/thigh.L/shin.L/foot.L",
+   "spine/thigh.L/shin.L/foot.L/toe.L",
+   "spine/thigh.R/shin.R",
+   "spine/thigh.R/shin.R/foot.R",
+   "spine/thigh.R/shin.R/foot.R/toe.R"
+  ],
+  "D_Sign": [
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger1.L/finger1.L.001/finger1.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger2.L/finger2.L.001/finger2.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger3.L/finger3.L.001/finger3.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger4.L/finger4.L.001/finger4.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger5.L/finger5.L.001/finger5.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger1.R/finger1.R.001/finger1.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger2.R/finger2.R.001/finger2.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger3.R/finger3.R.001/finger3.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger4.R/finger4.R.001/finger4.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger5.R/finger5.R.001/finger5.R.001_end",
+   "spine/thigh.L/shin.L",
+   "spine/thigh.L/shin.L/foot.L",
+   "spine/thigh.L/shin.L/foot.L/toe.L",
+   "spine/thigh.R/shin.R",
+   "spine/thigh.R/shin.R/foot.R",
+   "spine/thigh.R/shin.R/foot.R/toe.R"
+  ],
+  "Idle1Fix": [
+   "spine/spine.001/spine.002/spine.003/spine.004",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger1.L/finger1.L.001/finger1.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger2.L/finger2.L.001/finger2.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger3.L/finger3.L.001/finger3.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger4.L/finger4.L.001/finger4.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger5.L/finger5.L.001/finger5.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger1.R/finger1.R.001/finger1.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger2.R/finger2.R.001/finger2.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger3.R/finger3.R.001/finger3.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger4.R/finger4.R.001/finger4.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger5.R/finger5.R.001/finger5.R.001_end",
+   "spine/thigh.L/shin.L/foot.L/toe.L",
+   "spine/thigh.R/shin.R/foot.R/toe.R"
+  ],
+  "Middle_Finger": [
+   "spine/spine.001/spine.002/spine.003/spine.004",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger1.L/finger1.L.001/finger1.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger2.L/finger2.L.001/finger2.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger3.L/finger3.L.001/finger3.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger4.L/finger4.L.001/finger4.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger5.L/finger5.L.001/finger5.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger1.R/finger1.R.001/finger1.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger2.R/finger2.R.001/finger2.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger3.R/finger3.R.001/finger3.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger4.R/finger4.R.001/finger4.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger5.R/finger5.R.001/finger5.R.001_end",
+   "spine/thigh.L/shin.L",
+   "spine/thigh.L/shin.L/foot.L",
+   "spine/thigh.L/shin.L/foot.L/toe.L",
+   "spine/thigh.R/shin.R",
+   "spine/thigh.R/shin.R/foot.R",
+   "spine/thigh.R/shin.R/foot.R/toe.R"
+  ],
+  "Prisyadka": [
+   "spine/spine.001/spine.002/spine.003/spine.004",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger1.L/finger1.L.001/finger1.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger2.L/finger2.L.001/finger2.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger3.L/finger3.L.001/finger3.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger4.L/finger4.L.001/finger4.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger5.L/finger5.L.001/finger5.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger1.R/finger1.R.001/finger1.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger2.R/finger2.R.001/finger2.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger3.R/finger3.R.001/finger3.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger4.R/finger4.R.001/finger4.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger5.R/finger5.R.001/finger5.R.001_end",
+   "spine/thigh.L/shin.L",
+   "spine/thigh.L/shin.L/foot.L",
+   "spine/thigh.L/shin.L/foot.L/toe.L",
+   "spine/thigh.R/shin.R",
+   "spine/thigh.R/shin.R/foot.R",
+   "spine/thigh.R/shin.R/foot.R/toe.R"
+  ],
+  "Salute": [
+   "spine/spine.001/spine.002/spine.003/spine.004",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger1.L/finger1.L.001/finger1.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger2.L/finger2.L.001/finger2.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger3.L/finger3.L.001/finger3.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger4.L/finger4.L.001/finger4.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger5.L/finger5.L.001/finger5.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger1.R/finger1.R.001/finger1.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger2.R/finger2.R.001/finger2.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger3.R/finger3.R.001/finger3.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger4.R/finger4.R.001/finger4.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger5.R/finger5.R.001/finger5.R.001_end",
+   "spine/thigh.L/shin.L",
+   "spine/thigh.L/shin.L/foot.L",
+   "spine/thigh.L/shin.L/foot.L/toe.L",
+   "spine/thigh.R/shin.R",
+   "spine/thigh.R/shin.R/foot.R",
+   "spine/thigh.R/shin.R/foot.R/toe.R"
+  ],
+  "Shy": [
+   "spine/spine.001/spine.002/spine.003/spine.004",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger1.L/finger1.L.001/finger1.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger2.L/finger2.L.001/finger2.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger3.L/finger3.L.001/finger3.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger4.L/finger4.L.001/finger4.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger5.L/finger5.L.001/finger5.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger1.R/finger1.R.001/finger1.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger2.R/finger2.R.001/finger2.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger3.R/finger3.R.001/finger3.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger4.R/finger4.R.001/finger4.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger5.R/finger5.R.001/finger5.R.001_end",
+   "spine/thigh.L/shin.L",
+   "spine/thigh.L/shin.L/foot.L",
+   "spine/thigh.L/shin.L/foot.L/toe.L",
+   "spine/thigh.R/shin.R",
+   "spine/thigh.R/shin.R/foot.R",
+   "spine/thigh.R/shin.R/foot.R/toe.R"
+  ],
+  "Sign": [
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger1.L/finger1.L.001/finger1.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger2.L/finger2.L.001/finger2.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger3.L/finger3.L.001/finger3.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger4.L/finger4.L.001/finger4.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger5.L/finger5.L.001/finger5.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger1.R/finger1.R.001/finger1.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger2.R/finger2.R.001/finger2.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger3.R/finger3.R.001/finger3.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger4.R/finger4.R.001/finger4.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger5.R/finger5.R.001/finger5.R.001_end",
+   "spine/thigh.L/shin.L",
+   "spine/thigh.L/shin.L/foot.L",
+   "spine/thigh.L/shin.L/foot.L/toe.L",
+   "spine/thigh.R/shin.R",
+   "spine/thigh.R/shin.R/foot.R",
+   "spine/thigh.R/shin.R/foot.R/toe.R"
+  ],
+  "The_Griddy": [
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger1.L/finger1.L.001/finger1.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger2.L/finger2.L.001/finger2.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger3.L/finger3.L.001/finger3.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger4.L/finger4.L.001/finger4.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger1.R/finger1.R.001/finger1.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger2.R/finger2.R.001/finger2.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger3.R/finger3.R.001/finger3.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger4.R/finger4.R.001/finger4.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger5.R/finger5.R.001/finger5.R.001_end",
+   "spine/thigh.L/shin.L",
+   "spine/thigh.L/shin.L/foot.L",
+   "spine/thigh.L/shin.L/foot.L/toe.L",
+   "spine/thigh.R/shin.R",
+   "spine/thigh.R/shin.R/foot.R",
+   "spine/thigh.R/shin.R/foot.R/toe.R"
+  ],
+  "Twerk": [
+   "spine/spine.001/spine.002/spine.003/spine.004",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger1.L/finger1.L.001/finger1.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger2.L/finger2.L.001/finger2.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger3.L/finger3.L.001/finger3.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger4.L/finger4.L.001/finger4.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L/finger5.L/finger5.L.001/finger5.L.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger1.R/finger1.R.001/finger1.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger2.R/finger2.R.001/finger2.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger3.R/finger3.R.001/finger3.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger4.R/finger4.R.001/finger4.R.001_end",
+   "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R/finger5.R/finger5.R.001/finger5.R.001_end",
+   "spine/thigh.L/shin.L",
+   "spine/thigh.L/shin.L/foot.L",
+   "spine/thigh.L/shin.L/foot.L/toe.L",
+   "spine/thigh.R/shin.R",
+   "spine/thigh.R/shin.R/foot.R",
+   "spine/thigh.R/shin.R/foot.R/toe.R"
+  ]
+ },
+ "armAo": {
+  "Prisyadka": {
+   "blob": "Prisyadka.armao",
+   "frames": 406,
+   "bones": [
+    "clavicle_l",
+    "upperarm_l",
+    "lowerarm_l",
+    "hand_l",
+    "clavicle_r",
+    "upperarm_r",
+    "lowerarm_r",
+    "hand_r"
+   ],
+   "srcPaths": [
+    "ScavengerModelArmsOnly/metarig/spine.003/shoulder.L",
+    "ScavengerModelArmsOnly/metarig/spine.003/shoulder.L/arm.L_upper",
+    "ScavengerModelArmsOnly/metarig/spine.003/shoulder.L/arm.L_upper/arm.L_lower",
+    "ScavengerModelArmsOnly/metarig/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L",
+    "ScavengerModelArmsOnly/metarig/spine.003/shoulder.R",
+    "ScavengerModelArmsOnly/metarig/spine.003/shoulder.R/arm.R_upper",
+    "ScavengerModelArmsOnly/metarig/spine.003/shoulder.R/arm.R_upper/arm.R_lower",
+    "ScavengerModelArmsOnly/metarig/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R"
+   ]
+  }
+ }
+}

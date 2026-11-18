@@ -1,0 +1,129 @@
+<Project>
+  <PropertyGroup>
+    <!-- Source is tracked in this repository. The binary payload (refs, models, installs, dist, shots,
+         work) lives OUTSIDE the repository at ~/assets/monorepo/alterum-data/, so a checkout
+         stays small and no asset can be committed by accident. See alterum/LAYOUT.md.
+         It is absolute on purpose: the data tree is no longer a sibling of this file, so a
+         workspace-relative default would silently resolve to nothing in a fresh clone.
+         -p:AlterumDataDir=/path/to/alterum-data/ overrides it (keep the trailing slash). -->
+    <AlterumDataDir Condition="'$(AlterumDataDir)' == ''">$(HOME)/assets/monorepo/alterum-data/</AlterumDataDir>
+    <!-- Override form: -p:AlterumDataDir=$HOME/assets/monorepo/alterum-data/ (absolute, trailing
+         slash). Write $HOME, not ~: bash leaves ~ unexpanded inside -p:Name=~/..., and a -p:
+         value is a global property that this file cannot rewrite. The check below names the
+         resolved path, so a wrong value fails loudly instead of silently embedding nothing. -->
+    <RefsDir Condition="'$(RefsDir)' == ''">$(AlterumDataDir)refs/</RefsDir>
+  </PropertyGroup>
+<ItemGroup>
+    <Reference Include="BepInEx.Core">
+      <HintPath>$(RefsDir)BepInEx.Core.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="BepInEx.Unity.IL2CPP">
+      <HintPath>$(RefsDir)BepInEx.Unity.IL2CPP.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="BepInEx.Unity.Common">
+      <HintPath>$(RefsDir)BepInEx.Unity.Common.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(RefsDir)0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Il2CppInterop.Runtime">
+      <HintPath>$(RefsDir)Il2CppInterop.Runtime.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Il2Cppmscorlib">
+      <HintPath>$(RefsDir)Il2Cppmscorlib.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(RefsDir)Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(RefsDir)UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(RefsDir)UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.SceneManagementModule">
+      <HintPath>$(RefsDir)UnityEngine.SceneManagementModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.ScreenCaptureModule">
+      <HintPath>$(RefsDir)UnityEngine.ScreenCaptureModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.ImageConversionModule">
+      <HintPath>$(RefsDir)UnityEngine.ImageConversionModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.InputLegacyModule">
+      <HintPath>$(RefsDir)UnityEngine.InputLegacyModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule">
+      <HintPath>$(RefsDir)UnityEngine.IMGUIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>$(RefsDir)UnityEngine.PhysicsModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Facepunch.Steamworks.Win64">
+      <HintPath>$(RefsDir)Facepunch.Steamworks.Win64.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.Netcode.Runtime">
+      <HintPath>$(RefsDir)Unity.Netcode.Runtime.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.InputSystem">
+      <HintPath>$(RefsDir)Unity.InputSystem.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>$(RefsDir)UnityEngine.UI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UIModule">
+      <HintPath>$(RefsDir)UnityEngine.UIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.TextMeshPro">
+      <HintPath>$(RefsDir)Unity.TextMeshPro.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.Localization">
+      <HintPath>$(RefsDir)Unity.Localization.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.LocalizationModule">
+      <HintPath>$(RefsDir)UnityEngine.LocalizationModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AnimationModule">
+      <HintPath>$(RefsDir)UnityEngine.AnimationModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- The game drives every player rig through Animancer; emote playback adds a layer. -->
+    <Reference Include="Kybernetik.Animancer">
+      <HintPath>$(RefsDir)Kybernetik.Animancer.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Kybernetik.Animancer.FSM">
+      <HintPath>$(RefsDir)Kybernetik.Animancer.FSM.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Fail loudly if the relative refs path ever stops resolving from this location. -->
+  <Target Name="AlterumRefsCheck" BeforeTargets="BeforeBuild">
+    <Error Condition="!Exists('$(RefsDir)BepInEx.Core.dll')"
+           Text="Alterum refs not found at $(RefsDir); the data tree lives at $(HOME)/assets/monorepo/alterum-data/ - pass -p:AlterumDataDir=... if it is somewhere else." />
+  </Target>
+</Project>

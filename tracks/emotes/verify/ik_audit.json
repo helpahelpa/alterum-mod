@@ -1,0 +1,2744 @@
+[
+ {
+  "clip": "Clap",
+  "duration": 1.0,
+  "frames": 61,
+  "loop": true,
+  "holds": 1.6,
+  "weights": {
+   "L": {
+    "curve": true,
+    "min": 1.0,
+    "max": 1.0,
+    "active": 61,
+    "full": 61
+   },
+   "R": {
+    "curve": true,
+    "min": 1.0,
+    "max": 1.0,
+    "active": 61,
+    "full": 61
+   }
+  },
+  "targets": {
+   "L": {
+    "curve": true,
+    "relTravel": 0.08232285210330985,
+    "relMaxFromFirst": 0.08229934973844655,
+    "authoredTravel": 0.06115834586027916,
+    "authoredMaxFromFirst": 0.06115808610794099,
+    "restRel": 1.0484054538880507
+   },
+   "R": {
+    "curve": true,
+    "relTravel": 0.02446824880638216,
+    "relMaxFromFirst": 0.015102102852546293,
+    "authoredTravel": 0.014035921779428135,
+    "authoredMaxFromFirst": 0.0140355185197511,
+    "restRel": 1.0666109521069902
+   }
+  },
+  "rotSpread": {
+   "L": {
+    "shoulder.L": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L",
+     "spread": 0.0
+    },
+    "arm.L_upper": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper",
+     "spread": 1.7075472925031877e-06
+    },
+    "arm.L_lower": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower",
+     "spread": 3.4150945850063755e-06
+    },
+    "hand.L": {
+     "curve": false,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L",
+     "spread": 0.038868305276436185
+    }
+   },
+   "R": {
+    "shoulder.R": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R",
+     "spread": 0.0
+    },
+    "arm.R_upper": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper",
+     "spread": 1.7075472925031877e-06
+    },
+    "arm.R_lower": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower",
+     "spread": 2.4148365394514667e-06
+    },
+    "hand.R": {
+     "curve": false,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R",
+     "spread": 0.02085618299538878
+    }
+   }
+  },
+  "motion": {
+   "L": {
+    "travelRot": 5.2920272662508223e-08,
+    "travelIk": 0.06115834193400318,
+    "tvRot": 1.0024463047679385e-06,
+    "tvIk": 0.36694874648516745,
+    "modelTravelRot": 0.03543785005822833,
+    "modelTravelIk": 0.08734056069314997,
+    "ikOffsetMean": 0.1978441782683101,
+    "ikOffsetMax": 0.2172528706222313,
+    "share": 0.9999972681571627,
+    "pinning": 0.0,
+    "winRot": {
+     "handL": 0.03543785005822833,
+     "handR": 0.026869112437914715,
+     "handLR": [
+      0.20242176338025822,
+      0.20242182197373612
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "winIk": {
+     "handL": 0.08734056069314997,
+     "handR": 0.03478481714659247,
+     "handLR": [
+      0.1768526865619763,
+      0.20017985769074906
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "bwinRot": {
+     "handL": 5.2920272662508223e-08,
+     "handR": 4.956871253321654e-08,
+     "handLR": [
+      0.20242176338025827,
+      0.20242182197373615
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "bwinIk": {
+     "handL": 0.06115834193400318,
+     "handR": 0.014035920207105874,
+     "handLR": [
+      0.1768526865619763,
+      0.20017985769074906
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "ikErrMax": 3.426765986707715e-08,
+    "clamps": 0
+   },
+   "R": {
+    "travelRot": 4.956871253321654e-08,
+    "travelIk": 0.014035920207105874,
+    "tvRot": 9.926964705394435e-07,
+    "tvIk": 0.08421350502011174,
+    "modelTravelRot": 0.026869112437914715,
+    "modelTravelIk": 0.03478481714659247,
+    "ikOffsetMean": 0.25623980521716233,
+    "ikOffsetMax": 0.25632639136738766,
+    "share": 0.9999882121463737,
+    "pinning": 0.0,
+    "winRot": {
+     "handL": 0.03543785005822833,
+     "handR": 0.026869112437914715,
+     "handLR": [
+      0.20242176338025822,
+      0.20242182197373612
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "winIk": {
+     "handL": 0.08734056069314997,
+     "handR": 0.03478481714659247,
+     "handLR": [
+      0.1768526865619763,
+      0.20017985769074906
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "bwinRot": {
+     "handL": 5.2920272662508223e-08,
+     "handR": 4.956871253321654e-08,
+     "handLR": [
+      0.20242176338025827,
+      0.20242182197373615
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "bwinIk": {
+     "handL": 0.06115834193400318,
+     "handR": 0.014035920207105874,
+     "handLR": [
+      0.1768526865619763,
+      0.20017985769074906
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "ikErrMax": 4.6245435135455846e-08,
+    "clamps": 0
+   }
+  },
+  "classSides": [
+   "IK",
+   "IKpin"
+  ],
+  "packDelta": {
+   "L": 1.4888129230256739e-08,
+   "R": 1.636460337240339e-08
+  }
+ },
+ {
+  "clip": "D_Clap",
+  "duration": 1.0,
+  "frames": 61,
+  "loop": true,
+  "holds": 1.0,
+  "weights": {
+   "L": {
+    "curve": true,
+    "min": 1.0,
+    "max": 1.0,
+    "active": 61,
+    "full": 61
+   },
+   "R": {
+    "curve": true,
+    "min": 1.0,
+    "max": 1.0,
+    "active": 61,
+    "full": 61
+   }
+  },
+  "targets": {
+   "L": {
+    "curve": true,
+    "relTravel": 0.08232285210330985,
+    "relMaxFromFirst": 0.08229934973844655,
+    "authoredTravel": 0.06115834586027916,
+    "authoredMaxFromFirst": 0.06115808610794099,
+    "restRel": 1.0484054538880507
+   },
+   "R": {
+    "curve": true,
+    "relTravel": 0.02446824880638216,
+    "relMaxFromFirst": 0.015102102852546293,
+    "authoredTravel": 0.014035921779428135,
+    "authoredMaxFromFirst": 0.0140355185197511,
+    "restRel": 1.0666109521069902
+   }
+  },
+  "rotSpread": {
+   "L": {
+    "shoulder.L": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L",
+     "spread": 0.0
+    },
+    "arm.L_upper": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper",
+     "spread": 1.7075472925031877e-06
+    },
+    "arm.L_lower": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower",
+     "spread": 3.4150945850063755e-06
+    },
+    "hand.L": {
+     "curve": false,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L",
+     "spread": 0.038868305276436185
+    }
+   },
+   "R": {
+    "shoulder.R": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R",
+     "spread": 0.0
+    },
+    "arm.R_upper": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper",
+     "spread": 1.7075472925031877e-06
+    },
+    "arm.R_lower": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower",
+     "spread": 2.4148365394514667e-06
+    },
+    "hand.R": {
+     "curve": false,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R",
+     "spread": 0.02085618299538878
+    }
+   }
+  },
+  "motion": {
+   "L": {
+    "travelRot": 5.2920272662508223e-08,
+    "travelIk": 0.06115834193400318,
+    "tvRot": 1.0024463047679385e-06,
+    "tvIk": 0.36694874648516745,
+    "modelTravelRot": 0.03543785005822833,
+    "modelTravelIk": 0.08734056069314997,
+    "ikOffsetMean": 0.1978441782683101,
+    "ikOffsetMax": 0.2172528706222313,
+    "share": 0.9999972681571627,
+    "pinning": 0.0,
+    "winRot": {
+     "handL": 0.03543785005822833,
+     "handR": 0.026869112437914715,
+     "handLR": [
+      0.20242176338025822,
+      0.20242182197373612
+     ],
+     "window": [
+      0.35,
+      1.0
+     ],
+     "frames": 40
+    },
+    "winIk": {
+     "handL": 0.08734056069314997,
+     "handR": 0.03478481714659247,
+     "handLR": [
+      0.17685268656197736,
+      0.20017985769074356
+     ],
+     "window": [
+      0.35,
+      1.0
+     ],
+     "frames": 40
+    },
+    "bwinRot": {
+     "handL": 5.2920272662508223e-08,
+     "handR": 4.956871253321654e-08,
+     "handLR": [
+      0.20242176338025827,
+      0.20242182197373615
+     ],
+     "window": [
+      0.35,
+      1.0
+     ],
+     "frames": 40
+    },
+    "bwinIk": {
+     "handL": 0.06115834193400314,
+     "handR": 0.014035920207105874,
+     "handLR": [
+      0.17685268656197736,
+      0.20017985769074356
+     ],
+     "window": [
+      0.35,
+      1.0
+     ],
+     "frames": 40
+    },
+    "ikErrMax": 3.426765986707715e-08,
+    "clamps": 0
+   },
+   "R": {
+    "travelRot": 4.956871253321654e-08,
+    "travelIk": 0.014035920207105874,
+    "tvRot": 9.926964705394435e-07,
+    "tvIk": 0.08421350502011174,
+    "modelTravelRot": 0.026869112437914715,
+    "modelTravelIk": 0.03478481714659247,
+    "ikOffsetMean": 0.25623980521716233,
+    "ikOffsetMax": 0.25632639136738766,
+    "share": 0.9999882121463737,
+    "pinning": 0.0,
+    "winRot": {
+     "handL": 0.03543785005822833,
+     "handR": 0.026869112437914715,
+     "handLR": [
+      0.20242176338025822,
+      0.20242182197373612
+     ],
+     "window": [
+      0.35,
+      1.0
+     ],
+     "frames": 40
+    },
+    "winIk": {
+     "handL": 0.08734056069314997,
+     "handR": 0.03478481714659247,
+     "handLR": [
+      0.17685268656197736,
+      0.20017985769074356
+     ],
+     "window": [
+      0.35,
+      1.0
+     ],
+     "frames": 40
+    },
+    "bwinRot": {
+     "handL": 5.2920272662508223e-08,
+     "handR": 4.956871253321654e-08,
+     "handLR": [
+      0.20242176338025827,
+      0.20242182197373615
+     ],
+     "window": [
+      0.35,
+      1.0
+     ],
+     "frames": 40
+    },
+    "bwinIk": {
+     "handL": 0.06115834193400314,
+     "handR": 0.014035920207105874,
+     "handLR": [
+      0.17685268656197736,
+      0.20017985769074356
+     ],
+     "window": [
+      0.35,
+      1.0
+     ],
+     "frames": 40
+    },
+    "ikErrMax": 4.6245435135455846e-08,
+    "clamps": 0
+   }
+  },
+  "classSides": [
+   "IK",
+   "IKpin"
+  ],
+  "packDelta": {
+   "L": 1.4888129230256739e-08,
+   "R": 1.636460337240339e-08
+  }
+ },
+ {
+  "clip": "D_Middle_Finger",
+  "duration": 0.866667,
+  "frames": 53,
+  "loop": false,
+  "holds": 0.866667,
+  "weights": {
+   "L": {
+    "curve": true,
+    "min": 1.0,
+    "max": 1.0,
+    "active": 53,
+    "full": 53
+   },
+   "R": {
+    "curve": true,
+    "min": 1.0,
+    "max": 1.0,
+    "active": 53,
+    "full": 53
+   }
+  },
+  "targets": {
+   "L": {
+    "curve": true,
+    "relTravel": 0.8265356449384746,
+    "relMaxFromFirst": 0.8056703737696908,
+    "authoredTravel": 0.8218789448574528,
+    "authoredMaxFromFirst": 0.8161550097867439,
+    "restRel": 1.0484054538880507
+   },
+   "R": {
+    "curve": true,
+    "relTravel": 0.8390530114288072,
+    "relMaxFromFirst": 0.8225958735688076,
+    "authoredTravel": 0.8365521186223274,
+    "authoredMaxFromFirst": 0.8335088481833891,
+    "restRel": 1.0666109521069902
+   }
+  },
+  "rotSpread": {
+   "L": {
+    "shoulder.L": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L",
+     "spread": 0.0
+    },
+    "arm.L_upper": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper",
+     "spread": 1.7075472925031877e-06
+    },
+    "arm.L_lower": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower",
+     "spread": 0.0
+    },
+    "hand.L": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L",
+     "spread": 81.52591707521549
+    }
+   },
+   "R": {
+    "shoulder.R": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R",
+     "spread": 0.0
+    },
+    "arm.R_upper": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper",
+     "spread": 1.7075472925031877e-06
+    },
+    "arm.R_lower": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower",
+     "spread": 0.0
+    },
+    "hand.R": {
+     "curve": false,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R",
+     "spread": 0.02085618299538878
+    }
+   }
+  },
+  "motion": {
+   "L": {
+    "travelRot": 4.30406088748463e-08,
+    "travelIk": 0.821878882870464,
+    "tvRot": 6.200984444054736e-07,
+    "tvIk": 0.8829077660263518,
+    "modelTravelRot": 0.06117320757549529,
+    "modelTravelIk": 0.8432021542618836,
+    "ikOffsetMean": 0.6798053752057437,
+    "ikOffsetMax": 0.7720610126825456,
+    "share": 0.9999992976633933,
+    "pinning": 0.0,
+    "winRot": {
+     "handL": 0.012055798138988924,
+     "handR": 0.013470993618641375,
+     "handLR": [
+      0.6228656404384322,
+      0.6228656738840009
+     ],
+     "window": [
+      0.35,
+      0.8666666666666667
+     ],
+     "frames": 32
+    },
+    "winIk": {
+     "handL": 0.030167166025060876,
+     "handR": 0.03339687447082047,
+     "handLR": [
+      0.5543933754664799,
+      0.5630226261963562
+     ],
+     "window": [
+      0.35,
+      0.8666666666666667
+     ],
+     "frames": 32
+    },
+    "bwinRot": {
+     "handL": 3.840558860170839e-08,
+     "handR": 3.180656787769629e-08,
+     "handLR": [
+      0.6228656404384323,
+      0.6228656738840008
+     ],
+     "window": [
+      0.35,
+      0.8666666666666667
+     ],
+     "frames": 32
+    },
+    "bwinIk": {
+     "handL": 0.029459919988951,
+     "handR": 0.028847366825204484,
+     "handLR": [
+      0.5543933754664799,
+      0.5630226261963563
+     ],
+     "window": [
+      0.35,
+      0.8666666666666667
+     ],
+     "frames": 32
+    },
+    "ikErrMax": 6.90408568419793e-08,
+    "clamps": 0
+   },
+   "R": {
+    "travelRot": 3.3429961873489234e-08,
+    "travelIk": 0.836552077081986,
+    "tvRot": 5.404128550610849e-07,
+    "tvIk": 0.9103109514012506,
+    "modelTravelRot": 0.06356700579391386,
+    "modelTravelIk": 0.8526638910105654,
+    "ikOffsetMean": 0.6888102403539778,
+    "ikOffsetMax": 0.7816723283385384,
+    "share": 0.9999994063425753,
+    "pinning": 0.0,
+    "winRot": {
+     "handL": 0.012055798138988924,
+     "handR": 0.013470993618641375,
+     "handLR": [
+      0.6228656404384322,
+      0.6228656738840009
+     ],
+     "window": [
+      0.35,
+      0.8666666666666667
+     ],
+     "frames": 32
+    },
+    "winIk": {
+     "handL": 0.030167166025060876,
+     "handR": 0.03339687447082047,
+     "handLR": [
+      0.5543933754664799,
+      0.5630226261963562
+     ],
+     "window": [
+      0.35,
+      0.8666666666666667
+     ],
+     "frames": 32
+    },
+    "bwinRot": {
+     "handL": 3.840558860170839e-08,
+     "handR": 3.180656787769629e-08,
+     "handLR": [
+      0.6228656404384323,
+      0.6228656738840008
+     ],
+     "window": [
+      0.35,
+      0.8666666666666667
+     ],
+     "frames": 32
+    },
+    "bwinIk": {
+     "handL": 0.029459919988951,
+     "handR": 0.028847366825204484,
+     "handLR": [
+      0.5543933754664799,
+      0.5630226261963563
+     ],
+     "window": [
+      0.35,
+      0.8666666666666667
+     ],
+     "frames": 32
+    },
+    "ikErrMax": 4.418371565962698e-08,
+    "clamps": 0
+   }
+  },
+  "classSides": [
+   "IK",
+   "IK"
+  ],
+  "packDelta": {
+   "L": 3.2841465817177433e-08,
+   "R": 3.151874610425166e-08
+  }
+ },
+ {
+  "clip": "D_Sign",
+  "duration": 3.15,
+  "frames": 190,
+  "loop": false,
+  "holds": 1.6,
+  "weights": {
+   "L": {
+    "curve": true,
+    "min": 0.0,
+    "max": 0.0,
+    "active": 0,
+    "full": 0
+   },
+   "R": {
+    "curve": true,
+    "min": 0.0,
+    "max": 0.0,
+    "active": 0,
+    "full": 0
+   }
+  },
+  "targets": {
+   "L": {
+    "curve": true,
+    "relTravel": 0.1312606940608063,
+    "relMaxFromFirst": 0.12506880236083442,
+    "authoredTravel": 1.576213700060856e-16,
+    "authoredMaxFromFirst": 7.88106850030428e-17,
+    "restRel": 1.0484054538880507
+   },
+   "R": {
+    "curve": true,
+    "relTravel": 0.11114706548342194,
+    "relMaxFromFirst": 0.11114706548342194,
+    "authoredTravel": 1.1527756336890508e-16,
+    "authoredMaxFromFirst": 5.763878168445254e-17,
+    "restRel": 1.0666109521069902
+   }
+  },
+  "rotSpread": {
+   "L": {
+    "shoulder.L": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L",
+     "spread": 5.4010579343737275
+    },
+    "arm.L_upper": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper",
+     "spread": 51.12178673150979
+    },
+    "arm.L_lower": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower",
+     "spread": 61.985593731482275
+    },
+    "hand.L": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L",
+     "spread": 101.16325655992068
+    }
+   },
+   "R": {
+    "shoulder.R": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R",
+     "spread": 51.678063438095926
+    },
+    "arm.R_upper": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper",
+     "spread": 63.22596414204851
+    },
+    "arm.R_lower": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower",
+     "spread": 125.63649339129104
+    },
+    "hand.R": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R",
+     "spread": 82.11708858681837
+    }
+   }
+  },
+  "motion": {
+   "L": {
+    "travelRot": 0.5323563605923864,
+    "travelIk": 0.5323563605923864,
+    "tvRot": 1.641934074954546,
+    "tvIk": 1.641934074954546,
+    "modelTravelRot": 0.5373848577033421,
+    "modelTravelIk": 0.5373848577033421,
+    "ikOffsetMean": 0.0,
+    "ikOffsetMax": 0.0,
+    "share": 0.0,
+    "pinning": 0.0,
+    "winRot": {
+     "handL": 0.5262757543976595,
+     "handR": 0.8105396875726261,
+     "handLR": [
+      0.3677994284019134,
+      1.0263048209466306
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "winIk": {
+     "handL": 0.5262757543976595,
+     "handR": 0.8105396875726261,
+     "handLR": [
+      0.3677994284019134,
+      1.0263048209466306
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "bwinRot": {
+     "handL": 0.5267507134734486,
+     "handR": 0.7273960045140825,
+     "handLR": [
+      0.3677994284019134,
+      1.0263048209466303
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "bwinIk": {
+     "handL": 0.5267507134734486,
+     "handR": 0.7273960045140825,
+     "handLR": [
+      0.3677994284019134,
+      1.0263048209466303
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "ikErrMax": 0.0,
+    "clamps": 0
+   },
+   "R": {
+    "travelRot": 0.8186004484718462,
+    "travelIk": 0.8186004484718462,
+    "tvRot": 1.9613898837204184,
+    "tvIk": 1.9613898837204184,
+    "modelTravelRot": 0.9011261991416875,
+    "modelTravelIk": 0.9011261991416875,
+    "ikOffsetMean": 0.0,
+    "ikOffsetMax": 0.0,
+    "share": 0.0,
+    "pinning": 0.0,
+    "winRot": {
+     "handL": 0.5262757543976595,
+     "handR": 0.8105396875726261,
+     "handLR": [
+      0.3677994284019134,
+      1.0263048209466306
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "winIk": {
+     "handL": 0.5262757543976595,
+     "handR": 0.8105396875726261,
+     "handLR": [
+      0.3677994284019134,
+      1.0263048209466306
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "bwinRot": {
+     "handL": 0.5267507134734486,
+     "handR": 0.7273960045140825,
+     "handLR": [
+      0.3677994284019134,
+      1.0263048209466303
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "bwinIk": {
+     "handL": 0.5267507134734486,
+     "handR": 0.7273960045140825,
+     "handLR": [
+      0.3677994284019134,
+      1.0263048209466303
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "ikErrMax": 0.0,
+    "clamps": 0
+   }
+  },
+  "classSides": [
+   "rot(w=0)",
+   "rot(w=0)"
+  ],
+  "packDelta": {}
+ },
+ {
+  "clip": "Idle1Fix",
+  "duration": 4.033333,
+  "frames": 243,
+  "loop": true,
+  "holds": 1.01,
+  "weights": {
+   "L": {
+    "curve": false,
+    "min": 1.0,
+    "max": 1.0,
+    "active": 243,
+    "full": 243
+   },
+   "R": {
+    "curve": false,
+    "min": 1.0,
+    "max": 1.0,
+    "active": 243,
+    "full": 243
+   }
+  },
+  "targets": {
+   "L": {
+    "curve": true,
+    "relTravel": 0.028135820088214726,
+    "relMaxFromFirst": 0.023579897940206714,
+    "authoredTravel": 0.020386066939637616,
+    "authoredMaxFromFirst": 0.015100777230262223,
+    "restRel": 1.0484054538880507
+   },
+   "R": {
+    "curve": true,
+    "relTravel": 0.01855336959574044,
+    "relMaxFromFirst": 0.015067745150773065,
+    "authoredTravel": 0.016889201897686546,
+    "authoredMaxFromFirst": 0.01251051025256852,
+    "restRel": 1.0666109521069902
+   }
+  },
+  "rotSpread": {
+   "L": {
+    "shoulder.L": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L",
+     "spread": 0.0
+    },
+    "arm.L_upper": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper",
+     "spread": 7.287685939556657
+    },
+    "arm.L_lower": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower",
+     "spread": 0.0
+    },
+    "hand.L": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L",
+     "spread": 1.7075472925031877e-06
+    }
+   },
+   "R": {
+    "shoulder.R": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R",
+     "spread": 0.0
+    },
+    "arm.R_upper": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper",
+     "spread": 5.177169929459013
+    },
+    "arm.R_lower": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower",
+     "spread": 2.9575586669421963e-06
+    },
+    "hand.R": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R",
+     "spread": 1.7075472925031877e-06
+    }
+   }
+  },
+  "motion": {
+   "L": {
+    "travelRot": 0.08821755459195135,
+    "travelIk": 0.02038606439322931,
+    "tvRot": 0.08827707319607535,
+    "tvIk": 0.08188784429184065,
+    "modelTravelRot": 0.10088734523013475,
+    "modelTravelIk": 0.02898918232069826,
+    "ikOffsetMean": 0.30749029166294345,
+    "ikOffsetMax": 0.34991889210423843,
+    "share": 0.0,
+    "pinning": 0.07237699068299823,
+    "winRot": {
+     "handL": 0.022022510037107437,
+     "handR": 0.0233328253089938,
+     "handLR": [
+      1.0024986448896445,
+      1.0101867302329446
+     ],
+     "window": [
+      0.35,
+      1.0
+     ],
+     "frames": 40
+    },
+    "winIk": {
+     "handL": 0.017358230693155795,
+     "handR": 0.009173602009519352,
+     "handLR": [
+      0.7637769711265213,
+      0.76585462523164
+     ],
+     "window": [
+      0.35,
+      1.0
+     ],
+     "frames": 40
+    },
+    "bwinRot": {
+     "handL": 0.011700534176344252,
+     "handR": 0.006951418163244466,
+     "handLR": [
+      1.0024986448896447,
+      1.0101867302329448
+     ],
+     "window": [
+      0.35,
+      1.0
+     ],
+     "frames": 40
+    },
+    "bwinIk": {
+     "handL": 0.015304011227175656,
+     "handR": 0.012678883227462068,
+     "handLR": [
+      0.7637769711265213,
+      0.76585462523164
+     ],
+     "window": [
+      0.35,
+      1.0
+     ],
+     "frames": 40
+    },
+    "ikErrMax": 0.0003913210504643477,
+    "clamps": 0
+   },
+   "R": {
+    "travelRot": 0.05241294009640818,
+    "travelIk": 0.016889201501063017,
+    "tvRot": 0.05242693063835505,
+    "tvIk": 0.06836826296487601,
+    "modelTravelRot": 0.06564743524872428,
+    "modelTravelIk": 0.02058420599442618,
+    "ikOffsetMean": 0.07696472118685822,
+    "ikOffsetMax": 0.08232667476983058,
+    "share": 0.2331686024363493,
+    "pinning": -0.30406762578731683,
+    "winRot": {
+     "handL": 0.022022510037107437,
+     "handR": 0.0233328253089938,
+     "handLR": [
+      1.0024986448896445,
+      1.0101867302329446
+     ],
+     "window": [
+      0.35,
+      1.0
+     ],
+     "frames": 40
+    },
+    "winIk": {
+     "handL": 0.017358230693155795,
+     "handR": 0.009173602009519352,
+     "handLR": [
+      0.7637769711265213,
+      0.76585462523164
+     ],
+     "window": [
+      0.35,
+      1.0
+     ],
+     "frames": 40
+    },
+    "bwinRot": {
+     "handL": 0.011700534176344252,
+     "handR": 0.006951418163244466,
+     "handLR": [
+      1.0024986448896447,
+      1.0101867302329448
+     ],
+     "window": [
+      0.35,
+      1.0
+     ],
+     "frames": 40
+    },
+    "bwinIk": {
+     "handL": 0.015304011227175656,
+     "handR": 0.012678883227462068,
+     "handLR": [
+      0.7637769711265213,
+      0.76585462523164
+     ],
+     "window": [
+      0.35,
+      1.0
+     ],
+     "frames": 40
+    },
+    "ikErrMax": 0.0003824120352983173,
+    "clamps": 0
+   }
+  },
+  "classSides": [
+   "IKpin",
+   "IKpin"
+  ],
+  "packDelta": {
+   "L": 3.374340008068211e-08,
+   "R": 3.159287487055714e-08
+  }
+ },
+ {
+  "clip": "Middle_Finger",
+  "duration": 0.866667,
+  "frames": 53,
+  "loop": false,
+  "holds": 1.2,
+  "weights": {
+   "L": {
+    "curve": true,
+    "min": 1.0,
+    "max": 1.0,
+    "active": 53,
+    "full": 53
+   },
+   "R": {
+    "curve": true,
+    "min": 1.0,
+    "max": 1.0,
+    "active": 53,
+    "full": 53
+   }
+  },
+  "targets": {
+   "L": {
+    "curve": true,
+    "relTravel": 0.8265356449384746,
+    "relMaxFromFirst": 0.8056703737696908,
+    "authoredTravel": 0.8218789448574528,
+    "authoredMaxFromFirst": 0.8161550097867439,
+    "restRel": 1.0484054538880507
+   },
+   "R": {
+    "curve": true,
+    "relTravel": 0.1884094642679049,
+    "relMaxFromFirst": 0.17845292304045673,
+    "authoredTravel": 0.17630419795341803,
+    "authoredMaxFromFirst": 0.17001205750972997,
+    "restRel": 1.0666109521069902
+   }
+  },
+  "rotSpread": {
+   "L": {
+    "shoulder.L": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L",
+     "spread": 0.0
+    },
+    "arm.L_upper": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper",
+     "spread": 1.7075472925031877e-06
+    },
+    "arm.L_lower": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower",
+     "spread": 0.0
+    },
+    "hand.L": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L",
+     "spread": 81.52591707521549
+    }
+   },
+   "R": {
+    "shoulder.R": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R",
+     "spread": 0.0
+    },
+    "arm.R_upper": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper",
+     "spread": 1.7075472925031877e-06
+    },
+    "arm.R_lower": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower",
+     "spread": 0.0
+    },
+    "hand.R": {
+     "curve": false,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R",
+     "spread": 0.02085618299538878
+    }
+   }
+  },
+  "motion": {
+   "L": {
+    "travelRot": 4.30406088748463e-08,
+    "travelIk": 0.821878882870464,
+    "tvRot": 6.200984444054736e-07,
+    "tvIk": 0.8829077660263518,
+    "modelTravelRot": 0.06117320757549529,
+    "modelTravelIk": 0.8432021542618836,
+    "ikOffsetMean": 0.6798053752057437,
+    "ikOffsetMax": 0.7720610126825456,
+    "share": 0.9999992976633933,
+    "pinning": 0.0,
+    "winRot": {
+     "handL": 0.012055798138988924,
+     "handR": 0.013470993618641375,
+     "handLR": [
+      0.6228656404384322,
+      0.6228656738840009
+     ],
+     "window": [
+      0.35,
+      1.2
+     ],
+     "frames": 52
+    },
+    "winIk": {
+     "handL": 0.030167166025060876,
+     "handR": 0.008752331811665357,
+     "handLR": [
+      0.9392122537124526,
+      0.9477824602051031
+     ],
+     "window": [
+      0.35,
+      1.2
+     ],
+     "frames": 52
+    },
+    "bwinRot": {
+     "handL": 3.840558860170839e-08,
+     "handR": 3.180656787769629e-08,
+     "handLR": [
+      0.6228656404384323,
+      0.6228656738840008
+     ],
+     "window": [
+      0.35,
+      1.2
+     ],
+     "frames": 52
+    },
+    "bwinIk": {
+     "handL": 0.029459919988951,
+     "handR": 3.535657538744e-15,
+     "handLR": [
+      0.9392122537124526,
+      0.9477824602051033
+     ],
+     "window": [
+      0.35,
+      1.2
+     ],
+     "frames": 52
+    },
+    "ikErrMax": 6.90408568419793e-08,
+    "clamps": 0
+   },
+   "R": {
+    "travelRot": 3.3429961873489234e-08,
+    "travelIk": 0.17630417847653337,
+    "tvRot": 5.404128550610849e-07,
+    "tvIk": 0.21030572999549318,
+    "modelTravelRot": 0.06356700579391386,
+    "modelTravelIk": 0.20434162184847846,
+    "ikOffsetMean": 0.18184849852294566,
+    "ikOffsetMax": 0.19725640065107322,
+    "share": 0.9999974303465005,
+    "pinning": 0.0,
+    "winRot": {
+     "handL": 0.012055798138988924,
+     "handR": 0.013470993618641375,
+     "handLR": [
+      0.6228656404384322,
+      0.6228656738840009
+     ],
+     "window": [
+      0.35,
+      1.2
+     ],
+     "frames": 52
+    },
+    "winIk": {
+     "handL": 0.030167166025060876,
+     "handR": 0.008752331811665357,
+     "handLR": [
+      0.9392122537124526,
+      0.9477824602051031
+     ],
+     "window": [
+      0.35,
+      1.2
+     ],
+     "frames": 52
+    },
+    "bwinRot": {
+     "handL": 3.840558860170839e-08,
+     "handR": 3.180656787769629e-08,
+     "handLR": [
+      0.6228656404384323,
+      0.6228656738840008
+     ],
+     "window": [
+      0.35,
+      1.2
+     ],
+     "frames": 52
+    },
+    "bwinIk": {
+     "handL": 0.029459919988951,
+     "handR": 3.535657538744e-15,
+     "handLR": [
+      0.9392122537124526,
+      0.9477824602051033
+     ],
+     "window": [
+      0.35,
+      1.2
+     ],
+     "frames": 52
+    },
+    "ikErrMax": 4.807859356166043e-08,
+    "clamps": 0
+   }
+  },
+  "classSides": [
+   "IK",
+   "IK"
+  ],
+  "packDelta": {
+   "L": 3.2841465817177433e-08,
+   "R": 1.5580643782632636e-08
+  }
+ },
+ {
+  "clip": "Prisyadka",
+  "duration": 6.75,
+  "frames": 406,
+  "loop": true,
+  "holds": 2.0,
+  "weights": {
+   "L": {
+    "curve": true,
+    "min": 0.0,
+    "max": 0.0,
+    "active": 0,
+    "full": 0
+   },
+   "R": {
+    "curve": true,
+    "min": 0.0,
+    "max": 0.0,
+    "active": 0,
+    "full": 0
+   }
+  },
+  "targets": {
+   "L": {
+    "curve": true,
+    "relTravel": 0.08785148674578262,
+    "relMaxFromFirst": 0.08274561821880329,
+    "authoredTravel": 1.1274368112207335e-16,
+    "authoredMaxFromFirst": 5.637184056103667e-17,
+    "restRel": 1.0484054538880507
+   },
+   "R": {
+    "curve": true,
+    "relTravel": 0.06795092926345707,
+    "relMaxFromFirst": 0.0648019310638734,
+    "authoredTravel": 7.88106850030428e-17,
+    "authoredMaxFromFirst": 3.94053425015214e-17,
+    "restRel": 1.0666109521069902
+   }
+  },
+  "rotSpread": {
+   "L": {
+    "shoulder.L": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L",
+     "spread": 4.143770922885097
+    },
+    "arm.L_upper": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper",
+     "spread": 2.5574799804301382
+    },
+    "arm.L_lower": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower",
+     "spread": 75.76327899369541
+    },
+    "hand.L": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L",
+     "spread": 87.78501472502057
+    }
+   },
+   "R": {
+    "shoulder.R": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R",
+     "spread": 6.252291380988807
+    },
+    "arm.R_upper": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper",
+     "spread": 1.0143692629628303
+    },
+    "arm.R_lower": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower",
+     "spread": 74.17999999999999
+    },
+    "hand.R": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R",
+     "spread": 129.18223627812478
+    }
+   }
+  },
+  "motion": {
+   "L": {
+    "travelRot": 0.40046249710491,
+    "travelIk": 0.40046249710491,
+    "tvRot": 1.5540106562346427,
+    "tvIk": 1.5540106562346427,
+    "modelTravelRot": 0.5944613684734166,
+    "modelTravelIk": 0.5944613684734166,
+    "ikOffsetMean": 0.0,
+    "ikOffsetMax": 0.0,
+    "share": 0.0,
+    "pinning": 0.0,
+    "winRot": {
+     "handL": 0.1859287603600742,
+     "handR": 0.1807715442406877,
+     "handLR": [
+      0.0924519774709264,
+      0.11007710063696195
+     ],
+     "window": [
+      0.35,
+      2.0
+     ],
+     "frames": 100
+    },
+    "winIk": {
+     "handL": 0.1859287603600742,
+     "handR": 0.1807715442406877,
+     "handLR": [
+      0.0924519774709264,
+      0.11007710063696195
+     ],
+     "window": [
+      0.35,
+      2.0
+     ],
+     "frames": 100
+    },
+    "bwinRot": {
+     "handL": 0.020406800282305782,
+     "handR": 0.029862316894831254,
+     "handLR": [
+      0.09245197747092641,
+      0.11007710063696197
+     ],
+     "window": [
+      0.35,
+      2.0
+     ],
+     "frames": 100
+    },
+    "bwinIk": {
+     "handL": 0.020406800282305782,
+     "handR": 0.029862316894831254,
+     "handLR": [
+      0.09245197747092641,
+      0.11007710063696197
+     ],
+     "window": [
+      0.35,
+      2.0
+     ],
+     "frames": 100
+    },
+    "ikErrMax": 0.0,
+    "clamps": 0
+   },
+   "R": {
+    "travelRot": 0.44634814340018786,
+    "travelIk": 0.44634814340018786,
+    "tvRot": 1.5361762127322884,
+    "tvIk": 1.5361762127322884,
+    "modelTravelRot": 0.6364310882235111,
+    "modelTravelIk": 0.6364310882235111,
+    "ikOffsetMean": 0.0,
+    "ikOffsetMax": 0.0,
+    "share": 0.0,
+    "pinning": 0.0,
+    "winRot": {
+     "handL": 0.1859287603600742,
+     "handR": 0.1807715442406877,
+     "handLR": [
+      0.0924519774709264,
+      0.11007710063696195
+     ],
+     "window": [
+      0.35,
+      2.0
+     ],
+     "frames": 100
+    },
+    "winIk": {
+     "handL": 0.1859287603600742,
+     "handR": 0.1807715442406877,
+     "handLR": [
+      0.0924519774709264,
+      0.11007710063696195
+     ],
+     "window": [
+      0.35,
+      2.0
+     ],
+     "frames": 100
+    },
+    "bwinRot": {
+     "handL": 0.020406800282305782,
+     "handR": 0.029862316894831254,
+     "handLR": [
+      0.09245197747092641,
+      0.11007710063696197
+     ],
+     "window": [
+      0.35,
+      2.0
+     ],
+     "frames": 100
+    },
+    "bwinIk": {
+     "handL": 0.020406800282305782,
+     "handR": 0.029862316894831254,
+     "handLR": [
+      0.09245197747092641,
+      0.11007710063696197
+     ],
+     "window": [
+      0.35,
+      2.0
+     ],
+     "frames": 100
+    },
+    "ikErrMax": 0.0,
+    "clamps": 0
+   }
+  },
+  "classSides": [
+   "rot(w=0)",
+   "rot(w=0)"
+  ],
+  "packDelta": {
+   "L": 1.7703196903203457e-08,
+   "R": 1.013610587084493e-08
+  }
+ },
+ {
+  "clip": "Salute",
+  "duration": 1.783333,
+  "frames": 108,
+  "loop": false,
+  "holds": 1.6,
+  "weights": {
+   "L": {
+    "curve": true,
+    "min": 1.0,
+    "max": 1.0,
+    "active": 108,
+    "full": 108
+   },
+   "R": {
+    "curve": true,
+    "min": 0.0,
+    "max": 0.0,
+    "active": 0,
+    "full": 0
+   }
+  },
+  "targets": {
+   "L": {
+    "curve": true,
+    "relTravel": 0.17098304592050723,
+    "relMaxFromFirst": 0.16126691379968813,
+    "authoredTravel": 0.09000122059792086,
+    "authoredMaxFromFirst": 0.09000122059792084,
+    "restRel": 1.0484054538880507
+   },
+   "R": {
+    "curve": true,
+    "relTravel": 0.098958139525878,
+    "relMaxFromFirst": 0.07520352743230065,
+    "authoredTravel": 2.4835037038225095e-16,
+    "authoredMaxFromFirst": 1.2412670766236366e-16,
+    "restRel": 1.0666109521069902
+   }
+  },
+  "rotSpread": {
+   "L": {
+    "shoulder.L": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L",
+     "spread": 0.0
+    },
+    "arm.L_upper": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper",
+     "spread": 0.0
+    },
+    "arm.L_lower": {
+     "curve": false,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower",
+     "spread": 0.0
+    },
+    "hand.L": {
+     "curve": false,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L",
+     "spread": 0.038868305276436185
+    }
+   },
+   "R": {
+    "shoulder.R": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R",
+     "spread": 0.0
+    },
+    "arm.R_upper": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper",
+     "spread": 106.67220054519082
+    },
+    "arm.R_lower": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower",
+     "spread": 53.56037725575255
+    },
+    "hand.R": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R",
+     "spread": 56.84866237136079
+    }
+   }
+  },
+  "motion": {
+   "L": {
+    "travelRot": 5.192943100989364e-08,
+    "travelIk": 0.08976897458572784,
+    "tvRot": 1.6709036711884702e-06,
+    "tvIk": 0.08981301301568236,
+    "modelTravelRot": 0.15363507051019146,
+    "modelTravelIk": 0.2132554950333199,
+    "ikOffsetMean": 0.2954716460844091,
+    "ikOffsetMax": 0.3013271938848373,
+    "share": 0.9999813957508485,
+    "pinning": 0.0,
+    "winRot": {
+     "handL": 0.05763754237670073,
+     "handR": 1.0944036575131575,
+     "handLR": [
+      0.9459568504489256,
+      1.240279680554578
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "winIk": {
+     "handL": 0.08662919561440374,
+     "handR": 1.0944036575131575,
+     "handLR": [
+      0.7678192432654467,
+      1.2777438988607912
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "bwinRot": {
+     "handL": 5.088659859773925e-08,
+     "handR": 1.0595977695104337,
+     "handLR": [
+      0.9459568504489256,
+      1.240279680554578
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "bwinIk": {
+     "handL": 2.535821321562829e-10,
+     "handR": 1.0595977695104337,
+     "handLR": [
+      0.7678192432654467,
+      1.277743898860791
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "ikErrMax": 0.0003392998633168588,
+    "clamps": 0
+   },
+   "R": {
+    "travelRot": 1.1079098938264578,
+    "travelIk": 1.1079098938264578,
+    "tvRot": 1.656657434071041,
+    "tvIk": 1.656657434071041,
+    "modelTravelRot": 1.106807323372517,
+    "modelTravelIk": 1.106807323372517,
+    "ikOffsetMean": 0.0,
+    "ikOffsetMax": 0.0,
+    "share": 0.0,
+    "pinning": 0.0,
+    "winRot": {
+     "handL": 0.05763754237670073,
+     "handR": 1.0944036575131575,
+     "handLR": [
+      0.9459568504489256,
+      1.240279680554578
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "winIk": {
+     "handL": 0.08662919561440374,
+     "handR": 1.0944036575131575,
+     "handLR": [
+      0.7678192432654467,
+      1.2777438988607912
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "bwinRot": {
+     "handL": 5.088659859773925e-08,
+     "handR": 1.0595977695104337,
+     "handLR": [
+      0.9459568504489256,
+      1.240279680554578
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "bwinIk": {
+     "handL": 2.535821321562829e-10,
+     "handR": 1.0595977695104337,
+     "handLR": [
+      0.7678192432654467,
+      1.277743898860791
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "ikErrMax": 0.0,
+    "clamps": 0
+   }
+  },
+  "classSides": [
+   "IK",
+   "rot(w=0)"
+  ],
+  "packDelta": {
+   "L": 3.1034682329583826e-08,
+   "R": 3.059966251764e-08
+  }
+ },
+ {
+  "clip": "Shy",
+  "duration": 2.5,
+  "frames": 151,
+  "loop": true,
+  "holds": 1.6,
+  "weights": {
+   "L": {
+    "curve": true,
+    "min": 1.0,
+    "max": 1.0,
+    "active": 151,
+    "full": 151
+   },
+   "R": {
+    "curve": true,
+    "min": 1.0,
+    "max": 1.0,
+    "active": 151,
+    "full": 151
+   }
+  },
+  "targets": {
+   "L": {
+    "curve": true,
+    "relTravel": 0.02790968014565297,
+    "relMaxFromFirst": 0.026853373891954885,
+    "authoredTravel": 0.023986662960903862,
+    "authoredMaxFromFirst": 0.023986662960903862,
+    "restRel": 1.0484054538880507
+   },
+   "R": {
+    "curve": true,
+    "relTravel": 0.04688512473622577,
+    "relMaxFromFirst": 0.046885124736225775,
+    "authoredTravel": 0.04446346815083162,
+    "authoredMaxFromFirst": 0.044463468150831624,
+    "restRel": 1.0666109521069902
+   }
+  },
+  "rotSpread": {
+   "L": {
+    "shoulder.L": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L",
+     "spread": 0.0
+    },
+    "arm.L_upper": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper",
+     "spread": 33.95584704961564
+    },
+    "arm.L_lower": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower",
+     "spread": 3.4150945850063755e-06
+    },
+    "hand.L": {
+     "curve": false,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L",
+     "spread": 0.038868305276436185
+    }
+   },
+   "R": {
+    "shoulder.R": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R",
+     "spread": 0.0
+    },
+    "arm.R_upper": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper",
+     "spread": 1.7075472925031877e-06
+    },
+    "arm.R_lower": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower",
+     "spread": 2.4148365394514667e-06
+    },
+    "hand.R": {
+     "curve": false,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R",
+     "spread": 0.02085618299538878
+    }
+   }
+  },
+  "motion": {
+   "L": {
+    "travelRot": 0.2332386113624226,
+    "travelIk": 0.024075944880832485,
+    "tvRot": 0.48149814162910354,
+    "tvIk": 0.2403962752236901,
+    "modelTravelRot": 0.2312662481950413,
+    "modelTravelIk": 0.052756556409701796,
+    "ikOffsetMean": 0.05920568032895395,
+    "ikOffsetMax": 0.21840986900889015,
+    "share": 0.0,
+    "pinning": 0.5007327039511887,
+    "winRot": {
+     "handL": 0.050021134836616334,
+     "handR": 0.03301531300384656,
+     "handLR": [
+      0.6115434222495241,
+      0.6360361041665764
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "winIk": {
+     "handL": 0.043707798354857816,
+     "handR": 0.0575088706737355,
+     "handLR": [
+      0.46885859292851984,
+      0.5369546213474254
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "bwinRot": {
+     "handL": 0.03993215237245235,
+     "handR": 6.229850028576939e-08,
+     "handLR": [
+      0.611543422249524,
+      0.6360361041665764
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "bwinIk": {
+     "handL": 0.024062732670174704,
+     "handR": 0.04447703141329994,
+     "handLR": [
+      0.46885859292851984,
+      0.5369546213474254
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "ikErrMax": 0.0004248470839750206,
+    "clamps": 0
+   },
+   "R": {
+    "travelRot": 6.229850028576939e-08,
+    "travelIk": 0.04447703141330108,
+    "tvRot": 2.442231596775388e-06,
+    "tvIk": 0.4448812255075044,
+    "modelTravelRot": 0.04030496183009089,
+    "modelTravelIk": 0.06378950341540798,
+    "ikOffsetMean": 0.1978081206865226,
+    "ikOffsetMax": 0.2066223935818662,
+    "share": 0.9999945103738779,
+    "pinning": 0.0,
+    "winRot": {
+     "handL": 0.050021134836616334,
+     "handR": 0.03301531300384656,
+     "handLR": [
+      0.6115434222495241,
+      0.6360361041665764
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "winIk": {
+     "handL": 0.043707798354857816,
+     "handR": 0.0575088706737355,
+     "handLR": [
+      0.46885859292851984,
+      0.5369546213474254
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "bwinRot": {
+     "handL": 0.03993215237245235,
+     "handR": 6.229850028576939e-08,
+     "handLR": [
+      0.611543422249524,
+      0.6360361041665764
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "bwinIk": {
+     "handL": 0.024062732670174704,
+     "handR": 0.04447703141329994,
+     "handLR": [
+      0.46885859292851984,
+      0.5369546213474254
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "ikErrMax": 0.00042528013177382107,
+    "clamps": 0
+   }
+  },
+  "classSides": [
+   "IKpin",
+   "IK"
+  ],
+  "packDelta": {
+   "L": 2.0953757174473053e-08,
+   "R": 1.7716781860711684e-08
+  }
+ },
+ {
+  "clip": "Sign",
+  "duration": 2.083333,
+  "frames": 126,
+  "loop": true,
+  "holds": 1.6,
+  "weights": {
+   "L": {
+    "curve": true,
+    "min": 0.0,
+    "max": 0.0,
+    "active": 0,
+    "full": 0
+   },
+   "R": {
+    "curve": true,
+    "min": 0.0,
+    "max": 0.0,
+    "active": 0,
+    "full": 0
+   }
+  },
+  "targets": {
+   "L": {
+    "curve": true,
+    "relTravel": 0.007164185371584645,
+    "relMaxFromFirst": 0.007164185371584645,
+    "authoredTravel": 1.576213700060856e-16,
+    "authoredMaxFromFirst": 7.88106850030428e-17,
+    "restRel": 1.0484054538880507
+   },
+   "R": {
+    "curve": true,
+    "relTravel": 0.007406065124389241,
+    "relMaxFromFirst": 0.007406065124389241,
+    "authoredTravel": 1.1527756336890508e-16,
+    "authoredMaxFromFirst": 5.763878168445254e-17,
+    "restRel": 1.0666109521069902
+   }
+  },
+  "rotSpread": {
+   "L": {
+    "shoulder.L": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L",
+     "spread": 0.0
+    },
+    "arm.L_upper": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper",
+     "spread": 2.4148365394514667e-06
+    },
+    "arm.L_lower": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower",
+     "spread": 1.7075472925031877e-06
+    },
+    "hand.L": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L",
+     "spread": 2.9575586669421963e-06
+    }
+   },
+   "R": {
+    "shoulder.R": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R",
+     "spread": 17.823908258872738
+    },
+    "arm.R_upper": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper",
+     "spread": 21.284985584091476
+    },
+    "arm.R_lower": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower",
+     "spread": 25.64297804736778
+    },
+    "hand.R": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R",
+     "spread": 2.4148365394514667e-06
+    }
+   }
+  },
+  "motion": {
+   "L": {
+    "travelRot": 7.13506731689927e-08,
+    "travelIk": 7.13506731689927e-08,
+    "tvRot": 2.207964838944274e-06,
+    "tvIk": 2.207964838944274e-06,
+    "modelTravelRot": 0.014973440639606126,
+    "modelTravelIk": 0.014973440639606126,
+    "ikOffsetMean": 0.0,
+    "ikOffsetMax": 0.0,
+    "share": 0.0,
+    "pinning": 0.0,
+    "winRot": {
+     "handL": 0.010635690672150496,
+     "handR": 0.2522027074397492,
+     "handLR": [
+      0.4467620646384199,
+      0.6755627347672183
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "winIk": {
+     "handL": 0.010635690672150496,
+     "handR": 0.2522027074397492,
+     "handLR": [
+      0.4467620646384199,
+      0.6755627347672183
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "bwinRot": {
+     "handL": 6.832938123823733e-08,
+     "handR": 0.2517959004632562,
+     "handLR": [
+      0.44676206463841983,
+      0.6755627347672183
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "bwinIk": {
+     "handL": 6.832938123823733e-08,
+     "handR": 0.2517959004632562,
+     "handLR": [
+      0.44676206463841983,
+      0.6755627347672183
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "ikErrMax": 0.0,
+    "clamps": 0
+   },
+   "R": {
+    "travelRot": 0.28167448320344957,
+    "travelIk": 0.28167448320344957,
+    "tvRot": 0.743208794123467,
+    "tvIk": 0.743208794123467,
+    "modelTravelRot": 0.28137073843920424,
+    "modelTravelIk": 0.28137073843920424,
+    "ikOffsetMean": 0.0,
+    "ikOffsetMax": 0.0,
+    "share": 0.0,
+    "pinning": 0.0,
+    "winRot": {
+     "handL": 0.010635690672150496,
+     "handR": 0.2522027074397492,
+     "handLR": [
+      0.4467620646384199,
+      0.6755627347672183
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "winIk": {
+     "handL": 0.010635690672150496,
+     "handR": 0.2522027074397492,
+     "handLR": [
+      0.4467620646384199,
+      0.6755627347672183
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "bwinRot": {
+     "handL": 6.832938123823733e-08,
+     "handR": 0.2517959004632562,
+     "handLR": [
+      0.44676206463841983,
+      0.6755627347672183
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "bwinIk": {
+     "handL": 6.832938123823733e-08,
+     "handR": 0.2517959004632562,
+     "handLR": [
+      0.44676206463841983,
+      0.6755627347672183
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "ikErrMax": 0.0,
+    "clamps": 0
+   }
+  },
+  "classSides": [
+   "rot(w=0)",
+   "rot(w=0)"
+  ],
+  "packDelta": {}
+ },
+ {
+  "clip": "The_Griddy",
+  "duration": 6.533333,
+  "frames": 393,
+  "loop": true,
+  "holds": 1.6,
+  "weights": {
+   "L": {
+    "curve": true,
+    "min": 1.0,
+    "max": 1.0,
+    "active": 393,
+    "full": 393
+   },
+   "R": {
+    "curve": true,
+    "min": 1.0,
+    "max": 1.0,
+    "active": 393,
+    "full": 393
+   }
+  },
+  "targets": {
+   "L": {
+    "curve": true,
+    "relTravel": 1.2260125682985519,
+    "relMaxFromFirst": 1.0697987617149722,
+    "authoredTravel": 1.2324757046410448,
+    "authoredMaxFromFirst": 1.0606102488661893,
+    "restRel": 1.0484054538880507
+   },
+   "R": {
+    "curve": true,
+    "relTravel": 1.2143784545503051,
+    "relMaxFromFirst": 1.007336657277555,
+    "authoredTravel": 1.2039813795933096,
+    "authoredMaxFromFirst": 1.012164828474098,
+    "restRel": 1.0666109521069902
+   }
+  },
+  "rotSpread": {
+   "L": {
+    "shoulder.L": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L",
+     "spread": 0.0
+    },
+    "arm.L_upper": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper",
+     "spread": 93.60233821925459
+    },
+    "arm.L_lower": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower",
+     "spread": 1.7075472925031877e-06
+    },
+    "hand.L": {
+     "curve": false,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L",
+     "spread": 0.038868305276436185
+    }
+   },
+   "R": {
+    "shoulder.R": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R",
+     "spread": 0.0
+    },
+    "arm.R_upper": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper",
+     "spread": 95.22567983333805
+    },
+    "arm.R_lower": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower",
+     "spread": 0.0
+    },
+    "hand.R": {
+     "curve": false,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R",
+     "spread": 0.02085618299538878
+    }
+   }
+  },
+  "motion": {
+   "L": {
+    "travelRot": 0.9211362350950144,
+    "travelIk": 1.2324756442237688,
+    "tvRot": 1.9826977352599089,
+    "tvIk": 15.682929170526767,
+    "modelTravelRot": 1.0682130682192597,
+    "modelTravelIk": 1.2997198575765463,
+    "ikOffsetMean": 0.6788942756363946,
+    "ikOffsetMax": 1.0264706646911064,
+    "share": 0.8735760575271849,
+    "pinning": -6.909894126383775,
+    "winRot": {
+     "handL": 0.30268648294299394,
+     "handR": 0.19812212751232017,
+     "handLR": [
+      0.7436894361332593,
+      0.7436894888708604
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "winIk": {
+     "handL": 1.1287698906842334,
+     "handR": 1.0781656222801344,
+     "handLR": [
+      0.38979227746725004,
+      0.71396571943667
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "bwinRot": {
+     "handL": 7.925998882604698e-08,
+     "handR": 6.609125844056702e-08,
+     "handLR": [
+      0.7436894361332594,
+      0.7436894888708605
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "bwinIk": {
+     "handL": 1.0637357223070942,
+     "handR": 1.013267133328704,
+     "handLR": [
+      0.3897922774672499,
+      0.7139657194366699
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "ikErrMax": 5.4092016962385227e-08,
+    "clamps": 0
+   },
+   "R": {
+    "travelRot": 0.9613341338398751,
+    "travelIk": 1.2039813042710314,
+    "tvRot": 2.1181124210907503,
+    "tvIk": 15.239022413135103,
+    "modelTravelRot": 1.0392115823121915,
+    "modelTravelIk": 1.2639441056072511,
+    "ikOffsetMean": 0.48164309392222265,
+    "ikOffsetMax": 0.8926477422908851,
+    "share": 0.8610073294947669,
+    "pinning": -6.194623978120843,
+    "winRot": {
+     "handL": 0.30268648294299394,
+     "handR": 0.19812212751232017,
+     "handLR": [
+      0.7436894361332593,
+      0.7436894888708604
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "winIk": {
+     "handL": 1.1287698906842334,
+     "handR": 1.0781656222801344,
+     "handLR": [
+      0.38979227746725004,
+      0.71396571943667
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "bwinRot": {
+     "handL": 7.925998882604698e-08,
+     "handR": 6.609125844056702e-08,
+     "handLR": [
+      0.7436894361332594,
+      0.7436894888708605
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "bwinIk": {
+     "handL": 1.0637357223070942,
+     "handR": 1.013267133328704,
+     "handLR": [
+      0.3897922774672499,
+      0.7139657194366699
+     ],
+     "window": [
+      0.35,
+      1.6
+     ],
+     "frames": 76
+    },
+    "ikErrMax": 6.840504062823985e-08,
+    "clamps": 0
+   }
+  },
+  "classSides": [
+   "IK+rot",
+   "IK+rot"
+  ],
+  "packDelta": {
+   "L": 4.26996517078856e-08,
+   "R": 3.6545065494283567e-08
+  }
+ },
+ {
+  "clip": "Twerk",
+  "duration": 0.25,
+  "frames": 16,
+  "loop": true,
+  "holds": 1.2,
+  "weights": {
+   "L": {
+    "curve": true,
+    "min": 1.0,
+    "max": 1.0,
+    "active": 16,
+    "full": 16
+   },
+   "R": {
+    "curve": true,
+    "min": 1.0,
+    "max": 1.0,
+    "active": 16,
+    "full": 16
+   }
+  },
+  "targets": {
+   "L": {
+    "curve": true,
+    "relTravel": 0.06253003048742509,
+    "relMaxFromFirst": 0.06176490932001798,
+    "authoredTravel": 0.11965459949703598,
+    "authoredMaxFromFirst": 0.11965459949703598,
+    "restRel": 1.0484054538880507
+   },
+   "R": {
+    "curve": true,
+    "relTravel": 0.09706939451424448,
+    "relMaxFromFirst": 0.09706939451424448,
+    "authoredTravel": 0.1568287601175241,
+    "authoredMaxFromFirst": 0.1568287601175241,
+    "restRel": 1.0666109521069902
+   }
+  },
+  "rotSpread": {
+   "L": {
+    "shoulder.L": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L",
+     "spread": 0.0
+    },
+    "arm.L_upper": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper",
+     "spread": 0.0
+    },
+    "arm.L_lower": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower",
+     "spread": 1.7075472925031877e-06
+    },
+    "hand.L": {
+     "curve": false,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.L/arm.L_upper/arm.L_lower/hand.L",
+     "spread": 0.038868305276436185
+    }
+   },
+   "R": {
+    "shoulder.R": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R",
+     "spread": 0.0
+    },
+    "arm.R_upper": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper",
+     "spread": 1.7075472925031877e-06
+    },
+    "arm.R_lower": {
+     "curve": true,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower",
+     "spread": 2.4148365394514667e-06
+    },
+    "hand.R": {
+     "curve": false,
+     "path": "spine/spine.001/spine.002/spine.003/shoulder.R/arm.R_upper/arm.R_lower/hand.R",
+     "spread": 0.02085618299538878
+    }
+   }
+  },
+  "motion": {
+   "L": {
+    "travelRot": 4.217844154105422e-08,
+    "travelIk": 0.11253365495641858,
+    "tvRot": 2.454660400533408e-07,
+    "tvIk": 0.2286018804023841,
+    "modelTravelRot": 0.06313638209276216,
+    "modelTravelIk": 0.05888051154918168,
+    "ikOffsetMean": 0.23487742699372513,
+    "ikOffsetMax": 0.2785030555184243,
+    "share": 0.9999989262291298,
+    "pinning": 0.0,
+    "winRot": {
+     "handL": 0.06313638209276216,
+     "handR": 0.0424027001044963,
+     "handLR": [
+      0.6713188757742263,
+      0.6713189039746541
+     ],
+     "window": [
+      0.35,
+      1.2
+     ],
+     "frames": 52
+    },
+    "winIk": {
+     "handL": 0.05888051154918168,
+     "handR": 0.06962461239755723,
+     "handLR": [
+      0.49941563090023056,
+      0.53363184423931
+     ],
+     "window": [
+      0.35,
+      1.2
+     ],
+     "frames": 52
+    },
+    "bwinRot": {
+     "handL": 4.217844154105422e-08,
+     "handR": 3.0657466177884493e-08,
+     "handLR": [
+      0.6713188757742264,
+      0.6713189039746542
+     ],
+     "window": [
+      0.35,
+      1.2
+     ],
+     "frames": 52
+    },
+    "bwinIk": {
+     "handL": 0.11253365495641858,
+     "handR": 0.12697440670658616,
+     "handLR": [
+      0.49941563090023056,
+      0.53363184423931
+     ],
+     "window": [
+      0.35,
+      1.2
+     ],
+     "frames": 52
+    },
+    "ikErrMax": 0.021083651754026704,
+    "clamps": 7
+   },
+   "R": {
+    "travelRot": 3.0657466177884493e-08,
+    "travelIk": 0.12697440670658616,
+    "tvRot": 1.947150371251918e-07,
+    "tvIk": 0.2542442714100991,
+    "modelTravelRot": 0.0424027001044963,
+    "modelTravelIk": 0.06962461239755723,
+    "ikOffsetMean": 0.5028530978209415,
+    "ikOffsetMax": 0.5255955975958435,
+    "share": 0.9999992341418901,
+    "pinning": 0.0,
+    "winRot": {
+     "handL": 0.06313638209276216,
+     "handR": 0.0424027001044963,
+     "handLR": [
+      0.6713188757742263,
+      0.6713189039746541
+     ],
+     "window": [
+      0.35,
+      1.2
+     ],
+     "frames": 52
+    },
+    "winIk": {
+     "handL": 0.05888051154918168,
+     "handR": 0.06962461239755723,
+     "handLR": [
+      0.49941563090023056,
+      0.53363184423931
+     ],
+     "window": [
+      0.35,
+      1.2
+     ],
+     "frames": 52
+    },
+    "bwinRot": {
+     "handL": 4.217844154105422e-08,
+     "handR": 3.0657466177884493e-08,
+     "handLR": [
+      0.6713188757742264,
+      0.6713189039746542
+     ],
+     "window": [
+      0.35,
+      1.2
+     ],
+     "frames": 52
+    },
+    "bwinIk": {
+     "handL": 0.11253365495641858,
+     "handR": 0.12697440670658616,
+     "handLR": [
+      0.49941563090023056,
+      0.53363184423931
+     ],
+     "window": [
+      0.35,
+      1.2
+     ],
+     "frames": 52
+    },
+    "ikErrMax": 0.0930404943136138,
+    "clamps": 16
+   }
+  },
+  "classSides": [
+   "IK",
+   "IK"
+  ],
+  "packDelta": {
+   "L": 2.812280926057531e-08,
+   "R": 3.198828540286055e-08
+  }
+ }
+]

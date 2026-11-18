@@ -1,0 +1,9 @@
+{
+  "case": "20261116-models-pair-truthful (REAL models pair output, candidate 64b8b2f2)",
+  "log": "log.txt",
+  "expect_remote": false,
+  "custom_rows": {
+    "TC2 Demoman": "tc2-demoman"
+  },
+  "checks": {}
+}
