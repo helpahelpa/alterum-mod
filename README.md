@@ -51,6 +51,15 @@ registration and there is no unregister. `PumpBehaviour` is the only injected ty
 in `BepInEx/cache/hot/` into a collectible `AssemblyLoadContext` whose `Load` returns null so
 everything resolves through the default context (that is what keeps il2cpp type identity shared).
 
+## RE feedback rule
+
+`alterum-re/` is the source of truth for the shipped game, and the mod is its best test. If mod work
+contradicts it — a signature, formula, field, asset value, code path or runtime behavior — update
+`alterum-re` in the same session. The rule and completion criteria are in [AGENTS.md](AGENTS.md);
+the full procedure and evidence standard are in
+[`alterum-re/docs/RE-FEEDBACK.md`](alterum-re/docs/RE-FEEDBACK.md), with the index in
+[`alterum-re/docs/DISCREPANCIES.md`](alterum-re/docs/DISCREPANCIES.md).
+
 ## Running several instances at once
 
 Verified working: two processes from the same install, both with BepInEx loaded. Give each a
