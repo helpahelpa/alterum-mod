@@ -1,3 +1,7 @@
+# The separate reverse-engineering repository lives inside this checkout but is its own git
+# repository (see alterum-re/README.md). Never track its generated decompilation here.
+/alterum-re/
+
 # Build output of the mod projects (dotnet). Nothing here is source.
 bin/
 obj/
