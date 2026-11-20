@@ -16,13 +16,13 @@ namespace AlterumModelSwap.Hot;
 // guessing at the gate, this patches the console's own lifecycle (private methods included) and
 // prints one ordered line per call plus a managed stack trace:
 //
-//   Awake / OnEnable / OnDisable / DisableQC / IsSupportedState / Initialize / Update /
-//   Activate / Deactivate / Toggle / set_IsActive
+//   Awake / OnEnable / OnDisable / DisableQC / Initialize / Update /
+//   Activate / Deactivate / Toggle / InvokeCommand
 //
 // A component that disables itself does it from one of those, so the sequence names the caller:
-// a stack or an `IsSupportedState -> False` immediately before `DisableQC` is the answer, and an
-// `OnDisable` that fires the moment `enabled` is written (with no `DisableQC`) means the write went
-// to a dead object rather than being reverted by game code.
+// a stack on `DisableQC` is the answer, and an `OnDisable` that fires the moment `enabled` is
+// written (with no `DisableQC`) means the write went to a dead object rather than being reverted
+// by game code.
 //
 // Installed on hot-module initialization, all of it best-effort: any signature that does not
 // resolve is a log line, never a throw. Request `qc.request` `gate` prints the ring buffer.
@@ -38,7 +38,8 @@ namespace AlterumModelSwap.Hot;
 //
 // Not skipped while locked: QuantumConsole.Update (it drives the console's own input loop, so
 // starving it would gate the console by breaking it - the key path it would run, Toggle(), is
-// refused instead) and Initialize/Awake/OnEnable's type-guarded skip. The command table is
+// refused instead). The type-guarded Initialize/Awake hooks and OnEnable's deliberate skip are
+// lifecycle handling, not access decisions, and do not depend on the lock. The command table is
 // deliberately NOT gated either: the console keeps initializing normally while locked, so
 // unlocking is instant instead of a race against a cold start and the 109-command table is there
 // the moment access is allowed.
@@ -51,6 +52,7 @@ internal static class QcGate
 {
     private const string QcTypeName = "QFSW.QC.QuantumConsole";
     private const string ProcTypeName = "QFSW.QC.QuantumConsoleProcessor";
+    private const string RegistryTypeName = "QFSW.QC.QuantumRegistry";
     private const int RingCap = 200;
     private const int StackLines = 14;
     private const int LogCap = 6;
@@ -61,6 +63,8 @@ internal static class QcGate
     private static IHostContext _host;
     private static Type _qc;
     private static Type _proc;
+    private static Type _registry;
+    private static MethodInfo _register;
     private static int _installed;
     private static int _failed;
     private static bool _verboseStacks = true;
@@ -76,6 +80,8 @@ internal static class QcGate
         if (_harmony != null) return;
         _qc = FindType(QcTypeName);
         _proc = FindType(ProcTypeName);
+        _registry = FindType(RegistryTypeName);
+        _register = FindMethod(_registry, "RegisterObject", 2);
         if (_qc == null) { host.LogWarning($"[gate] type {QcTypeName} not found - no lifecycle hooks installed"); return; }
 
         var h = new Harmony("com.user0.alterum.qcgate." + Guid.NewGuid().ToString("N"));
@@ -144,6 +150,8 @@ internal static class QcGate
         _ring.Clear();
         _counts.Clear();
         _qc = null;
+        _registry = null;
+        _register = null;
         // This generation's text-input subscription dies with the generation; the unlock state
         // does not (it lives in the AppDomain slot, see QcAccess). A hot reload therefore comes
         // back armed and unlocked without a second confirmation sound.
@@ -189,10 +197,20 @@ internal static class QcGate
         if (!Hook("DisableQC enter", __instance, true)) return;
         Exiting(__instance, "DisableQC");
     }
-    // OnEnable's only job before it disables the component is the IsSupportedState gate. Skipping
-    // the original for a QuantumConsole keeps `enabled` true so the console's own Update (Tilde,
-    // history, autocomplete) runs; GameConsole.Enable then calls the console's own Initialize() and
-    // Activate(). Nothing of the console itself is reimplemented.
+    // The shipped OnEnable is not a supported-state probe: it first calls
+    // QuantumRegistry.RegisterObject(this), then subscribes DebugIntercept, closes _containerRect,
+    // invokes m_OnDeactivate and finally sets enabled = false. Skipping the original is what keeps
+    // `enabled` true so the console's own Update (Tilde, history, autocomplete) runs; GameConsole
+    // then calls the console's own Initialize() and Activate(). Nothing of the console itself is
+    // reimplemented.
+    //
+    // The skip also drops that RegisterObject, while OnDisable still starts with
+    // QuantumRegistry.DeregisterObject(this). That call is unconditional and throws "not found in
+    // the registry" when there is no matching entry, aborting the rest of OnDisable at scene
+    // unload. Skipping OnDisable instead would also drop its log unsubscribe, container close and
+    // m_OnDeactivate cleanup, so balance the registration rather than suppress the teardown.
+    // Restore only that one side effect on the skip path: every other component (and every
+    // OnEnable this gate does not skip) still registers natively.
     private static bool P_OnEnablePre(MonoBehaviour __instance)
     {
         try
@@ -201,9 +219,47 @@ internal static class QcGate
             if (full != QcTypeName) return true;
         }
         catch { return true; }
-        Ev("OnEnable original skipped (supported gate compiled to false)", __instance, null, quietAfter: 3);
+        bool balanced = RestoreRegistration(__instance);
+        Ev($"OnEnable original skipped (keeps enabled; registry {(balanced ? "balanced" : "NOT balanced")})",
+           __instance, null, quietAfter: 3);
         GameConsole.ConsoleAwoke();
         return false;
+    }
+
+    private static bool RestoreRegistration(MonoBehaviour c)
+    {
+        var register = _register;
+        if (register == null)
+        {
+            _registry ??= FindType(RegistryTypeName);
+            register = FindMethod(_registry, "RegisterObject", 2);
+            _register = register;
+        }
+        if (register == null)
+        {
+            _host?.LogWarning("[gate] QuantumRegistry.RegisterObject(Type,object) not found - the skipped " +
+                              "OnEnable cannot be balanced, so OnDisable may throw at teardown");
+            return false;
+        }
+        try
+        {
+            // The interop signature takes Il2CppSystem.Type, not System.Type; the native
+            // RegisterObject<T>() call that OnEnable would have made uses the same class pointer.
+            object type = Il2CppInterop.Runtime.Il2CppType.From(_qc);
+            register.Invoke(null, new object[] { type, c });
+            return true;
+        }
+        catch (Exception e)
+        {
+            var inner = e;
+            while (inner is TargetInvocationException tie && tie.InnerException != null) inner = tie.InnerException;
+            // Already in the registry: OnDisable's matching deregistration is already balanced.
+            if (inner is ArgumentException &&
+                (inner.Message ?? "").IndexOf("already registered", StringComparison.OrdinalIgnoreCase) >= 0)
+                return true;
+            _host?.LogWarning($"[gate] registry registration failed: {inner.GetType().Name}: {inner.Message}");
+            return false;
+        }
     }
 
     private static void P_Initialize(MonoBehaviour __instance) => Hook("Initialize enter", __instance, false, quietAfter: 1);
@@ -359,6 +415,7 @@ internal static class QcGate
 
     private static MethodInfo FindMethod(Type t, string name, int argc)
     {
+        if (t == null) return null;
         var flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
         foreach (var m in t.GetMethods(flags))
             if (m.Name == name && m.GetParameters().Length == argc) return m;

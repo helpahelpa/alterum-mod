@@ -26,7 +26,10 @@ namespace AlterumModelSwap.Hot;
 //                   different; the resolver does not force them together.
 //   * HUD         - DISPLAY ONLY: the portrait Image is given the canonical row's bust sprite. The
 //                   shared `PlayerModelData` is never mutated, `SetupModel` is never called and no
-//                   selection RPC is ever sent just to refresh an icon.
+//                   selection RPC is ever sent just to refresh an icon. ONLY the local player's own
+//                   HUD slot may be written: a portrait is identified by WHERE it lives and by what
+//                   its composite is bound to, never by the sprite it happens to hold (ProjectHud
+//                   and ScanLocalHudPortraits are the one admission rule).
 //   * WARDROBE    - DISPLAY ONLY: a remote actor's occupancy/nickname is moved to the canonical
 //                   row's tab and the stale row's entry for that actor is cleared.
 //
@@ -91,6 +94,7 @@ internal static class ModelPresentation
     private static int _viewTabCount = -1;
     private static float _nextReconcile;
     private static bool _hudDrift, _wardrobeDrift;   // "a correction was written in this pass"
+    private static bool _hudPending;                 // a correction is OWED but no local HUD slot was on screen
     private static int _watchChecks;                 // quiet reconcile passes left before the watch ends
     private static float _watchUntil;                // hard end of the current watch
     private static string _localSig = "";
@@ -152,45 +156,176 @@ internal static class ModelPresentation
     {
         if (id == null) return "<unobserved>";
         if (id.Remote) return "<remote-no-hud>";
-        string observed = null;
+        // A fresh object-table scan: an identity edge must observe the HUD as it is NOW, never a scene
+        // snapshot taken before the slot spawned. This runs on diagnostic/identity edges, never as a
+        // per-frame scanner.
+        return HudRowFrom(ScanLocalHudPortraits(null, out _));
+    }
+
+    // One portrait candidate: the Image the game draws a bust into, the path that proves where it
+    // lives, what its composite is bound to, and whether it came from the legacy HUD element.
+    private struct HudPortrait
+    {
+        internal Image Image;
+        internal string Path;
+        internal string Row;
+        internal bool Legacy;
+    }
+
+    // Why clones were NOT admitted. Counters are evidence for the log lines only; they are never a
+    // reason to write to something else.
+    private struct HudScanStats
+    {
+        internal int Composites, LegacyElements, VotingCanvas, NotHud, Inactive, Unbound, OtherRow;
+    }
+
+    private static string StatsText(HudScanStats s) =>
+        $"composites={s.Composites} legacy={s.LegacyElements} votingCanvas={s.VotingCanvas} notHud={s.NotHud} " +
+        $"inactive={s.Inactive} unbound={s.Unbound} otherRow={s.OtherRow}";
+
+    // THE ONLY source of "the local player's HUD portrait" candidates, shared by the observer
+    // (`HudRow`) and the writer (`ProjectHud`), so the two cannot disagree about which slot is ours.
+    //
+    // Admission, all required:
+    //   * the object belongs to a LOADED scene - `Resources.FindObjectsOfTypeAll` also hands back
+    //     prefab/asset instances, which are never on screen;
+    //   * the composite (or legacy element) is active in the hierarchy, and its portrait Image is
+    //     active and enabled;
+    //   * the path is under the HUD canvas - a 'HUD' segment and no 'Voting' segment. The voting
+    //     screen clones ONE `PortraitCompositeView` per player slot and every clone carries a whole
+    //     roster bust, so the SPRITE never identifies the local slot (2026-11-20 06:33Z: the local
+    //     custom bust was painted into nine voting slots exactly that way);
+    //   * a composite is BOUND: `CurrentModelData` is a `PlayerModelData`, and when this client's
+    //     applied row is known it is that very row. The voting clones are unbound (`row='<none>'`).
+    //
+    // An empty list is a legitimate answer - "no local HUD portrait is on screen" - and callers must
+    // no-op rather than guess.
+    private static List<HudPortrait> ScanLocalHudPortraits(IHostContext log, out HudScanStats stats)
+    {
+        stats = default;
+        var list = new List<HudPortrait>(4);
+        var seen = new HashSet<int>();
+        PlayerModelData localApplied = null;
+        try { localApplied = SahurWardrobe.AppliedData(null); } catch { }
+
         try
         {
-            // Explicit observation must not reuse a scene snapshot taken before the HUD spawned.
-            // This runs on diagnostic/identity edges, never as a per-frame scanner.
             var all = Resources.FindObjectsOfTypeAll(Il2CppType.Of<global::UI.Portrait.PortraitCompositeView>());
             for (int i = 0; all != null && i < all.Length; i++)
             {
                 var cv = all[i].TryCast<global::UI.Portrait.PortraitCompositeView>();
-                if (cv == null || !cv.gameObject.activeInHierarchy ||
-                    !SafePath(cv.transform).Contains("/HUD/")) continue;
-                var image = cv._portraitImage;
-                if (image == null || !image.isActiveAndEnabled || !image.gameObject.activeInHierarchy) continue;
-                string row = ObservedBustRow(image.sprite);
-                if (observed != null && observed != row) return "<conflict>";
-                observed = row;
+                if (cv == null || cv.gameObject == null) continue;
+                stats.Composites++;
+                string path = SafePath(cv.transform);
+                if (IsVotingCanvas(path)) { stats.VotingCanvas++; continue; }
+                if (!IsHudPath(path)) { stats.NotHud++; continue; }
+                if (!InLoadedScene(cv.gameObject) || !cv.gameObject.activeInHierarchy) { stats.Inactive++; continue; }
+                PlayerModelData bound = null;
+                try { bound = cv.CurrentModelData; } catch { bound = null; }
+                if (bound == null) { stats.Unbound++; continue; }
+                if (localApplied != null && !Same(bound, localApplied)) { stats.OtherRow++; continue; }
+                Image portrait = null;
+                try { portrait = cv._portraitImage; } catch { }
+                if (!ImageOnScreen(portrait)) { stats.Inactive++; continue; }
+                AddHudPortrait(list, seen, portrait, path, SafeName(bound), false);
             }
-            if (observed == null)
+        }
+        catch (Exception e) { log?.LogWarning($"{HudTag} composite scan failed: {e.Message}"); }
+
+        try
+        {
+            var all = Resources.FindObjectsOfTypeAll(Il2CppType.Of<HUDLayerElements.PortraitHUDElement>());
+            for (int i = 0; all != null && i < all.Length; i++)
             {
-                var legacy = Resources.FindObjectsOfTypeAll(Il2CppType.Of<HUDLayerElements.PortraitHUDElement>());
-                for (int i = 0; legacy != null && i < legacy.Length; i++)
+                var element = all[i].TryCast<HUDLayerElements.PortraitHUDElement>();
+                if (element == null || element.gameObject == null) continue;
+                stats.LegacyElements++;
+                string path = SafePath(element.transform);
+                if (IsVotingCanvas(path)) { stats.VotingCanvas++; continue; }
+                if (!IsHudPath(path)) { stats.NotHud++; continue; }
+                if (!InLoadedScene(element.gameObject) || !element.gameObject.activeInHierarchy)
+                { stats.Inactive++; continue; }
+                var images = element.GetComponentsInChildren(Il2CppType.Of<Image>(), true);
+                for (int k = 0; images != null && k < images.Length; k++)
                 {
-                    var element = legacy[i].TryCast<HUDLayerElements.PortraitHUDElement>();
-                    if (element == null || !element.gameObject.activeInHierarchy) continue;
-                    var images = element.GetComponentsInChildren(Il2CppType.Of<Image>(), false);
-                    for (int k = 0; images != null && k < images.Length; k++)
-                    {
-                        var image = images[k].TryCast<Image>();
-                        if (image == null || !image.isActiveAndEnabled) continue;
-                        string row = ObservedBustRow(image.sprite);
-                        if (row == "<unknown-sprite>") continue;
-                        if (observed != null && observed != row) return "<conflict>";
-                        observed = row;
-                    }
+                    var image = images[k].TryCast<Image>();
+                    if (!ImageOnScreen(image)) continue;
+                    AddHudPortrait(list, seen, image, path, "", true);
                 }
             }
         }
-        catch { return "<unobserved>"; }
+        catch { }
+
+        return list;
+    }
+
+    private static void AddHudPortrait(List<HudPortrait> list, HashSet<int> seen, Image image,
+                                       string path, string row, bool legacy)
+    {
+        if (image == null) return;
+        int key;
+        try { key = image.GetInstanceID(); } catch { return; }
+        if (!seen.Add(key)) return;
+        list.Add(new HudPortrait { Image = image, Path = path ?? "?", Row = row ?? "", Legacy = legacy });
+    }
+
+    private static string HudRowFrom(List<HudPortrait> portraits)
+    {
+        string observed = null;
+        for (int i = 0; portraits != null && i < portraits.Count; i++)
+        {
+            var p = portraits[i];
+            Sprite sprite;
+            try { sprite = p.Image.sprite; } catch { continue; }
+            // The legacy element also holds non-portrait images; the composite's own image is its slot.
+            if (p.Legacy && sprite == null) continue;
+            string row = ObservedBustRow(sprite);
+            if (p.Legacy && row == "<unknown-sprite>") continue;
+            if (observed != null && observed != row) return "<conflict>";
+            observed = row;
+        }
         return observed ?? "<unobserved>";
+    }
+
+    // Where a candidate lives decides what it is. The HUD canvas holds the LOCAL player's slot; the
+    // voting screen (and every other canvas) holds copies that belong to other players or to nobody.
+    // Both trees use the same `PortraitCompositeView`, which is why the path is the first gate.
+    private static bool IsHudPath(string path) => HasSegment(path, "HUD");
+
+    private static bool IsVotingCanvas(string path)
+        => !string.IsNullOrEmpty(path) && path.IndexOf("Voting", StringComparison.OrdinalIgnoreCase) >= 0;
+
+    // Whole-segment match, so 'HUD' cannot be satisfied by a longer name that merely contains it.
+    private static bool HasSegment(string path, string segment)
+    {
+        if (string.IsNullOrEmpty(path) || string.IsNullOrEmpty(segment)) return false;
+        int i = 0;
+        while (i < path.Length)
+        {
+            int end = path.IndexOf('/', i);
+            if (end < 0) end = path.Length;
+            if (end - i == segment.Length &&
+                string.Compare(path, i, segment, 0, segment.Length, StringComparison.OrdinalIgnoreCase) == 0) return true;
+            i = end + 1;
+        }
+        return false;
+    }
+
+    private static bool InLoadedScene(GameObject go)
+    {
+        try { return go != null && !string.IsNullOrEmpty(go.scene.name); } catch { return false; }
+    }
+
+    private static bool ImageOnScreen(Image image)
+    {
+        if (image == null) return false;
+        try
+        {
+            if (!image.isActiveAndEnabled) return false;
+            var go = image.gameObject;
+            return go != null && go.activeInHierarchy;
+        }
+        catch { return false; }
     }
 
     private static string ObservedBustRow(Sprite sprite)
@@ -240,6 +375,7 @@ internal static class ModelPresentation
         _cachedLocalEntry = -1;
         CachedLocalSlug = "";
         _hudDrift = _wardrobeDrift = false;
+        _hudPending = false;
         _watchChecks = 0;
         _watchUntil = 0f;
         _projected.Clear();
@@ -300,10 +436,17 @@ internal static class ModelPresentation
     private static void Refresh(IHostContext log, string why, float now)
     {
         var local = ResolveLocal(log);
-        LogIdentity(log, local);
+        // ONE scan for the observer and the writer: the identity line and the projection must describe
+        // the same candidate set, or the evidence and the write can disagree (they did: hudRow=
+        // <unobserved> directly above a write into nine voting slots).
+        HudScanStats hudStats;
+        var portraits = ScanLocalHudPortraits(log, out hudStats);
+        LogIdentity(log, local, portraits);
 
-        // 1. HUD: display-only projection of the canonical row's bust sprite.
-        _hudDrift = ProjectHud(log, local);
+        // 1. HUD: display-only projection of the canonical row's bust sprite, into the LOCAL HUD slot
+        //    only. `_hudPending`: a correction is owed, but no local slot was on screen this pass.
+        _hudDrift = ProjectHud(log, local, portraits, hudStats, out bool hudOwed);
+        _hudPending = hudOwed;
 
         // 2. Remote actors: body identity line + display-only wardrobe occupancy.
         var ids = new List<ulong>(4);
@@ -363,8 +506,12 @@ internal static class ModelPresentation
             _projected.Remove(gone[i]);
         }
 
-        ArmWatch(now, _hudDrift || _wardrobeDrift);
+        // A pending HUD correction arms the watch ONCE per edge; a watch pass that still finds no
+        // local slot does not re-arm it, so a HUD that never appears costs one bounded window, never
+        // a poll (the same contract as a correction: bounded checks, bounded deadline).
+        ArmWatch(now, _hudDrift || _wardrobeDrift || (_hudPending && why != "reconcile-watch"));
         log.LogInfo($"[model:identity] refresh why='{why}' hudDrift={(_hudDrift ? "yes" : "no")} " +
+                    $"hudPending={(_hudPending ? "yes" : "no")} " +
                     $"wardrobeDrift={(_wardrobeDrift ? "yes" : "no")} watch={_watchChecks}/{WatchChecks} " +
                     $"hudWrites={_hudWrites} wardrobeMoves={_wardrobeMoves} " +
                     $"dbGen={_dbGen} remoteRev={_remoteRev}");
@@ -522,7 +669,10 @@ internal static class ModelPresentation
 
     // One line per actor. `resolvedDb`/`hudRow`/`wardrobeRow` are LOCAL names/indices for the
     // evidence export; nothing in this line is ever transmitted.
-    private static void LogIdentity(IHostContext log, ModelIdentity id)
+    //
+    // `portraits`, when the caller already scanned (Refresh), is THE candidate set the writer is about
+    // to use: the hudRow in this line and the projection that follows cannot describe different slots.
+    private static void LogIdentity(IHostContext log, ModelIdentity id, List<HudPortrait> portraits = null)
     {
         string sig = id.Signature;
         if (id.Remote)
@@ -538,7 +688,8 @@ internal static class ModelPresentation
 
         // The rows the display surfaces SHOULD present, from the one derivation the console's
         // observation verbs also read (`HudRow`/`WardrobeRow`).
-        string hudRow = HudRow(id);
+        string hudRow = id.Remote ? "<remote-no-hud>"
+            : HudRowFrom(portraits ?? ScanLocalHudPortraits(null, out _));
         string wardrobeRow = WardrobeRow(id);
         log.LogInfo($"{IdentityTag} actor={id.Actor} wantedSlug={Disp(id.WantedSlug)} " +
                     $"advertisedSlug={Disp(id.AdvertisedSlug)} resolvedDb={(id.CanonicalDb >= 0 ? id.CanonicalDb.ToString() : "-")} " +
@@ -552,8 +703,10 @@ internal static class ModelPresentation
 
     // Give the bottom-right portrait the CANONICAL row's bust sprite when the game's own slot is
     // showing a different row's. Display only: `PlayerModelData` is not written, no SetupModel and no
-    // selection RPC. Returns true when a correction was needed in this pass, which arms the slow
-    // reconcile watch (the game rewrites the slot from its own state).
+    // selection RPC. Returns true when a correction was written in this pass, which arms the slow
+    // reconcile watch (the game rewrites the slot from its own state). `owed` reports a correction
+    // this pass could not write because no local HUD portrait was on screen; the caller arms the SAME
+    // bounded watch for it, so a slot that comes back is corrected without polling forever.
     //
     // WHY THE TARGET CHANGED (2026-11-17 08:59Z real rejoin): the old scan looked for
     // `HUDLayerElements.PortraitHUDElement` and only rewrote an Image holding the APPLIED row's bust.
@@ -564,8 +717,19 @@ internal static class ModelPresentation
     // (the menu selection), so "no portrait Image carries the applied row's bust" was logged and the
     // custom body stood under a native portrait (reported screenshot). The composite's own portrait
     // image is the slot; any model-bust sprite in it is replaceable, and only that image is touched.
-    private static bool ProjectHud(IHostContext log, ModelIdentity local)
+    //
+    // WHY THE TARGET IS THE LOCAL HUD **PATH** (2026-11-20 06:33Z, Voting Canvas): the scan used to
+    // accept any `PortraitCompositeView` in a loaded scene and rewrite any roster bust it held. With
+    // the voting screen up - the HUD's own slot not active (`hudRow=<unobserved>` on the identity line
+    // logged directly above) - that painted the local custom bust into NINE voting slots, one per
+    // player, other players' rows included. A portrait is the LOCAL HUD's only if its canvas path says
+    // so ('HUD' segment, no 'Voting') AND its composite is bound to this client's applied row (the
+    // voting clones are unbound: `row='<none>'`). Anything else is another surface's portrait and is
+    // left alone; with no such slot on screen, or none holding a model bust, the writer does nothing.
+    private static bool ProjectHud(IHostContext log, ModelIdentity local, List<HudPortrait> portraits,
+                                   HudScanStats stats, out bool owed)
     {
+        owed = false;
         if (local.CanonicalData == null) return false;
 
         Sprite want = null;
@@ -577,87 +741,68 @@ internal static class ModelPresentation
             return false;
         }
         PlayerModelData appliedRow = null;
-        try { appliedRow = local.AppliedRow == "-" ? null : SahurWardrobe.AppliedData(log); } catch { }
+        try { appliedRow = SahurWardrobe.AppliedData(null); } catch { }
         Sprite appliedSprite = null;
         try { appliedSprite = appliedRow?._bustPortraitSprite; } catch { }
+        // The game's own feed already shows the canonical row: nothing is OWED even when the slot is
+        // off screen, because that state is correct by construction rather than a pending correction.
+        // `owed` itself is only set on the branches that COULD NOT write (nothing on screen, or no
+        // model bust identified there), so a successful write never leaves a pending retry behind.
+        bool differentRow = !Same(appliedRow, local.CanonicalData);
 
-        // The live HUD composite first (the object the game actually draws), then the legacy element
-        // scan as a fallback for older prefabs. Dedupe by instance id so one image is written once.
-        var images = new List<Image>(8);
-        var seen = new HashSet<int>();
-        var composites = new List<string>(2);
-        try
+        if (portraits == null || portraits.Count == 0)
         {
-            var arr = SceneCache.Scan(Il2CppType.Of<global::UI.Portrait.PortraitCompositeView>());
-            for (int i = 0; arr != null && i < arr.Length; i++)
-            {
-                var cv = arr[i].TryCast<global::UI.Portrait.PortraitCompositeView>();
-                if (cv == null || cv.gameObject == null || string.IsNullOrEmpty(cv.gameObject.scene.name)) continue;
-                Image portrait = null;
-                try { portrait = cv._portraitImage; } catch { }
-                if (portrait == null) continue;
-                string row = "?";
-                try { row = cv.CurrentModelData != null ? (cv.CurrentModelData.name ?? "?") : "<none>"; } catch { }
-                composites.Add($"'{SafePath(cv.transform)}' row='{row}' sprite='{SpriteName(portrait)}'");
-                AddImage(images, seen, portrait);
-            }
+            owed = differentRow;
+            Once(log, "hud:noportrait:" + local.CanonicalSlug,
+                 $"{HudTag} no portrait Image could be identified: no local HUD portrait is on screen " +
+                 $"({StatsText(stats)}); nothing written" +
+                 (owed ? " - the bounded watch retries while the canonical row differs from the applied one" : ""));
+            return false;
         }
-        catch (Exception e) { log.LogWarning($"{HudTag} composite scan failed: {e.Message}"); }
-        try
-        {
-            var arr = SceneCache.Scan(Il2CppType.Of<HUDLayerElements.PortraitHUDElement>());
-            for (int i = 0; arr != null && i < arr.Length; i++)
-            {
-                var e = arr[i].TryCast<HUDLayerElements.PortraitHUDElement>();
-                if (e == null || e.gameObject == null || string.IsNullOrEmpty(e.gameObject.scene.name)) continue;
-                var imgs = e.GetComponentsInChildren(Il2CppType.Of<Image>(), true);
-                for (int k = 0; imgs != null && k < imgs.Length; k++)
-                    AddImage(images, seen, imgs[k].TryCast<Image>());
-            }
-        }
-        catch { }
 
         var busts = BustSpriteIds();
-        int wrote = 0, already = 0, foreign = 0;
-        for (int i = 0; i < images.Count; i++)
+        int wrote = 0, already = 0, foreign = 0, blank = 0;
+        var written = new List<string>(2);
+        for (int i = 0; i < portraits.Count; i++)
         {
-            var im = images[i];
+            var p = portraits[i];
             Sprite have;
-            try { have = im.sprite; } catch { continue; }
-            if (have == null) continue;
+            try { have = p.Image.sprite; } catch { continue; }
+            if (have == null) { blank++; continue; }
             if (Same(have, want)) { already++; continue; }
             // Is this the MODEL PORTRAIT? Either the applied row's bust, or any roster row's bust.
             // A frame, a cave backdrop or an icon that is not a bust is left alone; the third-row
             // case (menu row over a lobby body) is only reachable through the roster set.
             bool modelBust = (appliedSprite != null && Same(have, appliedSprite)) || busts.Contains(ImageKey(have));
             if (!modelBust) { foreign++; continue; }
-            try { im.sprite = want; wrote++; } catch { }
+            try
+            {
+                p.Image.sprite = want;
+                wrote++;
+                written.Add($"path='{p.Path}' row='{p.Row}' was='{SpriteName(have)}'");
+            }
+            catch { }
         }
 
         if (wrote > 0) _hudWrites++;
         if (wrote > 0)
-            log.LogInfo($"{HudTag} presented canonical row '{local.CanonicalSlug}' db={(local.CanonicalDb >= 0 ? local.CanonicalDb.ToString() : "-")} " +
-                        $"in {wrote} portrait image(s) (game applied row='{local.AppliedRow}', " +
-                        $"composites={composites.Count} [{string.Join("; ", composites)}]); " +
+            log.LogInfo($"{HudTag} presented canonical row '{local.CanonicalSlug}' " +
+                        $"db={(local.CanonicalDb >= 0 ? local.CanonicalDb.ToString() : "-")} in {wrote} portrait image(s) " +
+                        $"under the local HUD [{string.Join("; ", written)}] " +
+                        $"(game applied row='{local.AppliedRow}', {StatsText(stats)}, already={already} foreign={foreign}); " +
                         "display only - PlayerModelData untouched, no SetupModel, no selection RPC");
         else if (already == 0)
+        {
+            owed = differentRow;
             Once(log, "hud:nomatch:" + local.CanonicalSlug,
                  $"{HudTag} no portrait Image could be identified (applied='{local.AppliedRow}' " +
-                 $"canonical='{local.CanonicalSlug}' images={images.Count} foreign={foreign} " +
-                 $"composites={composites.Count} [{string.Join("; ", composites)}]); nothing written");
+                 $"canonical='{local.CanonicalSlug}' {StatsText(stats)} foreign={foreign} blank={blank}); nothing written");
+        }
         else
             Once(log, "hud:ok:" + local.CanonicalSlug + ":" + local.AppliedRow,
                  $"{HudTag} portrait already canonical ('{local.CanonicalSlug}') " +
-                 $"(applied='{local.AppliedRow}', images={images.Count}, composites={composites.Count})");
+                 $"(applied='{local.AppliedRow}', {StatsText(stats)}); nothing written");
         return wrote > 0;
-    }
-
-    private static void AddImage(List<Image> list, HashSet<int> seen, Image im)
-    {
-        if (im == null) return;
-        int key;
-        try { key = im.GetInstanceID(); } catch { return; }
-        if (seen.Add(key)) list.Add(im);
     }
 
     private static int ImageKey(Sprite s)
@@ -688,9 +833,9 @@ internal static class ModelPresentation
         return set;
     }
 
-    private static string SpriteName(Image im)
+    private static string SpriteName(Sprite s)
     {
-        try { return im == null || im.sprite == null ? "null" : (im.sprite.name ?? "?"); } catch { return "?"; }
+        try { return s == null ? "null" : (s.name ?? "?"); } catch { return "?"; }
     }
 
     private static string SafePath(Transform t)

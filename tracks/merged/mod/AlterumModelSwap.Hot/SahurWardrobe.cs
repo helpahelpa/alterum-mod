@@ -50,6 +50,7 @@ internal static class SahurWardrobe
     private const float DataSeconds = 5.0f;
     private const float SyncSeconds = 0.5f;
     private const float UiSeconds = 1.0f;
+    private const float WireRetrySeconds = 10.0f;
 
     // Name marker of a row this mod inserted by hand (the game's own rows are 'Model Selectable(Clone)').
     private const string InsertMarker = "WardrobeModelButton_Sahur";
@@ -121,7 +122,9 @@ internal static class SahurWardrobe
 
     // Apply one of our entries through the game's own path (ApplyNative -> SetBaseModelIndex).
     // Returns false when the row is not registered yet, so the caller can retry a moment later.
-    // `why` labels the explicit request in diagnostics; no model choice is persisted by the mod.
+    // Nothing is written to disk; the pick is recorded in the same in-memory wanted state a
+    // wardrobe confirm writes (see ApplyIndex), so an explicit programmatic pick survives the
+    // native-wire remap instead of being read back as "the game's row".
     internal static bool ApplyEntry(IHostContext log, int entryIndex, string why = null)
     {
         if (entryIndex < 0 || entryIndex >= Entries.Length) return false;
@@ -133,6 +136,51 @@ internal static class SahurWardrobe
     private static PlayerModelSetuper _setuper;
     private static WardrobeOptionalViewController _view;
     private static Harmony _clickProbe;
+
+    // Harmony owner id, unique per hot generation (the same convention MenuScope, LobbyNaming,
+    // SceneSyncTrace and QcGate use). A FIXED id made a hot reload fail open: the candidate
+    // generation installs its guard from HotModule.Initialize, and only THEN is the retiring
+    // generation disposed - its UnpatchSelf would remove every patch owned by that shared id,
+    // including the prefixes the fresh generation had just installed, while the fresh generation's
+    // _wireGuard still said "installed". With a per-generation id, the retiring generation can only
+    // withdraw its own hooks.
+    private static readonly string ProbeId = "alterum.modelswap.wardrobeclick." + Guid.NewGuid().ToString("N");
+
+    // The native-wire guard is a PRECONDITION for touching PlayerModelDatabase.Models at all, not a
+    // diagnostic. True only between a COMPLETE InstallClickProbe and Dispose; every append is gated
+    // on it AND on the proven native prefix (see EnsureNativePrefix), and every release path
+    // withdraws the rows first (see WithdrawCustomRows).
+    private static bool _wireGuard;
+    private static int _wireAttempts;
+    private static float _nextWireAttempt;
+
+    // This generation's proof of the native prefix: the number of shipped rows at the FRONT of
+    // `PlayerModelDatabase.Models`, i.e. the rows the game itself loaded from Resources. It is
+    // proven from the shipped resource set (see EnsureNativePrefix), not read from a host-owned
+    // member: a running host may predate that member, and the resource proof also works on a
+    // database a previous generation already expanded. It is never derived from the current array
+    // length, from where the first row this generation recognises sits, or from PlayerModelData.Index.
+    // `_prefixKnown` is one-way in practice (the shipped set cannot change inside a process), so a
+    // true is safe to cache; `_prefixFailed` records the one-way fail-closed proof.
+    private static bool _prefixKnown;
+    private static bool _prefixFailed;
+    private static int _nativeCount;
+
+    // The process's SHIPPED rows, once loaded: the PlayerModelData assets the game itself loads from
+    // Resources "Data/Gameplay/Player" (alterum-re docs/PLAYER.md §3). Cached because the asset set
+    // cannot change inside a process; compared by native pointer, never by name. Null means "not
+    // loaded yet" and is retried, not "empty".
+    private static IntPtr[] _shippedRows;
+    private static float _nextShippedLoad;
+
+    // The last few fail-closed / deferred-prune lines written, so a 0.5 s pass does not repeat them.
+    // A small ring rather than one slot: two distinct errors (an unknown prefix and an unshrinkable
+    // session) can alternate on every pass, and a single slot would log both again each time. The
+    // wire hooks run on the game/network thread while Tick runs on the main thread, hence the locks.
+    private static readonly List<string> WireNoteRing = new List<string>();
+    private const int WireNoteRingSize = 8;
+    private static readonly List<string> ShrinkNoteRing = new List<string>();
+    private static readonly object ShrinkNoteLock = new object();
     private static IHostContext _probeLog;
     private static bool _lobbyShot;
     private static int _registers, _tabs;
@@ -203,9 +251,29 @@ internal static class SahurWardrobe
 
     private static bool _credited;
 
+    // Written ONLY by RecordWanted: the wardrobe's own confirm and the programmatic explicit
+    // selectors record the same scoped intent. Never a preview, a join row or a random roll.
+    private static string _wantedSlug; // null: follow game; empty: explicit native; otherwise roster slug
+    private static ulong _wantedLobby, _wantedClient;
+
+    // A guest's selection RPC has NO return value and NO acknowledgement: invoking it (or even the
+    // game's own click handler returning) says only that a send was attempted. When the only
+    // evidence behind the wanted record is such a send, the record is marked PENDING here and is
+    // cleared only by ConfirmPending, once this client's own applied row is the row the send named
+    // (or our entry's row, when a modded host applied it directly).
+    private static bool _wantedPending;
+    private static ushort _wantedPendingRow;      // the shipped row the pending send carried
+    private static IntPtr _wantedPendingFrom;     // the applied row at send time, so a no-op is visible
+
     internal static void Tick(IHostContext log, float dt)
     {
         if (log == null) return;
+        CheckWantedScope(log);
+        // Prove the native prefix as soon as both the live database and the shipped resource set are
+        // readable: it is the one value every later decision needs. The proof is the resource set, so
+        // it also works on a database a previous generation already expanded; an unprovable front
+        // fails closed instead of guessing a boundary.
+        if (!_prefixKnown) EnsureNativePrefix(log);
         if (!_credited)
         {
             // Credits live here as well as in the csproj next to the embedded resources and in
@@ -254,6 +322,19 @@ internal static class SahurWardrobe
         if (now >= _nextSync)
         {
             _nextSync = now + SyncSeconds;
+            // A failed install must not leave custom rows in the sender's index space. Retry here
+            // as well as from Attach: the wardrobe view (Attach's caller) only exists in the lobby,
+            // so a failure in a map would otherwise never recover. Paced by InstallClickProbe.
+            // The withdrawal is the failsafe, not hygiene, but it never shrinks a live session:
+            // with the game's dictionaries live, removing a row can retarget or truncate an index
+            // that is still held. In that state it reports CANNOT PROTECT PEERS instead.
+            if (!_wireGuard)
+            {
+                try { InstallClickProbe(log); } catch (Exception e2) { log.LogWarning($"[sahur:click] retry failed: {e2.Message}"); }
+                if (!_wireGuard)
+                    try { WithdrawCustomRows(log, "native-wire guard is not installed"); }
+                    catch (Exception e2) { log.LogWarning($"[model:native-wire] withdraw failed: {e2.Message}"); }
+            }
             foreach (var e in Entries)
             {
                 if (e.Data == null) continue;
@@ -289,12 +370,33 @@ internal static class SahurWardrobe
 
     internal static void Dispose(IHostContext log)
     {
-        // The entries stay in PlayerModelDatabase.Models on purpose: they are runtime objects that
-        // outlive one hot reload, and dropping them would leave the saved model index dangling.
+        // The rows this module appended are about to lose their wire guard (UnpatchSelf below), and
+        // PlayerModelDatabase.Models is the game's whole random-assignment index space: a row left
+        // in it would be selectable by an unmodified peer that cannot resolve the index
+        // (alterum-re docs/NETWORKING.md §5). Withdraw first, while every mandatory prefix is still
+        // live - but a LIVE SESSION forbids the shrink (the game's dictionaries can still hold an
+        // index above the prefix), so on a reload the withdrawal reports that it cannot protect
+        // peers and the rows stay for the next generation to adopt. The next generation re-registers
+        // only after a complete install, and drops rows once the session is over.
+        bool hadGuard = _wireGuard, hadPrefix = _prefixKnown;
+        int prefixCount = _nativeCount;
+        try { WithdrawCustomRows(log, "module disposed"); }
+        catch (Exception e) { log?.LogWarning($"[model:native-wire] withdraw on dispose failed: {e.Message}"); }
         foreach (var e in Entries) e.Tabs.Clear();
-        try { _clickProbe?.UnpatchSelf(); } catch { }
+        try { _clickProbe?.UnpatchSelf(); }
+        catch (Exception e)
+        {
+            // The rows are already withdrawn where that was safe; an unpatch that failed leaves
+            // prefixes attached with a disposed owner. Say so: "no guard" is a claim this
+            // generation can no longer verify.
+            log?.LogWarning($"[model:native-wire] UnpatchSelf failed while disposing: {e.Message}; " +
+                            "some native-wire prefixes may still be installed by this generation");
+        }
         _clickProbe = null;
+        _wireGuard = false;
         _probeLog = null;
+        // The proof is this generation's; the next generation proves the same shipped set again.
+        _prefixKnown = false;
         _view = null;
         _setuper = null;
         if (log != null)
@@ -303,7 +405,9 @@ internal static class SahurWardrobe
                 var sb = new StringBuilder();
                 foreach (var e in Entries)
                     sb.Append($"'{e.Label}' data='{(e.Data == null ? "none" : e.Data.name)}' index={e.Index} ");
-                log.LogInfo($"[sahur:wardrobe] state kept {sb}registers={_registers}");
+                log.LogInfo($"[sahur:wardrobe] state kept {sb}registers={_registers} " +
+                            $"wire={(hadGuard ? "guard" : "NO-GUARD")} " +
+                            $"prefix={(hadPrefix ? prefixCount.ToString() : "unknown")}");
             }
             catch { }
     }
@@ -352,22 +456,280 @@ internal static class SahurWardrobe
     {
         _probeLog = log;
         if (_clickProbe != null) return;
+        float now = 0f;
+        try { now = Time.unscaledTime; } catch { }
+        if (_wireAttempts > 0 && now < _nextWireAttempt) return;
+        _wireAttempts++;
+        _nextWireAttempt = now + WireRetrySeconds;
         try
         {
             var m = AccessTools.DeclaredMethod(typeof(PlayersAppearanceManager), "SetBaseModelIndex",
                                                new[] { typeof(ulong), typeof(ushort) });
-            if (m == null) { log.LogWarning("[sahur:click] SetBaseModelIndex not found; probe off"); return; }
+            if (m == null) throw new MissingMethodException("PlayersAppearanceManager.SetBaseModelIndex");
             var post = typeof(SahurWardrobe).GetMethod(nameof(OnSetBaseModelIndex), BindingFlags.Static | BindingFlags.NonPublic);
-            _clickProbe = new Harmony("alterum.modelswap.wardrobeclick");
-            _clickProbe.Patch(m, postfix: new HarmonyMethod(post));
+            _clickProbe = new Harmony(ProbeId);
+            _clickProbe.Patch(m, prefix: new HarmonyMethod(typeof(SahurWardrobe), nameof(SafeModelIndex)), postfix: new HarmonyMethod(post));
+            var save = AccessTools.DeclaredMethod(typeof(PersistentData.PlayersModelsNetworkData), "SaveModel", new[] { typeof(ulong), typeof(ushort) });
+            if (save == null) throw new MissingMethodException("PlayersModelsNetworkData.SaveModel");
+            _clickProbe.Patch(save, prefix: new HarmonyMethod(typeof(SahurWardrobe), nameof(SafeSavedModelIndex)));
+            var link = AccessTools.DeclaredMethod(typeof(Network.Spawners.PlayersModelSetuper), "LinkPlayerModelToPlayer_ServerRpc", new[] { typeof(ulong), typeof(ushort) });
+            if (link == null) throw new MissingMethodException("PlayersModelSetuper.LinkPlayerModelToPlayer_ServerRpc");
+            _clickProbe.Patch(link, prefix: new HarmonyMethod(typeof(SahurWardrobe), nameof(SafeModelIndex)));
+            var confirm = AccessTools.DeclaredMethod(typeof(Gameplay.Wardrobe.WardrobeController), "OnModelSelected", new[] { typeof(ulong), typeof(ushort) });
+            if (confirm == null) throw new MissingMethodException("WardrobeController.OnModelSelected");
+            _clickProbe.Patch(confirm, prefix: new HarmonyMethod(typeof(SahurWardrobe), nameof(OnLocalModelConfirmed)));
             var spawn = AccessTools.DeclaredMethod(typeof(Network.Spawners.PlayersModelSetuper),
                                                    "SpawnPlayerModelOnServer", new[] { typeof(ulong) });
             if (spawn == null) throw new MissingMethodException("PlayersModelSetuper.SpawnPlayerModelOnServer");
             _clickProbe.Patch(spawn, prefix: new HarmonyMethod(typeof(SahurWardrobe), nameof(BeforeGameSpawn)));
+            // Only a COMPLETE install opens the gate. Every row this module appends is an index the
+            // game may replicate (SaveModel, LinkPlayerModelToPlayer_ServerRpc, SetBaseModelIndex),
+            // and a stock receiver indexes its own array with it without a bounds check. A partial
+            // install (one prefix missing) is therefore as unsafe as no install at all.
+            _wireGuard = true;
+            // Opening the gate is not enough to append: EnsureRegistered ALSO needs the proven
+            // native prefix, so a process whose database is not readable (or whose front is not the
+            // shipped resource set) still registers nothing. Asking here makes the fail-closed
+            // reason appear once, at the install line, instead of on the first registration pass.
+            bool prefixKnown = EnsureNativePrefix(log);
             log.LogInfo("[sahur:wardrobe] original-game assignment: custom rows registered before spawn; " +
-                        "no saved-choice restore, mod reroll, or shared occupied rows");
+                        "no saved-choice restore, mod reroll, or shared occupied rows; native-wire guard " +
+                        $"installed; shipped prefix={(prefixKnown ? _nativeCount.ToString() : "not known")}");
         }
-        catch (Exception e) { log.LogWarning($"[sahur:click] probe install failed: {e.Message}"); _clickProbe = null; }
+        catch (Exception e)
+        {
+            _wireGuard = false;
+            string message = $"[sahur:click] patch install failed (attempt {_wireAttempts}): {e.Message}";
+            if (_wireAttempts == 1)
+                log.LogWarning(message + " - FAIL CLOSED: no custom row is registered until every " +
+                                         "mandatory native-wire prefix is installed");
+            else log.LogInfo(message + " - still failing closed");
+            try { _clickProbe?.UnpatchSelf(); }
+            catch (Exception w)
+            {
+                log.LogWarning($"[model:native-wire] UnpatchSelf failed after a partial install: {w.Message}; " +
+                               "some native-wire prefixes may remain installed while _wireGuard is false");
+            }
+            _clickProbe = null;
+            // A previous generation (or an earlier partial attempt) may already have appended rows.
+            // They are selectable by the game's random assignment right now, so they cannot wait for
+            // the next sync pass. The withdrawal cuts only the provable tail of our own rows and
+            // never a shipped row - and if a live session makes even that unsafe it reports that the
+            // peers cannot be protected rather than shifting a live index.
+            try { WithdrawCustomRows(log, "native-wire patch install failed"); }
+            catch (Exception w) { log.LogWarning($"[model:native-wire] withdraw failed: {w.Message}"); }
+        }
+    }
+
+    // Native code can inline the random sampler. Guard the model map, appearance
+    // snapshot, and direct model-link RPC; custom identity travels separately as a slug.
+    private static void CheckWantedScope(IHostContext log)
+    {
+        if (_wantedSlug == null) return;
+        try
+        {
+            var nm = Unity.Netcode.NetworkManager.Singleton;
+            if (nm != null && nm.IsListening && nm.IsConnectedClient && Steam.SteamLobbyManager.IsInLobby &&
+                (ulong)Steam.SteamLobbyManager.CurrentLobby.Id == _wantedLobby && nm.LocalClientId == _wantedClient) return;
+        }
+        catch { }
+        _wantedSlug = null;
+        _wantedPending = false;
+        _wantedPendingRow = 0;
+        _wantedPendingFrom = IntPtr.Zero;
+        InvalidatePresentation(log, "selection session ended");
+    }
+
+    // This local delegate is fired only on confirmed wardrobe selection, never on preview or join.
+    // A custom choice stays mod-side; the RPC carries the player's current native donor instead.
+    //
+    // The index is checked against the proven shipped prefix, NOT against a scan of our rows:
+    // the row may be one we appended, a shipped row, or a STALE index whose row no longer exists
+    // (a shrink, a row list rebuilt by a previous generation, a saved value). Only the first
+    // nativeCount rows are resolvable on a peer without the mod, so everything else is clamped.
+    //
+    // THE CLAMP DOES NOT DEPEND ON THE SESSION, THE WANTED RECORD OR _ourApply. A record can fail (no
+    // scoped lobby, a transient read error) and this module's own apply raises _ourApply - the old
+    // order returned on either before rewriting the index, so the raw custom row went to the game's
+    // RPC and a stock host resolved it with no bounds check. The pure plan runs first, unconditionally;
+    // the gates below only decide whether the intent is recorded.
+    private static void OnLocalModelConfirmed(ulong localClientId, ref ushort chosenModelIndex)
+    {
+        try
+        {
+            ushort requested = chosenModelIndex;
+            bool prefixKnown = KnownPrefix(_probeLog, out int nativeCount);
+            var row = prefixKnown ? DatabaseRowAt(requested) : null;
+            var slug = SlugOfData(row);
+            // The donor is only consulted for an index past the prefix; a shipped-row click needs no
+            // object-table scan at all.
+            int donor = prefixKnown && requested >= nativeCount ? NativeDonorRow(_probeLog, nativeCount) : -1;
+
+            var plan = NativeWirePolicy.PlanConfirm(prefixKnown, nativeCount, requested, row != null,
+                                                     slug, donor, localClientId);
+            // THE CLAMP IS FIRST AND UNCONDITIONAL. It used to sit behind the session/lobby/own-apply
+            // gates, so a confirmation outside a scoped lobby - and this module's OWN apply - carried
+            // the raw index to the game's RPC. Whether the intent may be RECORDED is decided below;
+            // nothing below may put plan.Index back.
+            chosenModelIndex = plan.Index;
+            if (plan.Branch == ConfirmBranch.NoPrefix)
+            {
+                // No shipped boundary: no index can be shown to be resolvable on a stock peer. Row 0
+                // exists in every loaded database, so it is the only safe value to confirm.
+                NoNativePrefix(_probeLog, "local confirmation");
+                if (requested != 0)
+                    _probeLog?.LogError($"[model:wanted] client={localClientId} confirmed={requested} -> 0 " +
+                                        "(no captured native prefix; row 0 is the only guaranteed row)");
+            }
+
+            // Intent gating starts here. It can suppress the record; it cannot change the wire value.
+            if (_ourApply)
+            {
+                _probeLog?.LogInfo($"[model:wanted] client={localClientId} confirmed={requested} -> " +
+                                   $"{chosenModelIndex} is this module's own apply: the wire is clamped, " +
+                                   "the wanted intent is unchanged");
+                return;
+            }
+            if (!ConfirmSession(localClientId, out string session))
+            {
+                _probeLog?.LogInfo($"[model:wanted] client={localClientId} confirmed={requested} -> " +
+                                   $"{chosenModelIndex}: the wire is clamped, but the intent is unchanged " +
+                                   $"({session})");
+                return;
+            }
+            if (plan.Record && !RecordWanted(_probeLog, plan.Slug, "local wardrobe confirm", !NetRole.IsServer, plan.Index))
+                _probeLog?.LogWarning($"[model:wanted] client={localClientId} could not record wanted=" +
+                                      $"'{(plan.Slug.Length == 0 ? "<native>" : plan.Slug)}'; the wire index " +
+                                      "is still clamped to a shipped row");
+            else if (plan.Record && !NetRole.IsServer)
+                // On a client the confirm is an RPC SEND to a host that owns the row. The pick is the
+                // player's (so it is recorded), but it is not a landed selection: the record stays
+                // pending until this body carries the row the send named.
+                _probeLog?.LogInfo($"[model:wanted] client={localClientId} " +
+                                   $"slug='{(plan.Slug.Length == 0 ? "<native>" : plan.Slug)}' " +
+                                   $"wireRow={plan.Index} state=PENDING (the confirm RPC was sent; only " +
+                                   "this body carrying the row confirms it)");
+
+            switch (plan.Branch)
+            {
+                case ConfirmBranch.NoPrefix:
+                    // Reported above, before the intent gate: the clamp never waits for it.
+                    break;
+                case ConfirmBranch.StaleRow:
+                    // A stale index: the row it named is gone. Nothing to record, and the index itself
+                    // may be past every peer's table.
+                    _probeLog?.LogWarning($"[model:wanted] client={localClientId} confirmed={requested} names no " +
+                                          $"current row -> donor={chosenModelIndex}");
+                    break;
+                case ConfirmBranch.NativeRow:
+                    // A shipped row inside the captured prefix: it is what the player picked.
+                    _probeLog?.LogInfo($"[model:wanted] client={localClientId} native={chosenModelIndex}");
+                    break;
+                case ConfirmBranch.ForeignRow:
+                    // Past the shipped prefix and not ours: a foreign or stale row, unresolvable on a
+                    // stock peer. Clamp it like one of ours and keep the deliberate-native intent.
+                    _probeLog?.LogWarning($"[model:wanted] client={localClientId} confirmed={requested} is past the " +
+                                          $"{nativeCount} shipped row(s) and is not ours -> donor={chosenModelIndex}");
+                    break;
+                default:
+                    _probeLog?.LogInfo($"[model:wanted] client={localClientId} slug={slug} donor={chosenModelIndex}");
+                    break;
+            }
+        }
+        catch (Exception e) { _probeLog?.LogWarning($"[model:wanted] confirm failed: {e.Message}"); }
+    }
+
+    // Is this confirmation a decision of the LOCAL player inside a lobby session the wanted record
+    // can be scoped to? Intent only: it never decides what travels to the host.
+    private static bool ConfirmSession(ulong localClientId, out string why)
+    {
+        try
+        {
+            var nm = Unity.Netcode.NetworkManager.Singleton;
+            if (nm == null) { why = "no NetworkManager"; return false; }
+            if (!nm.IsListening) { why = "no network session"; return false; }
+            if (!nm.IsConnectedClient) { why = "not a connected client"; return false; }
+            if (nm.LocalClientId != localClientId) { why = $"confirmation for client {localClientId}, local is {nm.LocalClientId}"; return false; }
+            if (!Steam.SteamLobbyManager.IsInLobby) { why = "not in a lobby"; return false; }
+            why = "lobby client " + localClientId;
+            return true;
+        }
+        catch (Exception e) { why = "unreadable session (" + e.Message + ")"; return false; }
+    }
+
+    // The ONE write path for the wanted intent: which model THIS client deliberately picked, kept
+    // apart from the native donor row that travels over the wire (RemapModelIndex rewrites our row,
+    // because a peer without the mod cannot resolve it). Scoped to the lobby + client that recorded
+    // it; CheckWantedScope drops the record as soon as either changes.
+    //
+    // Both the wardrobe's own confirm (OnLocalModelConfirmed) and the programmatic explicit
+    // selectors (`select=`, `apply`, `index=`, and `alterum.test.select-model ... protocol`, all via
+    // ApplyNative/ApplyIndex) write here, because they mean the same thing by the same scoped state.
+    // Recording the intent only on the UI confirm made an explicit programmatic pick come back as
+    // "follow the game's row" after the native-wire remap replaced it with a donor: the picked
+    // custom body was released again and `apply`/`index=`/`select=` looked like they did nothing.
+    // Preview, the game's own join/random row and the mod's random roll are not choices and never
+    // call this.
+    //
+    // `slug` is the entry's roster slug, or "" for a deliberate native row. `pending` marks a
+    // record whose only evidence is a guest's selection RPC (see _wantedPending). False when there
+    // is no local lobby session to scope the record to; the wanted state is then left untouched.
+    private static bool RecordWanted(IHostContext log, string slug, string reason, bool pending = false,
+                                     ushort pendingRow = 0)
+    {
+        try
+        {
+            var nm = Unity.Netcode.NetworkManager.Singleton;
+            if (nm == null || !nm.IsListening || !nm.IsConnectedClient || !Steam.SteamLobbyManager.IsInLobby)
+                return false;
+            _wantedLobby = (ulong)Steam.SteamLobbyManager.CurrentLobby.Id;
+            _wantedClient = nm.LocalClientId;
+            _wantedSlug = slug ?? "";
+            _wantedPending = pending;
+            _wantedPendingRow = pendingRow;
+            _wantedPendingFrom = pending ? AppliedPointer(log) : IntPtr.Zero;
+            InvalidatePresentation(log, reason);
+            return true;
+        }
+        catch (Exception e) { log?.LogWarning($"[model:wanted] record failed: {e.Message}"); return false; }
+    }
+
+    private static void SafeSavedModelIndex(ulong clientId, ref ushort modelId) => RemapModelIndex(clientId, ref modelId);
+    private static void SafeModelIndex(ulong clientId, ref ushort modelIndex) => RemapModelIndex(clientId, ref modelIndex);
+
+    private static void RemapModelIndex(ulong clientId, ref ushort index)
+    {
+        try
+        {
+            var nm = Unity.Netcode.NetworkManager.Singleton;
+            if (nm == null || !nm.IsServer || !nm.IsListening) return;
+            // The shipped prefix is a proven fact about the resource set. Deriving it here from the
+            // first row this generation recognises would call an older generation's row native (its
+            // pointer is not in this generation's Entries until adoption runs) and put that index on
+            // the wire - the exact replication a stock peer cannot resolve.
+            if (!KnownPrefix(_probeLog, out int nativeCount))
+            {
+                NoNativePrefix(_probeLog, "wire remap");
+                if (index != 0)
+                {
+                    _probeLog?.LogError($"[model:native-wire] client={clientId} requested={index} -> 0 " +
+                                        "(no captured native prefix; row 0 is the only guaranteed row)");
+                    index = 0;
+                }
+                return;
+            }
+            if (index < nativeCount) return;
+            ushort original = index;
+            // Preserve the shipped row this player already carries - only for the LOCAL client: the
+            // applied row of any other client cannot be read here, and this host's own body is not
+            // that client's donor. A body rig is built over THAT native actor; an arbitrary
+            // `clientId % nativeCount` row can be a different model with no relation to the pick.
+            int donor = clientId == nm.LocalClientId ? NativeDonorRow(_probeLog, nativeCount) : -1;
+            index = NativeWirePolicy.ShippedWireIndex(true, nativeCount, original, donor, clientId);
+            _probeLog?.LogInfo($"[model:native-wire] client={clientId} requested={original} native={index} " +
+                               $"nativeCount={nativeCount} donor={donor}");
+        }
+        catch (Exception e) { _probeLog?.LogWarning($"[model:native-wire] failed: {e.Message}"); }
     }
 
     private static void OnSetBaseModelIndex(ulong clientId, ushort modelIndex)
@@ -586,13 +948,47 @@ internal static class SahurWardrobe
 
     private static void EnsureRegistered(IHostContext log, Entry entry)
     {
+        // FAIL CLOSED. Every row of PlayerModelDatabase.Models is an index the game may put on the
+        // wire: GetRandomModelIndex walks the array (and, when the availability pool is empty, hands
+        // out a DUPLICATE RANDOM ROW from the whole array - `RandomUtilities.GetRandom(models.Length)`,
+        // not an index past the end), SaveModel/LinkPlayerModelToPlayer_ServerRpc replicate the value,
+        // and the receiving SpawnPlayerModelOnClient/OnServer index their own array with no bounds
+        // check (alterum-re docs/NETWORKING.md §5). Two things keep our rows off that wire: the mandatory
+        // prefixes in InstallClickProbe (which rewrite the value) and the resource-proven shipped
+        // prefix (which says where the safe range ends). Without BOTH there is no safe row to add;
+        // the entries keep building data and are appended by a later guarded pass.
+        if (!_wireGuard) return;
+        if (entry == null || entry.Data == null) return;
         var models = PlayerModelDatabase.Models;
         if (models == null)
         {
             try { PlayerModelDatabase.Initialize(); } catch { }
             models = PlayerModelDatabase.Models;
         }
-        int n = models == null ? 0 : models.Length;
+        if (models == null || models.Length == 0)
+        {
+            // Appending into an empty array would make OUR row index 0 with no native prefix to
+            // stand on; every peer's row 0 is a shipped model and ours is not.
+            log?.LogWarning($"[sahur:wardrobe] refusing to register '{entry.Label}': " +
+                            "PlayerModelDatabase.Models has no native rows to stand on");
+            return;
+        }
+        // No append can happen before this: EnsureNativePrefix proves the FRONT of the live array
+        // against the shipped resource set, which stays true when a previous generation already
+        // appended rows (they follow the shipped ones). A front that does not match fails closed
+        // and keeps the gate shut (see EnsureNativePrefix).
+        if (!EnsureNativePrefix(log)) return;
+        if (models.Length < _nativeCount)
+        {
+            // The array is shorter than the shipped set this generation proved, so it is not the
+            // array the proof describes (re-initialised, replaced, or truncated elsewhere). Neither
+            // the prefix nor a new row at the end can be trusted here.
+            NoteWire(log, $"[model:native-wire] refusing to register: PlayerModelDatabase.Models has " +
+                           $"{models.Length} rows, fewer than the {_nativeCount} shipped row(s) proven " +
+                           "from the resource set; leaving the database untouched");
+            return;
+        }
+        int n = models.Length;
         for (int i = 0; i < n; i++)
         {
             if (!Same(models[i], entry.Data)) continue;
@@ -626,13 +1022,16 @@ internal static class SahurWardrobe
     }
 
     // A generation that appended before the adoption path existed (or any duplicate the label
-    // catches) is dropped here, keeping the entry the game's model index points at.
+    // catches) is dropped here, keeping the entry the game's model index points at. Shrinking is
+    // gated by CanShrink: a removed row shifts every index above it, and only a state in which no
+    // live index can name one of our rows makes that safe.
     private static void PruneDuplicates(IHostContext log, Entry entry, Il2CppReferenceArray<PlayerModelData> models, int keep)
     {
         var drop = new List<int>();
         for (int i = 0; i < models.Length; i++)
             if (i != keep && models[i] != null && (models[i].name ?? "") == entry.Label) drop.Add(i);
         if (drop.Count == 0) return;
+        if (!CanShrink(log, $"duplicate '{entry.Label}' rows", drop)) return;
         var kept = new Il2CppReferenceArray<PlayerModelData>(models.Length - drop.Count);
         int k = 0;
         for (int i = 0; i < models.Length; i++)
@@ -653,6 +1052,7 @@ internal static class SahurWardrobe
     // Drop entries a previous generation registered and this one no longer offers (ModelRoster.Retired).
     // The game's applied model index may point at one; it is moved back to the donor's row first so
     // the selection never dangles, and the wardrobe rebuilds its rows on the next Attach.
+    // Shrinking is gated by CanShrink for the same reason as PruneDuplicates.
     private static void PruneRetired(IHostContext log)
     {
         if (ModelRoster.Retired.Length == 0) return;
@@ -663,11 +1063,16 @@ internal static class SahurWardrobe
             if (models[i] != null && ModelRoster.IsRetired(models[i].name ?? "") && !OwnedByAnEntry(models[i]))
                 drop.Add(i);
         if (drop.Count == 0) return;
+        if (!CanShrink(log, "retired entries", drop)) return;
+        // The fallback selection must land on a SHIPPED row: it stands in for an applied row, and a
+        // custom row is not one a stock peer can resolve (nor the native actor the body was built
+        // over). CanShrink above already required a proven prefix, so the bound is real.
+        int donorBound = KnownPrefix(log, out int donorNativeCount) ? Math.Min(donorNativeCount, models.Length) : 0;
         int donorAt = -1;
-        for (int i = 0; i < models.Length; i++)
+        for (int i = 0; i < donorBound; i++)
             if (models[i] != null && !drop.Contains(i) && (models[i].name ?? "").IndexOf("James", StringComparison.OrdinalIgnoreCase) >= 0) { donorAt = i; break; }
         if (donorAt < 0)
-            for (int i = 0; i < models.Length; i++)
+            for (int i = 0; i < donorBound; i++)
                 if (models[i] != null && !drop.Contains(i)) { donorAt = i; break; }
         // move the selection off the retired row before it disappears
         var s = LocalSetuper(null);
@@ -702,6 +1107,392 @@ internal static class SahurWardrobe
     {
         foreach (var e in Entries) if (Same(e.Data, d)) return true;
         return false;
+    }
+
+    // ================================================================== native prefix (resource proof)
+
+    // The number of SHIPPED rows at the front of PlayerModelDatabase.Models, proven from the
+    // shipped resource set BEFORE any row this process appends. Every decision that needs "where
+    // does the safe wire range end" reads it here. None may answer the same question from the
+    // current array length (that array grows), from where the first row this generation recognises
+    // sits (a per-generation pointer is blind to the rows an older generation appended), or from
+    // PlayerModelData.Index.
+    //
+    // The proof is re-derived by every hot generation from Resources, so it needs nothing from the
+    // host beyond the old IHostContext surface and also works on a database a previous generation
+    // already expanded. A host-owned holder would be the alternative, but a running host that
+    // predates that contract member must not break the guard, so no host member is consulted.
+    private static bool KnownPrefix(IHostContext log, out int nativeCount)
+    {
+        nativeCount = _prefixKnown ? _nativeCount : 0;
+        return _prefixKnown;
+    }
+
+    // FAIL CLOSED, once per distinct line. An unknown prefix means no index can be shown to name a
+    // shipped row: nothing is appended, nothing is pruned on a guess, and the wire remap clamps.
+    private static bool NoNativePrefix(IHostContext log, string why)
+    {
+        NoteWire(log, $"[model:native-wire] FAIL CLOSED ({why}): the shipped model prefix is unknown" +
+                       (_prefixFailed
+                            ? " (the live database front did not match the shipped resource set)"
+                            : " and has not been proven yet") +
+                       "; no model index can be shown to be a shipped row");
+        return false;
+    }
+
+    // The wire hooks run on the game/network thread while Tick runs on the main thread, so the ring
+    // is guarded; the log call itself stays outside the lock.
+    private static readonly object WireNoteLock = new object();
+
+    private static void NoteWire(IHostContext log, string message)
+    {
+        lock (WireNoteLock)
+        {
+            if (WireNoteRing.Contains(message)) return;
+            WireNoteRing.Add(message);
+            if (WireNoteRing.Count > WireNoteRingSize) WireNoteRing.RemoveAt(0);
+        }
+        log?.LogError(message);
+    }
+
+    private static void NoteShrink(IHostContext log, string message)
+    {
+        lock (ShrinkNoteLock)
+        {
+            if (ShrinkNoteRing.Contains(message)) return;
+            ShrinkNoteRing.Add(message);
+            if (ShrinkNoteRing.Count > WireNoteRingSize) ShrinkNoteRing.RemoveAt(0);
+        }
+        log?.LogInfo(message);
+    }
+
+    // The SHIPPED rows are the game's own resource set, loaded exactly the way
+    // PlayerModelDatabase.Initialize loads them (alterum-re docs/PLAYER.md §3):
+    // `Resources.LoadAll<PlayerModelData>(ResourcePathes.PlayerModelDatas)`. That set is a property of
+    // the build, not of this process's live array, so it is the only proof of the native boundary that
+    // does not depend on the roster labels this generation happens to know. Unity caches resource
+    // assets, so the live database holds the same native objects; identity is compared by pointer
+    // (`Il2CppObjectBase.Pointer`), never by name. Null means "not loaded yet" and is retried; an
+    // empty result, a null row or an exception is the fail-closed state (never guessed).
+    private static IntPtr[] ShippedRows(IHostContext log)
+    {
+        if (_shippedRows != null) return _shippedRows;
+        float now = 0f;
+        try { now = Time.unscaledTime; } catch { }
+        if (now < _nextShippedLoad) return null;
+        _nextShippedLoad = now + 5f;
+        string path = global::Constants.ResourcePathes.PlayerModelDatas;
+        try
+        {
+            var shipped = Resources.LoadAll<PlayerModelData>(path);
+            if (shipped == null || shipped.Length == 0)
+            {
+                NoteWire(log, $"[model:native-wire] FAIL CLOSED (shipped rows): Resources.LoadAll<PlayerModelData>" +
+                               $"(\"{path}\") returned no row; the shipped prefix cannot be proven and no custom " +
+                               "row is appended");
+                return null;
+            }
+            var ids = new IntPtr[shipped.Length];
+            for (int i = 0; i < shipped.Length; i++)
+            {
+                ids[i] = Identity(shipped[i]);
+                if (ids[i] == IntPtr.Zero)
+                {
+                    NoteWire(log, $"[model:native-wire] FAIL CLOSED (shipped rows): row {i} of " +
+                                   $"Resources.LoadAll<PlayerModelData>(\"{path}\") is null; the shipped prefix " +
+                                   "cannot be proven");
+                    return null;
+                }
+            }
+            _shippedRows = ids;
+            log?.LogInfo($"[model:native-wire] shipped set: {ids.Length} PlayerModelData row(s) from Resources " +
+                         $"'{path}' (identity is the native pointer, not a name)");
+            return ids;
+        }
+        catch (Exception e)
+        {
+            NoteWire(log, $"[model:native-wire] FAIL CLOSED (shipped rows): Resources.LoadAll<PlayerModelData>" +
+                           $"(\"{path}\") failed: {e.Message}");
+            return null;
+        }
+    }
+
+    private static IntPtr Identity(PlayerModelData d)
+    {
+        if (d == null) return IntPtr.Zero;
+        try { return d.Pointer; } catch { return IntPtr.Zero; }
+    }
+
+    // Prove the shipped prefix against that resource set, once per generation. Rows
+    // [0, shipped.Length) of the live array must be EXACTLY the shipped set (same pointers, no
+    // duplicate, no stranger); the proven count is then shipped.Length, which stays true when the
+    // live array already carries rows appended by a previous generation - the case the old label
+    // inference could get wrong in both directions. A row inside the candidate prefix that is not
+    // shipped, a missing shipped row or a null row proves nothing, so the failure is one-way and
+    // every consumer fails closed. A database that is merely shorter than the resource set is still
+    // initializing: wait.
+    private static bool EnsureNativePrefix(IHostContext log)
+    {
+        if (_prefixKnown) return true;
+        if (_prefixFailed) return false;
+        var models = PlayerModelDatabase.Models;
+        if (models == null || models.Length == 0)
+        {
+            // Not a native table yet. This is a wait, not a failure: the first Tick runs before the
+            // game has loaded its model database.
+            return false;
+        }
+        var shipped = ShippedRows(log);
+        if (shipped == null) return false;                  // resource set not loadable yet: wait
+        if (models.Length < shipped.Length) return false;    // database still initializing: wait
+        var candidate = new IntPtr[shipped.Length];
+        for (int i = 0; i < shipped.Length; i++) candidate[i] = Identity(models[i]);
+        var verdict = NativeWirePolicy.ProvePrefix(shipped, candidate);
+        switch (verdict.Proof)
+        {
+            case PrefixProof.Proven:
+                _nativeCount = verdict.Count;
+                _prefixKnown = true;
+                log?.LogInfo($"[model:native-wire] shipped prefix {verdict.Count} proven from " +
+                             $"Resources '{(global::Constants.ResourcePathes.PlayerModelDatas)}': " +
+                             $"models[0..{verdict.Count}) is exactly the shipped resource set " +
+                             $"({models.Length} live row(s)); every index >= {verdict.Count} is " +
+                             "remapped to a shipped row before it is written to the wire");
+                return true;
+            case PrefixProof.FailClosed:
+                _prefixFailed = true;
+                return NoNativePrefix(log, "first database observation: " + verdict.Detail);
+            default:
+                return false;   // Wait: nothing observed yet that could prove or disprove a prefix
+        }
+    }
+
+    // Is this row one this module appended? Used by WithdrawCustomRows to decide what may be CUT, and
+    // nowhere to derive the shipped prefix: a label is only evidence of ownership, never a boundary.
+    private static bool IsOurRow(PlayerModelData row)
+    {
+        if (row == null) return false;
+        if (IsOurData(row)) return true;
+        string name = "";
+        try { name = row.name ?? ""; } catch { }
+        if (name.Length == 0) return false;
+        foreach (var e in Entries)
+        {
+            if (string.Equals(e.Label, name, StringComparison.OrdinalIgnoreCase)) return true;
+            for (int n = 0; e.AdoptNames != null && n < e.AdoptNames.Length; n++)
+                if (string.Equals(e.AdoptNames[n], name, StringComparison.OrdinalIgnoreCase)) return true;
+        }
+        return ModelRoster.IsRetired(name);
+    }
+
+    // Removing a row SHIFTS every index above it, so a shrink can silently retarget a live index at
+    // a different body (or past the end). Three facts make a prune safe:
+    //   * the shipped prefix is captured, so "rows this module appended" (index >= prefix) is well
+    //     defined and a shipped row can never be in the set being removed;
+    //   * no network session is live. The guard rewrites WRITES, but the game's own dictionaries
+    //     (`_playersModelsIndexes`, the client mirror, PlayerPrefs) can already hold an index at or
+    //     above the prefix, and `SpawnPlayerModelOnClient` indexes the receiver's array with such a
+    //     value and no bounds check (alterum-re docs/NETWORKING.md §5). A shrink while those
+    //     dictionaries are live can retarget or truncate an index this module never sees, so it is
+    //     deferred until the session ends, even when the guard is installed;
+    //   * the native-wire guard is installed, so no new value in the game's model-index space can
+    //     name a row at or above the prefix (SaveModel, LinkPlayerModelToPlayer_ServerRpc,
+    //     SetBaseModelIndex all pass through RemapModelIndex, which clamps to a shipped row).
+    // A custom index written by an OLDER build before the guard existed is not covered (see
+    // WithdrawCustomRows' residual note); the remap still clamps it on the next write.
+    private static bool CanShrink(IHostContext log, string what, List<int> drop)
+    {
+        bool prefixKnown = KnownPrefix(log, out int nativeCount) && nativeCount > 0;
+        bool sessionActive = SessionActive(out string session);
+        switch (NativeWirePolicy.CanPrune(prefixKnown, _wireGuard, sessionActive, nativeCount, drop))
+        {
+            case ShrinkVerdict.DeferSession:
+                NoteShrink(log, $"[model:native-wire] deferring prune of {what}: a live {session} session can " +
+                                 "still hold a model index at or above the shipped prefix in the game's own " +
+                                 "dictionaries; removing a row could retarget or truncate it unchecked");
+                return false;
+            case ShrinkVerdict.DeferGuard:
+                NoteShrink(log, $"[model:native-wire] deferring prune of {what}: the native-wire guard is not " +
+                                 "installed, so a live model index could still name one of our rows");
+                return false;
+            case ShrinkVerdict.RefuseShippedRow:
+                for (int k = 0; drop != null && k < drop.Count; k++)
+                {
+                    if (drop[k] < nativeCount) continue;
+                    NoteWire(log, $"[model:native-wire] refusing to prune {what}: row {drop[k]} is inside the " +
+                                   $"{nativeCount} shipped row(s); only rows this module appended may be removed");
+                    break;
+                }
+                return false;
+            case ShrinkVerdict.WaitForPrefix:
+                return NoNativePrefix(log, "prune " + what);
+            default:
+                return true;
+        }
+    }
+
+    // A live NetworkManager session is the one state in which shrinking PlayerModelDatabase.Models
+    // cannot be proven safe: the game's model dictionaries may still hold an index that named a row at
+    // or above the cut, and the spawn reader indexes the array with it unchecked. Unreadable network
+    // state counts as ACTIVE (the conservative answer is "do not shrink").
+    private static bool SessionActive(out string detail)
+    {
+        detail = null;
+        try
+        {
+            var nm = Unity.Netcode.NetworkManager.Singleton;
+            if (nm == null || !nm.IsListening) return false;
+            detail = nm.IsServer ? "host" : (nm.IsConnectedClient ? "client" : "listening");
+            return true;
+        }
+        catch (Exception e) { detail = "unreadable (" + e.Message + ")"; return true; }
+    }
+
+    // The invariant InstallClickProbe and Dispose maintain: PlayerModelDatabase.Models contains a
+    // custom row only while every mandatory native-wire prefix is installed. When that cannot be
+    // guaranteed the provable tail of our own rows is withdrawn. Hiding a row from availability is
+    // NOT enough: GetRandomModelIndex hands out a DUPLICATE RANDOM ROW from the whole array when the
+    // pool is empty (`RandomUtilities.GetRandom(models.Length)` - a row index, not an index past the
+    // end; alterum-re docs/NETWORKING.md §5), and every index in the array can be replicated raw.
+    // Removing the rows is the only state in which the game's own random assignment can pick nothing
+    // but a shipped model. The PlayerModelData objects stay referenced by Entries; a later guarded
+    // pass re-appends.
+    //
+    // Only a CONTIGUOUS SUFFIX that is provably this module's is ever cut:
+    //   * strictly ABOVE a captured prefix, so a shipped row is never a candidate. With no captured
+    //     prefix nothing can be shown to be above every shipped row, so NOTHING is cut and the rows
+    //     that stay are reported - a shrink on an unknown boundary could delete a shipped row;
+    //   * identified as ours by pointer or roster label, so a row another module appended is never
+    //     deleted;
+    //   * cut from the END, so every surviving index keeps its value. A stale saved index that used
+    //     to name a removed row is >= the prefix and is therefore clamped by RemapModelIndex - it can
+    //     never resolve to a different body.
+    //
+    // A LIVE SESSION SUPPRESSES THE CUT. This is the one place where "remove the unprotected rows"
+    // and "never shift a live index" conflict; the dictionary risk wins, because a shrink can make
+    // an index the game already holds resolve to a different body or past the end on every peer. The
+    // rows therefore stay and the inability to protect stock peers is reported as an error instead
+    // of being guessed away. Outside a session the game's session dictionaries are gone, so the cut
+    // is safe for them and happens without waiting for CanShrink (the guard may be exactly what
+    // failed). It does NOT make a stale SAVED index safe: PlayerPrefs can still hold a row this cut
+    // removed, and with the guard missing nothing remaps it before the game's own spawn reader
+    // indexes the shorter array. That residual is inherent to withdrawing at all - the rows cannot
+    // be removed from a peer's resolving path otherwise - and it is reported, not hidden.
+    //
+    // Residuals, not repairable here:
+    //   * every non-shipped row that stays is reported, including the ones this generation cannot
+    //     name as its own: another module's row and a renamed row from an older roster are just as
+    //     unresolvable on a stock peer, and they are not ours to delete;
+    //   * an index an OLDER build replicated (and the per-client PlayerPrefs/save value) before this
+    //     guard existed is native state this module never saw; withdrawal cannot retract it;
+    //   * during a hot reload there is an instant in which the game still holds one of our
+    //     PlayerModelData objects as the applied local row while the array no longer contains it; the
+    //     object stays valid, its Index mirror is stale, and the next generation re-appends.
+    private static void WithdrawCustomRows(IHostContext log, string reason)
+    {
+        var models = PlayerModelDatabase.Models;
+        if (models == null || models.Length == 0) return;
+
+        if (SessionActive(out string session))
+        {
+            bool sessionPrefix = KnownPrefix(log, out int sessionNativeCount) && sessionNativeCount > 0;
+            int ours = 0, foreign = 0;
+            var listed = new StringBuilder();
+            var listedForeign = new StringBuilder();
+            for (int i = 0; i < models.Length; i++)
+            {
+                if (IsOurRow(models[i]))
+                {
+                    ours++;
+                    if (listed.Length < 200)
+                        listed.Append(listed.Length == 0 ? "" : ",").Append(i).Append(':').Append(RowName(models[i]));
+                }
+                else if (sessionPrefix && i >= sessionNativeCount)
+                {
+                    // Non-shipped and NOT ours. It stays for the same reason and stock peers cannot
+                    // resolve it either, so the report must not be limited to recognised ownership.
+                    foreign++;
+                    if (listedForeign.Length < 200)
+                        listedForeign.Append(listedForeign.Length == 0 ? "" : ",").Append(i).Append(':')
+                                     .Append(RowName(models[i]));
+                }
+            }
+            if (ours > 0)
+                NoteWire(log, $"[model:native-wire] CANNOT PROTECT PEERS ({reason}): {ours} custom row(s) " +
+                               $"[{listed}] stay in PlayerModelDatabase.Models because a live {session} session " +
+                               "makes shrinking it unsafe (the game's model dictionaries can still hold an index " +
+                               "at or above the shipped prefix, and the spawn reader indexes with it unchecked). " +
+                               "They cannot be withdrawn while the session is live; until then the native-wire " +
+                               "guard is the only protection left for these indexes - if it is not installed, " +
+                               "the installer keeps retrying, and a restart is the sure fallback");
+            if (foreign > 0)
+                NoteWire(log, $"[model:native-wire] CANNOT PROTECT PEERS ({reason}): {foreign} non-shipped " +
+                               $"row(s) at or above the {sessionNativeCount} shipped row(s) [{listedForeign}] " +
+                               "are not this module's and stay too, because a live " + session + " session makes " +
+                               "the shrink unsafe. Their indexes are just as unresolvable on a stock peer; only " +
+                               "the native-wire prefixes keep them off the wire");
+            return;
+        }
+
+        bool havePrefix = KnownPrefix(log, out int nativeCount) && nativeCount > 0;
+        var isOurs = new bool[models.Length];
+        for (int i = 0; i < models.Length; i++) isOurs[i] = IsOurRow(models[i]);
+        var plan = NativeWirePolicy.PlanWithdrawal(havePrefix, isOurs, nativeCount);
+        int cut = plan.Cut;
+
+        if (cut < models.Length)
+        {
+            var dropped = new StringBuilder();
+            for (int i = cut; i < models.Length; i++)
+                dropped.Append(i == cut ? "" : ",").Append(i).Append(':').Append(RowName(models[i]));
+            var kept = new Il2CppReferenceArray<PlayerModelData>(cut);
+            for (int i = 0; i < cut; i++) kept[i] = models[i];
+            PlayerModelDatabase._models = kept;
+            foreach (var e in Entries) e.Index = -1;
+            Rebuilds = 0;
+            TouchDatabase();
+            log?.LogError($"[model:native-wire] FAIL CLOSED ({reason}): withdrew {models.Length - cut} custom " +
+                          $"row(s) [{dropped}] -> {cut} row(s); a stock peer cannot resolve an index past the shipped " +
+                          "prefix (SpawnPlayerModelOnClient/OnServer have no bounds check)");
+        }
+
+        // Rows of ours that could NOT be cut (a row after them is not provably ours, or the prefix is
+        // unknown so no row can be proven to be above every shipped row) are still selectable. This
+        // runs even when NOTHING was cut: a silent "nothing to do" is exactly how a residual custom
+        // row stayed on the wire before.
+        if (plan.Residual.Length > 0)
+        {
+            var listed = new StringBuilder();
+            foreach (int i in plan.Residual)
+                listed.Append(listed.Length == 0 ? "" : ",").Append(i).Append(':').Append(RowName(models[i]));
+            NoteWire(log, $"[model:native-wire] could not withdraw {plan.Residual.Length} custom row(s) [{listed}]: " +
+                           (plan.Bounded
+                                ? "a row after them is not provably ours, so cutting there would delete another " +
+                                  "module's data"
+                                : "the shipped prefix is unknown, so no row can be proven to be above every " +
+                                  "shipped row and nothing may be cut on that boundary") +
+                           "; these indexes stay and remain selectable, so a peer without the mod can " +
+                           "receive them; only the native-wire guard (when it is installed) keeps them off " +
+                           "the wire");
+        }
+
+        // EVERY non-shipped row that stays, not only the ones this generation recognises as its own.
+        // Another module's row, a row from an older roster this build cannot name, and a row blocked
+        // behind a foreign entry are just as unresolvable on a stock peer - and they are NOT ours to
+        // delete. Reporting only `isOurs` rows was the silent case: the tail looked clean to the
+        // ownership scan while a stock peer still could not resolve it.
+        if (plan.Unprotected.Length > 0)
+        {
+            var listed = new StringBuilder();
+            foreach (int i in plan.Unprotected)
+                listed.Append(listed.Length == 0 ? "" : ",").Append(i).Append(':').Append(RowName(models[i]));
+            NoteWire(log, $"[model:native-wire] CANNOT PROTECT PEERS ({reason}): {plan.Unprotected.Length} " +
+                           $"row(s) at or above the {plan.Floor} shipped row(s) [{listed}] stay and are not " +
+                           "provably this module's, so the withdrawal cannot remove them. A stock peer resolves " +
+                           "an index past its shipped rows with no bounds check (SpawnPlayerModelOnClient/" +
+                           "OnServer throw); only installed native-wire prefixes keep these indexes off the " +
+                           "wire, and the installer keeps retrying while the guard is down");
+        }
     }
 
     // ================================================================== selection
@@ -754,6 +1545,17 @@ internal static class SahurWardrobe
     internal static WantSnapshot Snapshot()
     {
         PlayerModelData applied = AppliedData(_probeLog);
+        if (_wantedSlug != null)
+        {
+            int wantedIndex = EntryIndexForSlug(_wantedSlug);
+            var wanted = EntryAt(wantedIndex);
+            bool unregistered = !string.IsNullOrEmpty(_wantedSlug) &&
+                                (wanted == null || wanted.Data == null || wanted.Index < 0);
+            return new WantSnapshot(string.IsNullOrEmpty(_wantedSlug) ? 2 : 1, wantedIndex,
+                _wantedSlug, wanted?.Label ?? (string.IsNullOrEmpty(_wantedSlug) ? "<native>" : "?"),
+                true, unregistered || _wantedPending,
+                _wantedPending ? "wanted:guest-send" : "wanted:confirm", "wardrobe");
+        }
         var e = applied == null ? null : EntryOwningRow(_probeLog, applied);
         int entry = e?.Spec == null ? -1 : EntryIndexForSlug(e.Spec.Slug);
         return new WantSnapshot(applied == null ? 0 : (e == null ? 2 : 1), entry,
@@ -789,6 +1591,45 @@ internal static class SahurWardrobe
     internal static PlayerModelData AppliedData(IHostContext log)
     {
         try { return LocalSetuper(log)?._playerModelData?.Value; } catch { return null; }
+    }
+
+    private static IntPtr AppliedPointer(IHostContext log)
+    {
+        try { var d = AppliedData(log); return d == null ? IntPtr.Zero : d.Pointer; } catch { return IntPtr.Zero; }
+    }
+
+    // The shipped row the local body ALREADY carries, or -1. Cheap by design: the wire hooks run on
+    // the game/network thread and must not walk the object table.
+    private static int AppliedShippedRow(IHostContext log, int nativeCount)
+    {
+        if (nativeCount <= 0) return -1;
+        var models = PlayerModelDatabase.Models;
+        if (models == null) return -1;
+        var applied = AppliedData(log);
+        int bound = Math.Min(nativeCount, models.Length);
+        for (int i = 0; i < bound; i++)
+            if (Same(models[i], applied)) return i;
+        return -1;
+    }
+
+    // The best native row this client can PROVE is a shipped row, used as the value that stands in
+    // for one of our rows on the wire: the row the local body already carries when it is shipped
+    // (the player is looking at it), else the row this module clones its custom bodies from - the
+    // native actor the body rig replaces. -1 when neither can be proven, so the caller falls back to
+    // the deterministic per-client row. Only rows inside the captured prefix qualify: past it is one
+    // of our rows (or another module's), which a stock peer cannot resolve.
+    private static int NativeDonorRow(IHostContext log, int nativeCount)
+    {
+        int applied = AppliedShippedRow(log, nativeCount);
+        if (applied >= 0) return applied;
+        if (nativeCount <= 0) return -1;
+        var models = PlayerModelDatabase.Models;
+        if (models == null) return -1;
+        var donor = Donor(log);
+        int bound = Math.Min(nativeCount, models.Length);
+        for (int i = 0; i < bound; i++)
+            if (Same(models[i], donor)) return i;
+        return -1;
     }
 
     // A database row by index, or null. This is a LOCAL lookup: the index is never persisted and
@@ -892,10 +1733,12 @@ internal static class SahurWardrobe
 
     private static void SyncSelection(IHostContext log)
     {
-        // The original game owns assignment, persistence, availability, and rejoin randomness.
-        // The mod only maps the currently applied row to its custom body; it never restores a
-        // wanted row or sends a selection RPC from this sync path.
+        // An explicit choice - a wardrobe confirm, or a programmatic `select=`/`apply`/`index=` -
+        // is kept separately from the game's native donor row. With no explicit choice, continue
+        // to follow the game's applied row.
         PlayerModelData applied = AppliedData(log);
+        // A guest's PENDING pick has exactly one confirmation available: the applied row itself.
+        ConfirmPending(log, applied);
         try
         {
             IntPtr p = applied == null ? IntPtr.Zero : applied.Pointer;
@@ -907,8 +1750,9 @@ internal static class SahurWardrobe
             }
         }
         catch { }
-        Entry hit = applied == null ? null : EntryOwningRow(log, applied);
-        ApplySelection(log, hit, applied, "game assigned row");
+        Entry hit = _wantedSlug == null ? (applied == null ? null : EntryOwningRow(log, applied))
+            : EntryAt(EntryIndexForSlug(_wantedSlug));
+        ApplySelection(log, hit, applied, _wantedSlug == null ? "game assigned row" : "confirmed wanted");
         Publish(log, hit);
     }
 
@@ -2271,13 +3115,81 @@ internal static class SahurWardrobe
         catch { }
     }
 
-    // Record a row index chosen outside the map path (a tab click, `index=`) as the wanted entry.
-    // Native index -> the wanted entry becomes native, so a map releases our body instead of
-    // forcing the previous row back on (the "deliberate native choice is honoured" rule).
-    private static void ChooseRow(IHostContext log, int dbIndex, string why)
+    // The wanted intent a database row index names, for the explicit programmatic selectors
+    // (`select=`, `apply`, `index=`, `revert`, and the protocol test path). The row index chosen
+    // outside the map path is the wanted entry: one of ours -> its roster slug, a native row -> ""
+    // (the wanted entry becomes native, so a map releases our body instead of forcing the previous
+    // row back on - the "deliberate native choice is honoured" rule), and null when there is no
+    // such row or it has no stable identity (then nothing is recorded and the game's row is
+    // followed, exactly as before).
+    private static string WantedSlugForRow(IHostContext log, int dbIndex)
     {
-        Entry chosen = null;
-        foreach (var e in Entries) if (e.Index == dbIndex) { chosen = e; break; }
+        var row = DatabaseRowAt(dbIndex);
+        if (row == null) return null;
+        var owner = EntryOwningRow(log, row);
+        if (owner == null) return "";
+        string slug = EntrySlug(owner);
+        return string.IsNullOrEmpty(slug) ? null : slug;
+    }
+
+    // A guest's explicit pick: the game's selection RPC was SENT, which is all this client can
+    // observe - the call has no return value and the host owns the row. The wanted record is kept
+    // (the body follows the pick) but marked PENDING, and the line says so instead of claiming the
+    // row landed. ConfirmPending marks it confirmed once this client's own applied row is the row
+    // the send carried (or our entry's row, when a modded host applied it directly).
+    private static void NotePendingWanted(IHostContext log, string slug, ushort wireRow, string what)
+    {
+        string slot = string.IsNullOrEmpty(slug) ? "native" : $"slug='{slug}'";
+        if (!RecordWanted(log, slug, "local guest selection (unconfirmed)", true, wireRow))
+        {
+            log?.LogInfo($"[model:wanted] why={what} ({slot}): wanted state unchanged - no local lobby " +
+                         "session to scope an explicit choice to; the game's row is followed");
+            return;
+        }
+        log?.LogInfo($"[model:wanted] client={_wantedClient} {slot} why={what} wireRow={wireRow} " +
+                     "state=PENDING (the guest selection RPC was sent; a send is not an acknowledgement, " +
+                     "so the pick stays pending until this body carries the row)");
+    }
+
+    // The only confirmation a guest can have: the row this client's body carries is the row the send
+    // named, or our own entry's row when the host applied it directly. Nothing here reads an RPC
+    // result, because there is none. Called from the 0.5 s selection pass, after the applied row was
+    // read.
+    private static void ConfirmPending(IHostContext log, PlayerModelData applied)
+    {
+        if (!_wantedPending) return;
+        if (applied == null) return;
+        var entry = string.IsNullOrEmpty(_wantedSlug) ? null : EntryAt(EntryIndexForSlug(_wantedSlug));
+        bool ourRow = entry != null && Same(entry.Data, applied);
+        bool sentRow = Same(DatabaseRowAt(_wantedPendingRow), applied);
+        var verdict = NativeWirePolicy.PendingConfirm(string.IsNullOrEmpty(_wantedSlug), ourRow, sentRow);
+        if (verdict == PendingVerdict.Pending) return;
+        bool changed = false;
+        try { changed = applied.Pointer != _wantedPendingFrom; } catch { }
+        _wantedPending = false;
+        // The readiness/provenance fields change even when the applied row did not: give the resolver
+        // that edge, so a cached identity cannot keep reading "pending" after the row arrived.
+        InvalidatePresentation(log, "guest selection confirmed");
+        log?.LogInfo($"[model:wanted] client={_wantedClient} slug='{_wantedSlug}' wireRow={_wantedPendingRow} " +
+                     $"state=CONFIRMED by the applied row '{RowName(applied)}' " +
+                     $"(source={(verdict == PendingVerdict.OurRow ? "our-entry-row" : "the-row-the-send-carried")}, " +
+                     $"{(changed ? "the row changed" : "already carried, so the send changed nothing observable")})");
+    }
+
+    // Record a programmatic explicit pick: the same scoped intent a wardrobe confirm records, so the
+    // native-wire remap cannot turn it back into "follow the game's row". Called by ApplyIndex for
+    // a write that actually took, never for a refused one.
+    private static void NoteExplicitWanted(IHostContext log, string slug, string what)
+    {
+        string slot = string.IsNullOrEmpty(slug) ? "native" : $"slug='{slug}'";
+        if (RecordWanted(log, slug, "local explicit selection"))
+        {
+            log?.LogInfo($"[model:wanted] client={_wantedClient} {slot} why={what} " +
+                         "(programmatic explicit pick; the wire still carries a native row)");
+            return;
+        }
+        log?.LogInfo($"[model:wanted] why={what} ({slot}): wanted state unchanged - no local lobby " +
+                     "session to scope an explicit choice to; the game's row is followed");
     }
 
     private static void OnOursActivated(IHostContext log, Entry entry)
@@ -2374,7 +3286,7 @@ internal static class SahurWardrobe
                     // for a full-roster pass; the selection itself still goes through the game, and
                     // it is recorded as the wanted entry (a native index makes the wanted entry
                     // native, which is what makes a native pick stick in a map).
-                    if (int.TryParse(val, out var idx)) { ChooseRow(log, idx, $"index request {idx}"); ApplyIndex(log, idx, $"index {idx}"); }
+                    if (int.TryParse(val, out var idx)) ApplyIndex(log, idx, $"index {idx}", null, WantedSlugForRow(log, idx));
                     else log.LogWarning($"[sahur:wardrobe] index: '{val}' is not a number");
                     break;
                 case "on": case "select-native":
@@ -2576,7 +3488,10 @@ internal static class SahurWardrobe
             return;
         }
         ApplyNative(log, entry, entry.Index);
-        log.LogInfo($"[sahur:wardrobe] select '{entry.Label}' (index {entry.Index}) via SetBaseModelIndex");
+        // The path is reported by ApplyIndex (host write, guest send, or local SetupModel); claiming
+        // SetBaseModelIndex here was wrong on a client, where the game's own RPC carries the row.
+        log.LogInfo($"[sahur:wardrobe] select '{entry.Label}' (index {entry.Index}) requested; " +
+                    "ApplyIndex reports the path that carried it");
     }
 
     private static void SetBody(IHostContext log, Entry entry, bool on)
@@ -2603,17 +3518,23 @@ internal static class SahurWardrobe
 
     private static int DonorIndex(IHostContext log, Entry entry)
     {
+        // Only inside the proven shipped prefix: past it is one of our rows (or another module's),
+        // which a stock peer cannot resolve, so "the model Sahur was cloned from" must be looked up
+        // where shipped rows live. No proven prefix -> no provable donor -> row 0, which the apply
+        // path clamps/closes on anyway.
+        bool prefixKnown = KnownPrefix(log, out int nativeCount);
+        int bound = prefixKnown ? nativeCount : 0;
         try
         {
             var models = PlayerModelDatabase.Models;
-            for (int i = 0; models != null && i < models.Length; i++)
+            for (int i = 0; models != null && i < bound && i < models.Length; i++)
             {
                 var d = models[i];
-                if (d == null || Same(d, entry.Data)) continue;
+                if (d == null || Same(d, entry == null ? null : entry.Data)) continue;
                 if ((d.name ?? "").IndexOf("James", StringComparison.OrdinalIgnoreCase) >= 0) return i;
             }
-            for (int i = 0; models != null && i < models.Length; i++)
-                if (models[i] != null && !Same(models[i], entry.Data)) return i;
+            for (int i = 0; models != null && i < bound && i < models.Length; i++)
+                if (models[i] != null && !Same(models[i], entry == null ? null : entry.Data)) return i;
         }
         catch { }
         return 0;
@@ -2627,15 +3548,33 @@ internal static class SahurWardrobe
         if (entry == null || entry.Data == null || entry.Index < 0) { log.LogWarning("[sahur:wardrobe] apply: no entry registered yet"); return false; }
         // The index actually asked for is what the player wants from now on: our own row when the
         // forced index is the entry's (or unset), a native row when a caller reverts to the donor.
-        bool ours = forcedIndex < 0 || forcedIndex == entry.Index;
-        return ApplyIndex(log, forcedIndex >= 0 ? forcedIndex : entry.Index, $"'{entry.Label}'", entry.Data);
+        int target = forcedIndex >= 0 ? forcedIndex : entry.Index;
+        // Our own row keeps the entry's slug even if the index bookkeeping lags a database rebuild;
+        // any other forced index is read as the row it names (the donor -> deliberate native intent).
+        string want = forcedIndex < 0 || forcedIndex == entry.Index
+            ? (string.IsNullOrEmpty(EntrySlug(entry)) ? null : EntrySlug(entry))
+            : WantedSlugForRow(log, forcedIndex);
+        return ApplyIndex(log, target, $"'{entry.Label}'", entry.Data, want);
     }
 
     // Any row of PlayerModelDatabase.Models by index, native or ours. Used by the unattended
     // selection pass; the landing body is still the game's own model setuper.
-    private static bool ApplyIndex(IHostContext log, int target, string what, PlayerModelData known = null)
+    // `wantSlug` is the explicit caller's wanted intent (a roster slug, "" for a deliberate native
+    // row, null for no intent). It is recorded only once the write took, so a refused apply never
+    // changes what this client wants. Preview and random paths pass none.
+    //
+    // The index that leaves this method is NEVER the raw target: one pure decision
+    // (NativeWirePolicy.ShippedWireIndex) clamps both the host write and the guest RPC, and it prefers
+    // the native donor this client can prove (the row the body already carries, else the row the
+    // entry was cloned from) to an arbitrary per-client row. A guest's send is recorded as PENDING,
+    // never as a landed row: an RPC send has no acknowledgement.
+    private static bool ApplyIndex(IHostContext log, int target, string what, PlayerModelData known = null,
+                                   string wantSlug = null)
     {
         _ourApply = true;          // do not read our own write as a deliberate selection
+        bool applied = false;
+        bool guestSend = false;
+        ushort guestWireRow = 0;
         try
         {
             if (target < 0) { log.LogWarning("[sahur:wardrobe] apply: no target index"); return false; }
@@ -2649,6 +3588,17 @@ internal static class SahurWardrobe
                 if (nm != null) clientId = nm.LocalClientId;
             }
             catch { }
+
+            // The wire value, decided once for every path below. A process with no proven prefix has
+            // no provably shipped row, so it fails closed to row 0 and says so.
+            ushort requestedRow = (ushort)target;
+            bool prefixKnown = KnownPrefix(log, out int nativeCount);
+            int donor = prefixKnown && requestedRow >= nativeCount ? NativeDonorRow(log, nativeCount) : -1;
+            ushort wireRow = NativeWirePolicy.ShippedWireIndex(prefixKnown, nativeCount, requestedRow, donor, clientId);
+            if (!prefixKnown) NoNativePrefix(log, "local selection");
+            else if (wireRow != requestedRow)
+                log.LogInfo($"[model:native-wire] local selection client={clientId} requested={requestedRow} " +
+                            $"native={wireRow} nativeCount={nativeCount} donor={donor}");
 
             // A GUEST cannot write the author's row through its local PlayersAppearanceManager: that
             // manager is a NetworkBehaviour owned by the server, and the write this method used to do
@@ -2674,14 +3624,21 @@ internal static class SahurWardrobe
                                    "- the game's row stays as the join spawned it; the body module still follows the wanted entry");
                     return false;
                 }
-                if (!TryGuestSelect(log, wc, clientId, (ushort)target, out string how))
+                if (!TryGuestSelect(log, wc, clientId, wireRow, out string how))
                 {
                     log.LogWarning($"[sahur:wardrobe] apply {what}: guest has no selection entry point " +
                                    "- the game's row stays as the join spawned it; the body module still follows the wanted entry");
                     return false;
                 }
-                log.LogInfo($"[sahur:wardrobe] apply {what}: {how}(client={clientId}, {target}) " +
-                            $"on '{PathOf(wc.transform)}' (the game's own guest selection path; the host owns the row)");
+                // SENT, not applied. The host owns the row and the RPC has no acknowledgement, so the
+                // intent is recorded as pending and only the applied row can confirm it.
+                log.LogInfo($"[sahur:wardrobe] apply {what}: {how}(client={clientId}, {wireRow}) " +
+                            $"on '{PathOf(wc.transform)}' (sent on the game's own guest selection path; " +
+                            "the host owns the row and has not acknowledged it - the intent stays PENDING " +
+                            "until this body carries the row)");
+                guestSend = true;
+                guestWireRow = wireRow;
+                applied = true;
                 return true;
             }
 
@@ -2691,9 +3648,12 @@ internal static class SahurWardrobe
                 var m = managers[0].TryCast<Gameplay.Appearance.PlayersAppearanceManager>();
                 if (m != null)
                 {
-                    m.SetBaseModelIndex(clientId, (ushort)target);
-                    log.LogInfo($"[sahur:wardrobe] apply {what}: SetBaseModelIndex(client={clientId}, {target}) " +
-                                $"on '{PathOf(m.transform)}' (the wardrobe's own path)");
+                    m.SetBaseModelIndex(clientId, wireRow);
+                    log.LogInfo($"[sahur:wardrobe] apply {what}: SetBaseModelIndex(client={clientId}, {wireRow}" +
+                                $"{(wireRow == requestedRow ? "" : $" from requested {requestedRow}")}) " +
+                                $"on '{PathOf(m.transform)}' (the wardrobe's own path; the row handed to the game " +
+                                "is a shipped row a peer without the mod can resolve)");
+                    applied = true;
                     return true;
                 }
             }
@@ -2706,12 +3666,27 @@ internal static class SahurWardrobe
                 if (models == null || target >= models.Length) { log.LogWarning($"[sahur:wardrobe] apply {what}: no model at index {target}"); return false; }
                 data = models[target];
             }
+            // Local body only: SetupModel takes the row object, not an index, and nothing here is
+            // replicated - so this is the one path where our own row is correct.
             s.SetupModel(data);
-            log.LogInfo($"[sahur:wardrobe] apply {what}: SetupModel('{data.name}') on '{PathOf(s.transform)}' (no appearance manager found)");
+            log.LogInfo($"[sahur:wardrobe] apply {what}: SetupModel('{data.name}') on '{PathOf(s.transform)}' (no appearance manager found; local only)");
+            applied = true;
             return true;
         }
         catch (Exception e) { log.LogError($"[sahur:wardrobe] apply failed: {e}"); return false; }
-        finally { _ourApply = false; }
+        finally
+        {
+            _ourApply = false;
+            // The write landed, so the explicit caller's intent is the wanted entry from now on.
+            // On the host the row above was remapped to a native donor by the wire guard; without
+            // this record SyncSelection would read that donor as "the game's row" and drop the body.
+            // A guest send has no such evidence, so it records the same intent as PENDING.
+            if (applied && wantSlug != null)
+            {
+                if (guestSend) NotePendingWanted(log, wantSlug, guestWireRow, what);
+                else NoteExplicitWanted(log, wantSlug, what);
+            }
+        }
     }
 
     // Every object this mod has in the scene, by name: the leak metric for the whole roster. One
@@ -2889,3 +3864,280 @@ internal static class SahurWardrobe
         catch { return "?"; }
     }
 }
+
+// ============================================================================================
+// Native-wire decisions (pure)
+//
+// Everything below is a DECISION, not a call: no Il2Cpp, Unity, Harmony or game type may appear
+// here. SahurWardrobe translates live rows into pointers / flags and applies the result, which is
+// what lets the safety rules be exercised behaviorally outside the game
+// (tests/native-wire-guard/behavior compiles this block verbatim from this file).
+// ============================================================================================
+
+// >>> native-wire-pure: begin (the text between these markers is compiled verbatim by the behavioral harness)
+
+// The proof state of the shipped prefix. The only value taken from the live database is the
+// candidate rows [0, shipped.Length); the shipped set itself always comes from Resources.
+internal enum PrefixProof
+{
+    // Nothing to decide yet: the resource set or the database is not loaded, or the database is
+    // still shorter than the resource set. Retry; never capture, never append, never mark unknown.
+    Wait = 0,
+
+    // Rows [0, shipped.Length) are exactly the game's shipped set, so that many rows are resolvable
+    // on a peer without the mod. This is true even when the live array is longer (a previous
+    // generation's appended rows follow the shipped ones), and the value is shipped.Length, never
+    // the live length.
+    Proven = 1,
+
+    // A row inside the candidate prefix is not a shipped row (null, duplicate, foreign, or the
+    // shipped set is incomplete). Nothing can be proven, so the prefix must become unknown and
+    // every consumer must fail closed for the rest of the process.
+    FailClosed = 2,
+}
+
+internal readonly struct PrefixVerdict
+{
+    internal readonly PrefixProof Proof;
+    internal readonly int Count;
+    internal readonly string Detail;
+
+    internal PrefixVerdict(PrefixProof proof, int count, string detail)
+    {
+        Proof = proof;
+        Count = count;
+        Detail = detail;
+    }
+}
+
+// Why a shrink may or may not run. A shrink is the only operation that can invalidate an index the
+// game already holds, so every reason to refuse is named rather than collapsed into false.
+internal enum ShrinkVerdict
+{
+    // Safe: prefix known, session over, guard installed, every removed row at or above the prefix.
+    Allow = 0,
+
+    // No shipped prefix: "rows above the prefix" is undefined, so nothing may be removed.
+    WaitForPrefix = 1,
+
+    // A live session can still hold an index at or above the prefix in the game's dictionaries and
+    // read it without a bounds check. Refuse even when the guard is installed.
+    DeferSession = 2,
+
+    // Without the guard a new custom index can still be written and replicated.
+    DeferGuard = 3,
+
+    // A row inside the shipped prefix is in the drop set: it is not ours to remove.
+    RefuseShippedRow = 4,
+}
+
+// The result of comparing the live array's front with the shipped resource set. `shipped` and
+// `candidate` are native pointers; `candidate` must already be the first shipped.Length rows of the
+// live array (the caller slices; a shorter array is Wait). Order is not part of the proof: a peer
+// resolves an index, so what matters is that every index below the count is a shipped row.
+internal static class NativeWirePolicy
+{
+    internal static PrefixVerdict ProvePrefix(IntPtr[] shipped, IntPtr[] candidate)
+    {
+        if (shipped == null || shipped.Length == 0)
+            return new PrefixVerdict(PrefixProof.Wait, 0, "no shipped PlayerModelData rows are loaded");
+        if (candidate == null || candidate.Length == 0)
+            return new PrefixVerdict(PrefixProof.Wait, 0, "PlayerModelDatabase.Models has no rows yet");
+        if (candidate.Length < shipped.Length)
+            return new PrefixVerdict(PrefixProof.Wait, 0,
+                $"only {candidate.Length} of {shipped.Length} shipped row(s) are loaded");
+
+        var expected = new HashSet<IntPtr>();
+        for (int i = 0; i < shipped.Length; i++) expected.Add(shipped[i]);
+
+        var seen = new HashSet<IntPtr>();
+        for (int i = 0; i < shipped.Length; i++)
+        {
+            IntPtr pointer = candidate[i];
+            if (pointer == IntPtr.Zero)
+                return new PrefixVerdict(PrefixProof.FailClosed, 0,
+                    $"model row {i} is null; the shipped prefix cannot be proven");
+            if (!expected.Contains(pointer))
+                return new PrefixVerdict(PrefixProof.FailClosed, 0,
+                    $"model row {i} is not one of the {shipped.Length} shipped PlayerModelData row(s)");
+            if (!seen.Add(pointer))
+                return new PrefixVerdict(PrefixProof.FailClosed, 0,
+                    $"model row {i} repeats a shipped row; a shipped row is missing from the prefix");
+        }
+
+        return new PrefixVerdict(PrefixProof.Proven, shipped.Length,
+            $"models[0..{shipped.Length}) is exactly the {shipped.Length} shipped row(s)");
+    }
+
+    internal static ShrinkVerdict CanPrune(bool prefixKnown, bool guardInstalled, bool sessionActive,
+                                           int nativeCount, IReadOnlyList<int> drop)
+    {
+        if (!prefixKnown || nativeCount <= 0) return ShrinkVerdict.WaitForPrefix;
+        if (sessionActive) return ShrinkVerdict.DeferSession;
+        if (!guardInstalled) return ShrinkVerdict.DeferGuard;
+        for (int i = 0; drop != null && i < drop.Count; i++)
+            if (drop[i] < nativeCount) return ShrinkVerdict.RefuseShippedRow;
+        return ShrinkVerdict.Allow;
+    }
+
+    // The contiguous tail that may be cut, the rows of ours that stay, and the non-shipped rows that
+    // stay though they are not ours. `isOurs[i]` is the caller's ownership proof for row i;
+    // `nativeCount` is the proven shipped prefix. A cut requires that proof: with no captured prefix
+    // no row can be shown to be above every shipped row, so NOTHING is cut (a shrink on an unknown
+    // boundary could delete a shipped row) and every ours row is reported. Ownership at or above the
+    // cut is not assumed: the cut stops at the first row that is not ours, and every ours row BELOW
+    // it is residual, even when the cut is empty. That is the difference between "nothing to do" and
+    // "a row stayed on the wire".
+    internal static WithdrawalPlan PlanWithdrawal(bool prefixKnown, bool[] isOurs, int nativeCount)
+    {
+        int count = isOurs == null ? 0 : isOurs.Length;
+        bool bounded = prefixKnown && nativeCount > 0;
+        int floor = 0;
+        if (bounded)
+        {
+            floor = nativeCount;
+            if (floor > count) floor = count;
+        }
+
+        int cut = count;
+        if (bounded)
+            while (cut > floor && isOurs[cut - 1]) cut--;
+
+        var residual = new List<int>();
+        for (int i = floor; i < cut; i++) if (isOurs[i]) residual.Add(i);
+
+        // Rows at or above the proven prefix that are NOT ours: non-shipped by construction, and not
+        // ours to delete. They stay, so no stock peer can resolve their indexes. Without a proven
+        // prefix this set is unknown (a shipped row could be in it), so it stays empty rather than
+        // claiming shipped rows are unprotected.
+        var unprotected = new List<int>();
+        if (bounded)
+            for (int i = floor; i < count; i++) if (!isOurs[i]) unprotected.Add(i);
+
+        return new WithdrawalPlan(cut, residual.ToArray(), unprotected.ToArray(), floor, bounded);
+    }
+
+    // A model index that may be written to the wire. With no captured prefix nothing is provably
+    // shipped, so the only safe value is row 0 (fail closed). A shipped index passes through. Any
+    // other index is replaced by a donor the caller can PROVE is a shipped row when it has one (the
+    // row the body already carries, or the row it was cloned from), and only then by the
+    // deterministic per-client row, which is the same value the server-side remap used to choose.
+    internal static ushort ShippedWireIndex(bool prefixKnown, int nativeCount, ushort requested, int donor,
+                                            ulong clientId)
+    {
+        if (!prefixKnown || nativeCount <= 0) return 0;
+        if (requested < nativeCount) return requested;
+        if (donor >= 0 && donor < nativeCount) return (ushort)donor;
+        return NativeModelPolicy.Fallback(requested, nativeCount, clientId);
+    }
+
+    // What the local wardrobe confirm must do with the index that is about to travel to the host.
+    // The index is ALWAYS returned; `Record` only says whether the wanted intent should also be
+    // recorded. Nothing about the record can suppress or weaken the clamp.
+    internal static ConfirmPlan PlanConfirm(bool prefixKnown, int nativeCount, ushort chosen, bool rowExists,
+                                            string slug, int donor, ulong clientId)
+    {
+        if (!prefixKnown || nativeCount <= 0)
+            return new ConfirmPlan(ConfirmBranch.NoPrefix, 0, false, null);
+        // A donor outside the proven shipped range is not a shipped row; ignore it rather than let
+        // a caller bug put it on the wire. The caller only scans [0, nativeCount), but the plan must
+        // stay safe on its own inputs.
+        if (donor < 0 || donor >= nativeCount) donor = -1;
+        if (!rowExists)
+            // The index names no row, so the requested value is not sent at all: keep the donor the
+            // body already carries when there is one, and only then fall back deterministically.
+            return new ConfirmPlan(ConfirmBranch.StaleRow,
+                donor >= 0 ? (ushort)donor : ShippedWireIndex(prefixKnown, nativeCount, chosen, -1, clientId),
+                false, null);
+        if (string.IsNullOrEmpty(slug))
+        {
+            if (chosen < nativeCount)
+                return new ConfirmPlan(ConfirmBranch.NativeRow, chosen, true, "");
+            return new ConfirmPlan(ConfirmBranch.ForeignRow,
+                ShippedWireIndex(prefixKnown, nativeCount, chosen, donor, clientId), true, "");
+        }
+        return new ConfirmPlan(ConfirmBranch.OurRow,
+            ShippedWireIndex(prefixKnown, nativeCount, chosen, donor, clientId), true, slug);
+    }
+
+    // What an observed applied row says about a PENDING wanted record - the one confirmation a guest
+    // has, because its selection RPC has no acknowledgement. `wantedNative` is the record's intent
+    // (empty slug); `ourRow` is the applied row being the wanted entry's OWN row; `sentRow` is the
+    // applied row being the row the send carried. A native intent is never confirmed by our row: the
+    // player asked for the game's own model, so our body under it is not convergence.
+    internal static PendingVerdict PendingConfirm(bool wantedNative, bool ourRow, bool sentRow)
+    {
+        if (!wantedNative && ourRow) return PendingVerdict.OurRow;
+        return sentRow ? PendingVerdict.SentRow : PendingVerdict.Pending;
+    }
+}
+
+// The three outcomes of observing an applied row against a pending guest selection.
+internal enum PendingVerdict
+{
+    // Neither the wanted entry's row nor the row the send carried: nothing has confirmed the pick.
+    Pending = 0,
+
+    // The wanted entry's own row is applied (a host with the mod applied it directly).
+    OurRow = 1,
+
+    // The applied row is the shipped row the send carried (the host resolved the clamped value).
+    SentRow = 2,
+}
+
+internal readonly struct WithdrawalPlan
+{
+    // Rows [Cut, Count) may be removed; Cut == Count means nothing may be cut.
+    internal readonly int Cut;
+
+    // Indices of rows this module owns that remain in [Floor, Cut). Non-empty means the withdrawal
+    // could not protect them, even when Cut == Count.
+    internal readonly int[] Residual;
+
+    // Indices at or above Floor that are NOT this module's. They are non-shipped by construction
+    // (Floor is the proven shipped prefix), they cannot be removed, and no stock peer can resolve
+    // them. Empty when the prefix is unknown: a shipped row could be in the set.
+    internal readonly int[] Unprotected;
+
+    // The lowest index the plan was allowed to consider (the shipped prefix, or 0 when unknown).
+    internal readonly int Floor;
+
+    // True when the plan had a PROVEN, positive prefix, i.e. a cut was even considered.
+    internal readonly bool Bounded;
+
+    internal WithdrawalPlan(int cut, int[] residual, int[] unprotected, int floor, bool bounded)
+    {
+        Cut = cut;
+        Residual = residual ?? Array.Empty<int>();
+        Unprotected = unprotected ?? Array.Empty<int>();
+        Floor = floor;
+        Bounded = bounded;
+    }
+}
+
+internal enum ConfirmBranch
+{
+    NoPrefix = 0,   // no shipped prefix: index 0, nothing recorded
+    StaleRow = 1,   // the confirmed index names no current row: donor/fallback, nothing recorded
+    NativeRow = 2,  // a shipped row inside the prefix: unchanged, record the deliberate-native intent
+    ForeignRow = 3, // past the prefix and not ours: donor/fallback, record deliberate-native intent
+    OurRow = 4,     // one of our rows: donor/fallback, record the entry's slug
+}
+
+internal readonly struct ConfirmPlan
+{
+    internal readonly ConfirmBranch Branch;
+    internal readonly ushort Index;   // the value that may travel to the host
+    internal readonly bool Record;    // whether to record the wanted intent (never gates Index)
+    internal readonly string Slug;    // "" = deliberate native, otherwise the entry slug
+
+    internal ConfirmPlan(ConfirmBranch branch, ushort index, bool record, string slug)
+    {
+        Branch = branch;
+        Index = index;
+        Record = record;
+        Slug = slug;
+    }
+}
+
+// <<< native-wire-pure: end

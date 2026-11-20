@@ -169,11 +169,40 @@ def actor_observations(text, source, remote=False, hud_measured=False):
                     else unavailable('HUD observer unsupported, hidden, absent, unknown sprite, or remote actor has no local HUD', source=source))
     actor['canonicalClaim'] = observed(fields.get('canonicalSlug', '-'), source + ' (derived; not display evidence)')
     actor['wardrobe'] = unavailable('runtime exposes applied/canonical row, not an independently observed visible wardrobe selection', source=source)
+    actor['appliedRole'] = (observed('native-donor-row', source) if native_donor_applied(actor)
+                            else observed('applied-identity', source) if value(actor['applied']) is not None
+                            else unavailable('no applied identity observed', source=source))
     return actor
+
+
+def native_donor_applied(actor):
+    """`applied` is a native `PlayerModelData` row that a confirmed custom body replaces, so it is
+    the donor row, not a competing applied identity. Every part of the custom claim must corroborate
+    itself; any unconfirmed, unobserved, stale, or divergent field keeps the native row as a real
+    second observation and leaves the mismatch reportable."""
+    wanted = value(actor.get('preference', {}))
+    return (value(actor.get('applied', {})) == '<native>' and
+            value(actor.get('provenance', {})) == 'wanted:confirm' and
+            value(actor.get('bodyHealth', {})) == 'live' and
+            wanted not in (None, '<native>') and
+            wanted == value(actor.get('body', {})) == value(actor.get('canonicalClaim', {})))
+
+
+def hud_expectation(actor):
+    """The model the local HUD portrait must present. A confirmed custom body replaces its native
+    donor row, so the portrait is expected to show that body, not the row the game still applies;
+    without that corroboration the HUD must show the applied identity itself."""
+    if native_donor_applied(actor):
+        return value(actor.get('body', {})), 'confirmed body'
+    expected = (value(actor.get('appliedRow', {})) if value(actor.get('applied', {})) == '<native>'
+                else value(actor.get('applied', {})))
+    return expected, 'applied row'
 
 
 def disagreements(actor):
     facts = {key: value(actor.get(key, {})) for key in ('applied', 'body', 'advertised')}
+    if native_donor_applied(actor):
+        facts.pop('applied')
     known = {k: v for k, v in facts.items() if v is not None}
     return known if len(set(known.values())) > 1 else None
 
@@ -567,9 +596,9 @@ def diagnose(report):
             if mismatch:
                 add('model-mismatch', role, 'independent model observations disagree: '+json.dumps(mismatch), 'error', source)
             hud = value(actor['hud'])
-            expected_hud = value(actor['appliedRow']) if value(actor['applied']) == '<native>' else value(actor['applied'])
+            expected_hud, expectation = hud_expectation(actor)
             if hud is not None and expected_hud is not None and hud != expected_hud:
-                add('presentation-mismatch', role, 'observed HUD '+hud+' disagrees with applied row '+expected_hud, 'error', source)
+                add('presentation-mismatch', role, 'observed HUD '+hud+' disagrees with '+expectation+' '+expected_hud, 'error', source)
             if value(actor['hud']) is None and actor['scope'] == 'local-applied-view':
                 complete = False
                 add('hud-unavailable', role, actor['hud']['reason'], evidence=source)

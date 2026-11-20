@@ -19,10 +19,20 @@ public class HotModule : IHotModule
     private ModelSwapRuntime _runtime;
     private IHostContext _host;
     private bool _reelPatchAttempted;
+    private bool _diagnosticsOnly;
 
     public void Initialize(IHostContext host, bool firstActivation)
     {
         _host = host;
+        _diagnosticsOnly = AlterumModelSwap.DiagnosticsMode.Enabled;
+        if (_diagnosticsOnly)
+        {
+            try { QcGate.Install(host); }
+            catch (Exception e) { host.LogError($"[gate] install threw: {e.Message}"); }
+            _runtime = new ModelSwapRuntime(host, firstActivation);
+            host.LogInfo("[hot] diagnostics-only active; gameplay features disabled");
+            return;
+        }
         // Stream D's lobby-name Harmony prefix. Install right after the host is stored (the prefix
         // logs through it) and before the runtime exists: the first publish can happen during the
         // runtime's own startup path.
@@ -42,6 +52,10 @@ public class HotModule : IHotModule
         // `[mapbody]`: the read-only map-run body trace (SetupModel postfix + 1 Hz census).
         try { MapBody.Install(host); }
         catch (Exception e) { host.LogError($"[mapbody] install threw: {e.Message}"); }
+        // `[results:body]`: re-apply custom bodies to the models the game builds in the Results
+        // scene (InstantiatePlayerModel postfix; the attach work runs in the runtime tick).
+        try { ResultsBodies.Install(host); }
+        catch (Exception e) { host.LogError($"[results:body] install threw: {e.Message}"); }
         // `[scenesync]`: the read-only lobby -> map handoff trace (loader calls on both peers).
         try { SceneSyncTrace.Install(host); }
         catch (Exception e) { host.LogError($"[scenesync] install threw: {e.Message}"); }
@@ -49,14 +63,24 @@ public class HotModule : IHotModule
         // host start so the first Pauser the game creates is captured, not discovered by a scan.
         try { MenuScope.Install(host); }
         catch (Exception e) { host.LogError($"[menu:scope] install threw: {e.Message}"); }
-        try { SahurWardrobe.Install(host); }
-        catch (Exception e) { host.LogError($"[sahur:wardrobe] install threw: {e.Message}"); }
         _runtime = new ModelSwapRuntime(host, firstActivation);
         host.LogInfo($"[hot] module initialized (firstActivation={firstActivation})");
     }
 
     public void Update(float unscaledDeltaTime)
     {
+        if (_diagnosticsOnly)
+        {
+            try { SceneCache.Tick(); } catch { }
+            try { _runtime?.DiagnosticsTick(unscaledDeltaTime); } catch (Exception e) { _host?.LogError($"[diag] runtime: {e.Message}"); }
+            if (_host == null) return;
+            try { ScreenShot.Tick(_host, unscaledDeltaTime); } catch (Exception e) { _host.LogError($"[diag] shot: {e.Message}"); }
+            try { ProofCam.Tick(_host); } catch (Exception e) { _host.LogError($"[diag] proofcam: {e.Message}"); }
+            try { UiDriver.Tick(_host, _runtime); } catch (Exception e) { _host.LogError($"[diag] ui: {e.Message}"); }
+            try { SessionControl.Tick(_host, _runtime); } catch (Exception e) { _host.LogError($"[diag] session: {e.Message}"); }
+            try { GameConsole.Tick(_host); } catch (Exception e) { _host.LogError($"[diag] qc: {e.Message}"); }
+            return;
+        }
         // HotLoader initializes the candidate before disposing the old module. Wait until
         // dispatch so the retiring module cannot unpatch the candidate's shared Harmony ID.
         if (!_reelPatchAttempted)
@@ -64,6 +88,10 @@ public class HotModule : IHotModule
             _reelPatchAttempted = true;
             try { ReelInteraction.InstallInteractionPatch(); }
             catch (Exception e) { _host?.LogError($"[reel:act] install threw: {e.Message}"); }
+            // The old generation owns the same Harmony ID and is disposed after Initialize.
+            // Install the model wire guard only once the retiring patches have gone away.
+            try { SahurWardrobe.Install(_host); }
+            catch (Exception e) { _host?.LogError($"[sahur:wardrobe] install threw: {e.Message}"); }
         }
         Perf.Hook();
         // Menu open/close edge first: it invalidates the menu group that the UI lookups below
@@ -117,17 +145,24 @@ public class HotModule : IHotModule
     }
     public void LateUpdate()
     {
+        if (_diagnosticsOnly) return;
         try { _runtime?.LateUpdate(); }
         catch (Exception e) { _host?.LogError($"[perf] late threw: {e.Message}"); }
         try { Perf.EndFrame(_host, UnityEngine.Time.unscaledDeltaTime); } catch { }
     }
     public void OnGUI()
     {
-        _runtime?.OnGUI();
+        if (!_diagnosticsOnly) _runtime?.OnGUI();
     }
 
     public void Dispose()
     {
+        if (_diagnosticsOnly)
+        {
+            try { QcGate.Dispose(); } catch { }
+            _runtime = null;
+            return;
+        }
         // A recording owns native resources (RenderTexture, camera GameObject) that the next
         // generation cannot see, so the retiring one has to destroy them itself. Same for the
         // mirror, the scaled skeletons, the jiggle offsets and the cosmetic objects; those live
@@ -144,6 +179,7 @@ public class HotModule : IHotModule
         try { MenuScope.Dispose(); } catch { }
         try { JoinTrace.Dispose(); } catch { }
         try { MapBody.Dispose(); } catch { }
+        try { ResultsBodies.Dispose(); } catch { }
         try { SceneSyncTrace.Dispose(); } catch { }
         try { ClipRecorder.Abort(_host); } catch { }
         try { ReelInteraction.DisposeInteractionPatch(); } catch { }

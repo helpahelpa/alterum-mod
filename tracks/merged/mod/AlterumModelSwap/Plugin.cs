@@ -80,6 +80,10 @@ public class HostPlugin : BasePlugin
         Instance = this;
         L = Log;
 
+        // Parsed once (DiagnosticsMode) and gates the whole mod, host and hot alike. Logged before
+        // anything else so a capture explains absent `[net]`/`[hot]` lines by itself.
+        Log.LogInfo($"[host] mode={(DiagnosticsMode.Enabled ? "diagnostics-only" : "normal")} ({DiagnosticsMode.Flag}={DiagnosticsMode.Enabled})");
+
         // Permanent startup gate: it runs before any per-instance config/log/hot work and before
         // the pump exists, so a missing or failing hot module can never skip it. Any failure is
         // fatal inside the guard (exit code 78); it deliberately does not go through the catch

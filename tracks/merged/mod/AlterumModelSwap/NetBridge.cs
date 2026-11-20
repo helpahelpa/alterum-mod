@@ -38,7 +38,9 @@ internal sealed unsafe class NetBridge : INetBridge
     private const double PollSeconds = 0.25;
 
     // ---------------------------------------------------------------- state
-    private NetState _state = NetState.WaitingForNetwork;
+    // Diagnostics-only starts parked and stays there: Disabled is the state the hot module also
+    // reports, and no generation may revive it (see Tick and NewGeneration).
+    private NetState _state = DiagnosticsMode.Enabled ? NetState.Disabled : NetState.WaitingForNetwork;
     private NetCaps _caps = NetCaps.None;
     private string _unsupportedReason;
 
@@ -103,6 +105,10 @@ internal sealed unsafe class NetBridge : INetBridge
 
     internal void Tick(float unscaledDeltaTime)
     {
+        // Diagnostics-only owns nothing on the wire. Returning before the first poll is what keeps
+        // RegisterNamedMessageHandler from ever being called, so there is no handler to echo, no
+        // stored peer list to send to, and RequestFile (the `net.request` channel) is never read.
+        if (DiagnosticsMode.Enabled) return;
         if (_state == NetState.Unsupported) return;
         _pollAccum += unscaledDeltaTime;
         if (_pollAccum < PollSeconds) return;
@@ -618,7 +624,8 @@ internal sealed unsafe class NetBridge : INetBridge
     internal INetBridgeLease NewGeneration(out INetBridge view)
     {
         _generation++;
-        if (_state == NetState.Disabled)
+        // A fault-parked bridge is revived by the next module; a diagnostics-only one is not.
+        if (_state == NetState.Disabled && !DiagnosticsMode.Enabled)
         {
             _state = NetState.WaitingForNetwork;
             _faultStreak = 0;

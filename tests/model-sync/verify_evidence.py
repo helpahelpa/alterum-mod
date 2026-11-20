@@ -16,6 +16,9 @@ therefore proves, from a scenario directory, exactly that:
   * a `[model:identity]` line exists per actor, and the canonical row agrees with the body;
   * where HUD/wardrobe disagreed, a display correction names the canonical row, and NO
     `SetupModel`/`SetBaseModelIndex` was issued to refresh a display surface;
+  * every HUD portrait correction went into the LOCAL player's own HUD slot: each presented line
+    names the canvas path it wrote, and no path is the voting screen (2026-11-20 06:33Z: the local
+    custom bust was painted into nine voting slots, one per player) or any other canvas;
   * the local wanted record is repaired by SLUG (slug wins; pending never downgrades; withdrawn
     invalidates and the replacement is persisted; a pre-slug record's index is never reused);
   * the random-on-join record is persisted/recovered by slug, and an old index-only state file is
@@ -58,7 +61,8 @@ IDENTITY_RE = re.compile(
     r"appliedRow=(.*?) bodySlug=(\S+) hudRow=(.*?) wardrobeRow=(.*?) provenance=(\S+)"
     r"(?: readiness=(\S+))?(?: bodyState=(\S+))?")
 HUD_RE = re.compile(r"\[model:hud\] presented canonical row '([^']*)' db=(\S+) in (\d+) portrait")
-HUD_NOMATCH_RE = re.compile(r"\[model:hud\] no portrait Image carries")
+HUD_NOMATCH_RE = re.compile(r"\[model:hud\] no portrait Image could be identified")
+HUD_PATH_RE = re.compile(r"path='([^']*)'")
 WARDROBE_RE = re.compile(
     r"\[model:wardrobe\] actor=(\S+) occupancy '([^']*)' -> '([^']*)' nickname='([^']*)'")
 WANTED_RESTORE_RE = re.compile(
@@ -214,6 +218,48 @@ def check_hud_projection(ctx):
         if is_slug(local["hud"]) and m.group(1) != local["hud"]:
             return False, "HUD presented '%s' but the identity's hudRow is '%s'" % (m.group(1), local["hud"])
     return True, "HUD satisfies the canonical row (applied=%s hud=%s)" % (local["applied"], local["hud"])
+
+
+def is_local_hud_path(path):
+    """The writer's admission rule, re-stated for the evidence: a portrait is the LOCAL player's
+    only when it lives under the HUD canvas - a 'HUD' whole segment, and no 'Voting' segment (the
+    voting screen clones one PortraitCompositeView per player slot and every clone holds a roster
+    bust, so the sprite alone never identifies the local slot)."""
+    segments = [s for s in (path or "").split("/") if s]
+    if not segments:
+        return False
+    if any("voting" in s.lower() for s in segments):
+        return False
+    return any(s.lower() == "hud" for s in segments)
+
+
+def check_hud_scope(ctx):
+    """Every written portrait must be the local player's own HUD slot.
+
+    The 06:33Z corruption: with the voting screen up (the HUD slot itself not active, so the
+    identity line above said hudRow=<unobserved>) the writer accepted every PortraitCompositeView
+    in a loaded scene and painted the local custom bust into NINE voting slots, one per player. A
+    pre-scope build proves it in one line (a.log:46097): the presented line lists nine
+    'Voting Canvas/.../Player(Clone)' composites. A presented line must therefore name the path it
+    wrote, exactly as many paths as images, and every path must be a local HUD slot.
+    """
+    checked = 0
+    for line in ctx["log"].splitlines():
+        m = HUD_RE.search(line)
+        if not m:
+            continue
+        checked += 1
+        paths = HUD_PATH_RE.findall(line)
+        if not paths:
+            return False, ("presented '%s' without a path= - the written slot is unverifiable, and a "
+                           "pre-scope build wrote into other players' voting slots this way" % m.group(1))
+        wrote = int(m.group(3))
+        if len(paths) != wrote:
+            return False, "presented %d image(s) but names %d path(s): %s" % (wrote, len(paths), paths)
+        for path in paths:
+            if not is_local_hud_path(path):
+                return False, "presented into a non-local-HUD surface '%s'" % path
+    return True, "%d presented line(s) stay inside the local HUD" % checked
 
 
 def check_wardrobe_projection(ctx):
@@ -445,6 +491,7 @@ CHECKS = [
     ("local_canonical_agrees", check_local_canonical_agrees),
     ("remote_canonical_agrees", check_remote_canonical_agrees),
     ("hud_projection", check_hud_projection),
+    ("hud_scope", check_hud_scope),
     ("wardrobe_projection", check_wardrobe_projection),
     ("display_only", check_display_only),
     ("bind_native", check_bind_native),
@@ -532,7 +579,7 @@ def verify(case_dir):
 
 BASE = """\
 [model:identity] actor=local wantedSlug=golubiro advertisedSlug=golubiro resolvedDb=12 appliedRow=Male_5_Ryan bodySlug=golubiro hudRow=golubiro wardrobeRow=Male_5_Ryan provenance=wanted:explicit readiness=ready
-[model:hud] presented canonical row 'golubiro' db=12 in 1 portrait image(s) (the game's applied row is 'Male_5_Ryan'); display only - PlayerModelData untouched, no SetupModel, no selection RPC
+[model:hud] presented canonical row 'golubiro' db=12 in 1 portrait image(s) under the local HUD [path='Lobby Global/User Interface/Canvases/HUD/HUD Canvas/Portrait(Clone)/Controller' row='Male_5_Ryan' was='portraits-base_male05'] (game applied row='Male_5_Ryan', composites=1 legacy=0 votingCanvas=0 notHud=0 inactive=0 unbound=0 otherRow=0, already=0 foreign=0); display only - PlayerModelData untouched, no SetupModel, no selection RPC
 [model:identity] actor=remote=2 wantedSlug=- advertisedSlug=golubiro resolvedDb=12 appliedRow=Male_5_Ryan bodySlug=golubiro hudRow=golubiro wardrobeRow=golubiro provenance=remote:vouched readiness=ready
 [model:wardrobe] actor=remote=2 occupancy 'Male_5_Ryan' -> 'golubiro' nickname='B' (display only; the game's applied row is unchanged)
 [sahur:map] wanted entry restored from 'cfg/alterum-wanted-model.cfg': 2 'Golubiro' (golubiro) [explicit] db=12 row-state=ready
@@ -543,6 +590,24 @@ BASE = """\
 WANTED_BEFORE = "version=1\nslug=golubiro\nlabel=Golubiro\nwhy=deliberate wardrobe pick\nexplicit=1\nat=2026-11-17T00:00:00Z\n"
 WANTED_AFTER = WANTED_BEFORE
 STATE_AFTER = "version=1\nactive=1\nslug=golubiro\nentry=2\n"
+
+# The REAL line the 06:33Z bug produced on host A (a.log:46097): the local custom bust written into
+# nine voting slots, every one of them unbound (`row='<none>'`) and every one belonging to a
+# different player's slot. It carries no `path=` because the pre-fix writer logged composite paths
+# instead of the slots it actually wrote - which is itself the missing evidence hud_scope demands.
+VOTING_CORRUPTION = (
+    "[model:hud] presented canonical row 'tc2-demoman' db=16 in 9 portrait image(s) "
+    "(game applied row='Female_1_Emma_PlayerModelData', composites=9 "
+    "['Game Global/User Interface/Canvases/Voting Canvas/Voting Screen/Players/Player(Clone)' "
+    "row='<none>' sprite='portraits-base_female01'; "
+    "'Game Global/User Interface/Canvases/Voting Canvas/Voting Screen/Players/Player(Clone)' "
+    "row='<none>' sprite='portraits-base_female01'; "
+    "'Game Global/User Interface/Canvases/Voting Canvas/Voting Screen/Players/Player' "
+    "row='<none>' sprite='portraits-base_female01']); "
+    "display only - PlayerModelData untouched, no SetupModel, no selection RPC")
+# A voting slot named the way the SCOPE-AWARE build names it: path= present, still the wrong slot.
+VOTING_PATH = "'Game Global/User Interface/Canvases/Voting Canvas/Voting Screen/Players/Player(Clone)'"
+HUD_PATH = "'Lobby Global/User Interface/Canvases/HUD/HUD Canvas/Portrait(Clone)/Controller'"
 
 
 def _mk(dirpath, log, manifest, cfg_before=None, cfg_after=None, state_after=None):
@@ -593,6 +658,52 @@ def self_test():
         {"checks": {"hud_projection": "fail"}},
         cfg_before=WANTED_BEFORE, cfg_after=WANTED_AFTER)
 
+    # ---------- HUD scope: the local HUD slot is the ONLY writable surface -------------------
+
+    # The captured 06:33Z corruption, appended so the passing local line stays as the reference: the
+    # nine voting slots it names must trip hud_scope (and its row is not the identity's hudRow, which
+    # is what the same capture also produced: hudRow=<unobserved> with the HUD slot not active).
+    add("hud-voting-corruption",
+        BASE + VOTING_CORRUPTION + "\n",
+        {"checks": {"hud_scope": "fail", "hud_projection": "fail"}},
+        cfg_before=WANTED_BEFORE, cfg_after=WANTED_AFTER)
+
+    # Same shape as the fixed writer's line, but the slot it claims to have written is a voting one.
+    add("hud-voting-path",
+        BASE.replace("path=%s" % HUD_PATH, "path=%s" % VOTING_PATH),
+        {"checks": {"hud_scope": "fail"}},
+        cfg_before=WANTED_BEFORE, cfg_after=WANTED_AFTER)
+
+    # Any other canvas (a menu preview, a HUD-less copy) is not the local slot either.
+    add("hud-other-canvas",
+        BASE.replace("path=%s" % HUD_PATH,
+                     "path='Lobby Global/User Interface/Canvases/Master Canvas/Portrait' "),
+        {"checks": {"hud_scope": "fail"}},
+        cfg_before=WANTED_BEFORE, cfg_after=WANTED_AFTER)
+
+    # No path= at all: unverifiable, and exactly what the pre-fix build logged while corrupting slots.
+    add("hud-no-path",
+        BASE.replace(" under the local HUD [path=%s row='Male_5_Ryan' was='portraits-base_male05']" % HUD_PATH, ""),
+        {"checks": {"hud_scope": "fail"}},
+        cfg_before=WANTED_BEFORE, cfg_after=WANTED_AFTER)
+
+    # "in 2 portrait image(s)" with one named path: a write the evidence cannot account for.
+    add("hud-count-mismatch",
+        BASE.replace("in 1 portrait image(s)", "in 2 portrait image(s)", 1),
+        {"checks": {"hud_scope": "fail"}},
+        cfg_before=WANTED_BEFORE, cfg_after=WANTED_AFTER)
+
+    # The FIXED behaviour in the same situation: no active local HUD slot (the voting screen is up),
+    # so the writer states the no-op instead of painting other players' slots. hud_projection must
+    # accept this line as evidence that a disagreeing applied row was looked at, not ignored.
+    add("hud-no-local-slot",
+        "\n".join(l for l in BASE.splitlines() if "[model:hud]" not in l) + "\n"
+        "[model:hud] no portrait Image could be identified: no local HUD portrait is on screen "
+        "(composites=9 legacy=0 votingCanvas=9 notHud=0 inactive=0 unbound=0 otherRow=0); nothing written"
+        " - the bounded watch retries while the canonical row differs from the applied one\n",
+        {},
+        cfg_before=WANTED_BEFORE, cfg_after=WANTED_AFTER)
+
     add("no-hud-line",
         "\n".join(l for l in BASE.splitlines() if "[model:hud]" not in l),
         {"checks": {"hud_projection": "fail"}},
@@ -604,7 +715,8 @@ def self_test():
         cfg_before=WANTED_BEFORE, cfg_after=WANTED_AFTER)
 
     add("display-selection",
-        BASE + "[model:hud] presented canonical row 'golubiro' db=12 in 1 portrait image(s) via SetupModel(Male_5_Ryan)\n",
+        BASE + "[model:hud] presented canonical row 'golubiro' db=12 in 1 portrait image(s) under the local HUD "
+               "[path=%s] via SetupModel(Male_5_Ryan)\n" % HUD_PATH,
         {"checks": {"display_only": "fail", "hud_projection": "fail"}},
         cfg_before=WANTED_BEFORE, cfg_after=WANTED_AFTER)
 

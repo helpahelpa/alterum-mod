@@ -208,6 +208,9 @@ internal static class HotLoader
 
         public Contracts.INetBridge Net => _net;
 
+        // The host owns the holder; a new generation gets the same instance, never a copy.
+        public Contracts.INativeModelPrefix NativeModelPrefix => NativeModelPrefixHolder.Instance;
+
         public void Dispose()
         {
             try { _netLease?.Dispose(); } catch { }

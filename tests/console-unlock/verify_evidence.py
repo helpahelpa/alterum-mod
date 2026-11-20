@@ -259,6 +259,13 @@ def check_global(rep: Report, events, manifest):
         rep.need(bool(m.fields.get("scene")),
                  f"code matched at line {m.pos + 1} without a scene name")
 
+    # X8 QcGate skips the console OnEnable (it would disable the component), so teardown must not
+    # deregister an object that was never registered. That exception aborts OnDisable mid-body.
+    for e in events:
+        rep.need("Could not deregister object" not in e.line,
+                 f"the console OnDisable deregistered an unregistered object at line {e.pos + 1} - "
+                 "the skipped OnEnable registration was not balanced")
+
     if manifest.get("pid") is not None:
         pids = set(re.findall(r"\bpid=(\d+)\b", "\n".join(e.line for e in events)))
         rep.need(str(manifest["pid"]) in pids or not pids,
@@ -700,6 +707,17 @@ def self_test() -> int:
                   "are not usable in this runtime",
                   MATCH_LOBBY, "10:00:03.010 [qc:access] unlocked source=pause-code", CONFIRM, OPEN),
             case="unlock-lobby", scene="Lobby")))
+
+        # 14. Scene unload tried to deregister a console whose OnEnable registration was skipped:
+        # the exception aborts the rest of OnDisable and is the teardown failure this unit fixes.
+        cases.append(("FAIL", write_case(
+            root, "bad-registry-teardown",
+            lines(GEN1, STATE_LOCKED, ARMED, DENY_TILDE,
+                  "10:00:04.000 [Error  ] During invoking native->managed trampoline",
+                  "Exception: System.ArgumentException: Could not deregister object "
+                  "'Quantum Console (SRP) Canvas (QFSW.QC.QuantumConsole)' of type QuantumConsole "
+                  "as it was not found in the registry."),
+            case="locked-tilde")))
 
         sys.stdout.write(f"self-test: {len(cases)} fabricated scenarios in {root}\n")
         for want, d in cases:

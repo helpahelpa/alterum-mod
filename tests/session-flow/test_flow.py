@@ -20,7 +20,7 @@ def state(server=False, cid='8'):
         instance='', mvid='abcd', generation='generation1', utc=s.diag.utc(), frame=1, scene='Lobby', sceneLoaded=True,
         inLobby=True, lobbyId='123', lobbyCode='ABC123', listening=True, server=server, connected=True,
         clientId='0' if server else cid, players=[dict(id=i, owned=i == ('0' if server else cid), connected=True, scene='Lobby') for i in ('0', cid)],
-        rosterReady=True, modelRow='native-row', modelDb=2, modelSlug='', modelReadiness='native', bodyState='native',
+        rosterReady=True, diagnosticsOnly=False, modelRow='native-row', modelDb=2, modelSlug='', modelReadiness='native', bodyState='native',
         uiBusy=False, exitReady=False, confirmReady=False, codeReady=False, connectReady=False, fieldReady=False, codeField='')
 
 
@@ -55,6 +55,48 @@ class Predicates(unittest.TestCase):
         t['players'][1]['owned'] = False
         self.assertIn('local_player', s.connected_problems(t, p, '123'))
 
+    def test_diagnostics_only_peer_accepts_absent_roster(self):
+        t, p = state(), state(True)
+        for side in (t, p):
+            side.update(rosterReady=False, diagnosticsOnly=True)
+        self.assertEqual(s.connected_problems(t, p, '123'), [])
+
+    def test_absent_roster_without_flag_is_not_ready(self):
+        t, p = state(), state(True)
+        for side in (t, p):
+            side.update(rosterReady=False)
+            del side['diagnosticsOnly']
+        self.assertIn('roster_ready', s.connected_problems(t, p, '123'))
+
+    def test_absent_roster_with_false_flag_is_not_ready(self):
+        t, p = state(), state(True)
+        for side in (t, p):
+            side.update(rosterReady=False, diagnosticsOnly=False)
+        self.assertIn('roster_ready', s.connected_problems(t, p, '123'))
+
+    def test_absent_roster_with_non_boolean_flag_is_not_ready(self):
+        # "explicitly true" is the JSON value, not anything merely truthy or stringy.
+        for value in ('true', 'True', 1, None):
+            t, p = state(), state(True)
+            for side in (t, p):
+                side.update(rosterReady=False, diagnosticsOnly=value)
+            self.assertIn('roster_ready', s.connected_problems(t, p, '123'), value)
+
+    def test_diagnostics_only_still_needs_native_applied_model(self):
+        t, p = state(), state(True)
+        for side in (t, p):
+            side.update(rosterReady=False, diagnosticsOnly=True, modelReadiness='pending')
+        self.assertIn('roster_ready', s.connected_problems(t, p, '123'))
+        t['modelReadiness'], t['modelRow'], t['modelDb'] = 'native', '', -1
+        self.assertEqual(sorted(s.connected_problems(t, p, '123')), ['model_observed', 'roster_ready'])
+
+    def test_diagnostics_only_relaxes_only_the_roster(self):
+        t, p = state(), state(True)
+        for side in (t, p):
+            side.update(rosterReady=False, diagnosticsOnly=True)
+        t['lobbyId'] = '999'
+        self.assertEqual(s.connected_problems(t, p, '123'), ['target_membership'])
+
     def test_disconnection_requires_all_stages(self):
         t, p = state(), state(True)
         self.assertIn('network_stopped', s.disconnected_problems(t, p, '123', '8'))
@@ -85,11 +127,19 @@ class Predicates(unittest.TestCase):
 
 
 class World:
-    def __init__(self, menu=False, host_loss=None, refusal=None):
-        self.t, self.p = state(), state(True)
+    def __init__(self, menu=False, host_loss=None, refusal=None, diagnostics_only=False):
         self.actions, self.host_loss, self.refusal = [], host_loss, refusal
+        self.diagnostics_only = diagnostics_only
+        self.t, self.p = self.fresh(), self.fresh(True)
         if menu:
             disconnected(self.t, self.p)
+
+    def fresh(self, peer=False, cid='8'):
+        # Mirrors `connect`, which produces a new member pair with the same runtime shape.
+        side = state(peer, cid)
+        if self.diagnostics_only:
+            side.update(diagnosticsOnly=True, rosterReady=False)
+        return side
 
     def endpoint(self, peer=False):
         world = self
@@ -109,7 +159,7 @@ class World:
                     if action == 'open-code': world.t['fieldReady'] = True
                     if action == 'fill-code': world.t.update(codeField=args[1], connectReady=True)
                     if action == 'connect':
-                        world.t, world.p = state(cid='19'), state(True, cid='19')
+                        world.t, world.p = world.fresh(cid='19'), world.fresh(True, '19')
                     if action == world.host_loss:
                         world.p['lobbyId'] = '456'
                 return copy.deepcopy(world.t)
@@ -145,6 +195,24 @@ class Coordinator(unittest.TestCase):
     def test_status_never_mutates(self):
         world = World()
         self.run_world(world, 'status')
+        self.assertEqual(world.actions, [])
+
+    def test_rejoin_with_diagnostics_only_peer(self):
+        world = World(diagnostics_only=True)
+        code, flow = self.run_world(world)
+        self.assertEqual(code, 0)
+        self.assertEqual(flow.report['readiness'], 'ready')
+        self.assertEqual(flow.report['stages'][-1]['name'], 'joined-ready')
+
+    def test_status_without_diagnostics_flag_is_not_ready(self):
+        world = World()
+        for side in (world.t, world.p):
+            side.update(rosterReady=False)
+            del side['diagnosticsOnly']
+        code, flow = self.run_world(world, 'status')
+        self.assertEqual(code, 1)
+        self.assertEqual(flow.report['readiness'], 'not-ready')
+        self.assertEqual(flow.report['readinessMissing'], ['roster_ready'])
         self.assertEqual(world.actions, [])
 
     def test_host_refused_before_mutation(self):

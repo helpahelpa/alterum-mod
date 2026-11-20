@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Behavioral harness for the native-wire decisions in SahurWardrobe.cs. No NuGet packages, no
+       game/Unity references, no ProjectReference: the production decision block is extracted
+       verbatim (gen_pure.py) and compiled with the shipping NativeModelPolicy. A game type in the
+       block therefore fails this build, and a policy change cannot pass here while the game runs a
+       different branch. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>NativeWireBehavior</AssemblyName>
+    <RootNamespace>NativeWireBehavior</RootNamespace>
+  </PropertyGroup>
+  <PropertyGroup>
+    <!-- The extracted block lives in the intermediate directory, so it is never committed and
+         never picked up by the hot project's own compile. -->
+    <WardrobeSource>$(MSBuildThisFileDirectory)../../../tracks/merged/mod/AlterumModelSwap.Hot/SahurWardrobe.cs</WardrobeSource>
+    <PureSource>$(MSBuildThisFileDirectory)obj/PureBlock.g.cs</PureSource>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- The shipping fallback decision, linked not copied. -->
+    <Compile Include="../../../tracks/merged/mod/AlterumModelSwap.Hot/NativeModelPolicy.cs" Link="NativeModelPolicy.cs" />
+    <!-- Generated from the shipping SahurWardrobe.cs before compilation. -->
+    <Compile Include="$(PureSource)" />
+  </ItemGroup>
+  <Target Name="GeneratePureBlock" BeforeTargets="BeforeCompile"
+          Inputs="$(WardrobeSource);$(MSBuildThisFileDirectory)gen_pure.py"
+          Outputs="$(PureSource)">
+    <Exec Command="python3 &quot;$(MSBuildThisFileDirectory)gen_pure.py&quot; &quot;$(PureSource)&quot;" />
+  </Target>
+</Project>

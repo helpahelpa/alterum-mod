@@ -12,6 +12,11 @@
   </PropertyGroup>
   <Import Project="../Alterum.References.props" />
   <ItemGroup>
+    <!-- One source for the -alterumDiagnosticsOnly switch, linked (not copied) from the mod root:
+         the hot project links the same file, so the host gate and the hot gate cannot disagree. -->
+    <Compile Include="../DiagnosticsMode.cs" Link="DiagnosticsMode.cs" />
+  </ItemGroup>
+  <ItemGroup>
     <!-- Must be copied next to the host so the hot assembly can bind to this exact instance. -->
     <ProjectReference Include="../AlterumModelSwap.Contracts/AlterumModelSwap.Contracts.csproj">
       <Private>true</Private>

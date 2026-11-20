@@ -17,8 +17,9 @@ namespace AlterumModelSwap.Hot;
 // (level3/4/6/8/9 + resources.assets prefabs, `m_IsActive=1`, `m_Enabled=1` - see
 // work/qc/QC-ASSETS.md), yet at runtime the lobby component reports `enabled=false` with
 // `QuantumConsole.Instance` null. Something in game code switches it off after the scene loads.
-// So the only way in is the console's own entry points: `enabled = true` (which runs its Awake /
-// OnEnable), then `Activate()`, then `QuantumConsoleProcessor.GenerateCommandTable`.
+// So the only way in is the console's own entry points: `enabled = true` (which runs its Awake;
+// QcGate deliberately skips the original OnEnable), then `Activate()`, then
+// `QuantumConsoleProcessor.GenerateCommandTable`.
 //
 // This file is a probe and an activator, not a console: every call below lands in QFSW.QC. It is
 // reflection-only on purpose (no compile-time reference to QFSW.QC.dll), so a signature difference
@@ -653,8 +654,8 @@ internal static class GameConsole
 
     private const float RecheckDelay = 0.6f;
 
-    // Force the console on and see who objects. Everything that could gate it is read BEFORE the
-    // write (IsSupportedState is private but callable) so a refusal names itself in the log.
+    // Force the console on and see who objects. The shipped IsSupportedState() returns false and
+    // OnEnable does not consult it; Enable logs it anyway as a diagnostic, never as a gate.
     // ------------------------------------------------------------------ toggle / scene ready
 
     // Open or close the game's own console through its own Activate()/Deactivate(). Nothing is
@@ -845,15 +846,15 @@ internal static class GameConsole
     // component enabled, Instance assigned, command table generated. It never opens the UI.
     //
     // Guarded on QcGate on purpose: with the gate unpatched, writing `enabled = true` runs the
-    // console's own OnEnable, whose compiled-in supported-state check sets it straight back to
-    // false. So a session that ran `gateoff` is told once and left alone instead of fighting it.
+    // console's own OnEnable, which registers the console and then disables the component again.
+    // So a session that ran `gateoff` is told once and left alone instead of fighting it.
     private static bool EnsureEnabled(IHostContext host, string why, bool verbose)
     {
         Resolve(host);
         if (_qc == null) return false;
         if (!QcGate.Installed)
         {
-            if (verbose) host.LogWarning($"[qc] ensure({why}): gate not installed - not forcing enabled (the console's own OnEnable would revert it)");
+            if (verbose) host.LogWarning($"[qc] ensure({why}): gate not installed - not forcing enabled (the console's own OnEnable would disable it again)");
             return false;
         }
         // Typed or nothing. An untyped Component proxy cannot be assigned to Instance, has no
@@ -866,7 +867,7 @@ internal static class GameConsole
         if (b == null) { host.LogWarning($"[qc] ensure({why}): typed console is not a Behaviour"); return false; }
 
         bool wasEnabled = b.enabled;
-        if (!wasEnabled) b.enabled = true;                    // QcGate skips OnEnable for this type only
+        if (!wasEnabled) b.enabled = true;                    // QcGate skips OnEnable for this type only; registry balanced
 
         bool setNow = false;
         if (LiveInstance() == null)
@@ -1046,9 +1047,10 @@ internal static class GameConsole
         host.LogInfo($"[qc] enable IsSupportedState() -> {Describe(supported)}");
         if (b == null) { host.LogWarning("[qc] enable: not a Behaviour"); return; }
 
-        // OnEnable's original is skipped by QcGate for this type only (its first statement is the
-        // compiled-out supported-state gate, which would set enabled=false again). Everything after
-        // that point is the console's own: AssignInstance -> Initialize -> Activate.
+        // OnEnable's original is skipped by QcGate for this type only. The shipped body registers
+        // the console, subscribes DebugIntercept, hides the container and sets enabled = false;
+        // QcGate restores that registration on the skip path so OnDisable can still deregister
+        // cleanly. The rest of this path is the console's own: Instance -> Initialize -> Activate.
         b.enabled = true;
         host.LogInfo($"[qc] enable after write: enabled={b.enabled} Instance={Describe(GetStatic(_qc, "Instance"))}");
 
@@ -6495,6 +6497,8 @@ internal static class GameConsole
         public string InstanceName => _host.InstanceName;
         public bool ReloadConfig() => _host.ReloadConfig();
         public INetBridge Net => _host.Net;
+        // No NativeModelPrefix forwarder on purpose: this sink must bind against a host whose
+        // contracts predate that member. Nothing reads the prefix through a log sink.
 
         public void LogInfo(string message) => Relay(message, 0);
         public void LogWarning(string message) => Relay(message, 1);

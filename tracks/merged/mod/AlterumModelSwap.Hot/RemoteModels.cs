@@ -246,6 +246,11 @@ internal static class RemoteModels
     internal static string RemoteBodySlug(ulong clientId)
         => _remotes.TryGetValue(clientId, out var r) && r.BuiltKind != 0 ? (r.BuiltSlug ?? "") : "";
 
+    // The slug this client last published. Cleared only in Dispose, so it survives scene changes -
+    // the Results scene must keep knowing what the local player wore after the map scene is gone
+    // (ResultsBodies reads it; SahurWardrobe.Snapshot degrades there).
+    internal static string LocalPublishedSlug => _localSlug ?? "";
+
     internal static Transform RemoteRoot(ulong clientId)
     {
         if (!_remotes.TryGetValue(clientId, out var r)) return null;

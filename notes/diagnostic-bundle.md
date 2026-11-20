@@ -72,9 +72,12 @@ Per-instance facts include:
   and host/contracts assembly backing-file observations are separate, with MVID and source.
 * `config`, `pov`, `visibility`, `pose`, `scene`, `authority`, `actors`, `unchanged`: in-memory runtime
   observations, never arbitrary disk-config guesses. Authority is reported as seen by that client.
-  Independently observed applied/body/advertised disagreements are explicit findings. Canonical
-  claims are not substituted for HUD observations. The legacy `wanted` field is preference/provenance
-  evidence, not another authoritative row.
+  Independently observed applied/body/advertised disagreements are explicit findings, except when
+  a live confirmed wanted body and canonical slug agree over a native applied donor row. The report
+  identifies that case as `appliedRole=native-donor-row`; differing advertised slugs remain findings.
+  There the HUD portrait must present the confirmed body, not the donor row, so any other observed
+  sprite is still a presentation-mismatch. Canonical claims are not substituted for HUD observations.
+  The legacy `wanted` field is preference/provenance evidence, not another authoritative row.
 * `capture`: backend, dimensions, sample color diversity, identity/HWND, UTC, SHA-256, output reference,
   focus-change observation, and the generation association bracket. Locked/non-default desktops,
   minimized/missing windows, failed backends or near-uniform pixels are unavailable/suspect.
@@ -128,7 +131,9 @@ python3 -m unittest discover -s tests/direct-console -v
 ```
 
 Fixtures cover effective main-profile false versus inactive disk-profile true, game parity blockers,
-Spy/Peter disagreement, unobserved/legacy HUD, wrong identities/tags/timestamps, ambiguity, log
+Spy/Peter disagreement, confirmed wanted body over a native donor row (HUD expected to present that
+body; a donor-row or other sprite still conflicts), unconfirmed/stale donor claims that stay findings,
+unobserved/legacy HUD, wrong identities/tags/timestamps, ambiguity, log
 rotation/truncation, generation changes, stale captures, localized NUL-containing reservation logs,
 locked capture, absent optional B, deadline failures with partial reports, and a complete healthy
 report with consistent references. Transport tests exercise atomic no-overwrite mailbox publication,

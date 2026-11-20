@@ -56,6 +56,18 @@ public interface IHostContext
     // registration never depends on a hot-module generation.
     INetBridge Net { get; }
 
+    // Process-lifetime native model-database prefix (see NativeModelPrefix.cs). Owned by the host
+    // assembly, so a consumer that reads it shares one count captured before the first append.
+    // The reloadable hot module deliberately does NOT read it: it proves the boundary from the
+    // shipped PlayerModelData resource set (SahurWardrobe.EnsureNativePrefix), so a running host
+    // that predates this member is not a hot-module compatibility requirement.
+    //
+    // A DEFAULT body keeps this interface usable against such a host: a hot generation compiled
+    // against this contracts assembly does not have to implement it, and an adapter that does not
+    // expose it (a log sink) compiles without a MethodRef the running host could not resolve. A
+    // null here means "not available", never "no shipped rows".
+    INativeModelPrefix NativeModelPrefix => null;
+
     void LogInfo(string message);
     void LogWarning(string message);
     void LogError(string message);

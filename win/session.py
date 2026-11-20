@@ -39,6 +39,25 @@ def owned_player(state):
             and p['id'] == state['clientId']]
 
 
+def diagnostics_only(state):
+    # Identity, not truthiness: only a real JSON true opts in, so a missing field from an older
+    # runtime or a stale 'true' string can never relax a check.
+    return state.get('diagnosticsOnly') is True
+
+
+def native_model_observed(state):
+    # The game's own row is applied and resolved: nothing custom, nothing pending.
+    return (state['modelDb'] >= 0 and state['modelRow'] not in ('', '-', '?')
+            and state['modelReadiness'] == 'native')
+
+
+def roster_ok(state):
+    # A diagnostics-only runtime disables gameplay registration, so it reports rosterReady=false.
+    # Accept only that explicitly reported mode, and only while it still shows a native applied
+    # model; every other roster failure stays a failure.
+    return state['rosterReady'] or (diagnostics_only(state) and native_model_observed(state))
+
+
 def host_problems(peer, lobby):
     checks = dict(host_role=peer['server'] and peer['listening'], host_membership=peer['inLobby'] and peer['lobbyId'] == lobby,
                   host_scene=peer['scene'] == 'Lobby' and peer['sceneLoaded'], host_player=len(owned_player(peer)) == 1)
@@ -53,7 +72,7 @@ def connected_problems(target, peer, lobby):
                   host_sees_client=target['clientId'] in alive_players(peer),
                   client_sees_host=peer['clientId'] in alive_players(target),
                   distinct_clients=target['clientId'] != peer['clientId'],
-                  roster_ready=target['rosterReady'] and peer['rosterReady'],
+                  roster_ready=roster_ok(target) and roster_ok(peer),
                   model_observed=target['modelDb'] >= 0 and target['modelRow'] not in ('', '-', '?')
                       and target['modelReadiness'] in ('native', 'ready'),
                   peer_model_observed=peer['modelDb'] >= 0 and peer['modelRow'] not in ('', '-', '?'),

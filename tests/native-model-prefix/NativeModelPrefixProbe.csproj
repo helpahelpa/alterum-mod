@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Self-contained console harness for the host-owned native prefix holder: no NuGet packages,
+       no game or Unity references, no ProjectReference. It compiles the shipping Contracts and host
+       source by link, so the tests cannot pass against a copy or a re-implementation. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>NativeModelPrefixProbe</AssemblyName>
+    <RootNamespace>NativeModelPrefixProbe</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- The production surface and the production holder, linked not copied. -->
+    <Compile Include="../../tracks/merged/mod/AlterumModelSwap.Contracts/NativeModelPrefix.cs" Link="NativeModelPrefix.cs" />
+    <Compile Include="../../tracks/merged/mod/AlterumModelSwap/NativeModelPrefixHolder.cs" Link="NativeModelPrefixHolder.cs" />
+  </ItemGroup>
+</Project>

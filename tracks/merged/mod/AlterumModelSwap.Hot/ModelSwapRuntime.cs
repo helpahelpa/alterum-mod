@@ -19,7 +19,9 @@ public class ModelSwapRuntime
     private const bool UseFixedLobbyPose = true;
     private const int FrameCap = 15;
     // Explicit opt-in for local development display restrictions; normal players retain game settings.
-    private static readonly bool DevDisplayMode = DevDisplayPolicy.Enabled(Environment.GetCommandLineArgs());
+    // A live test session can opt in without restarting an existing game process.
+    private bool DevDisplayMode => DevDisplayPolicy.Enabled(Environment.GetCommandLineArgs()) ||
+        (!string.IsNullOrEmpty(_h.ScreensDir) && System.IO.File.Exists(System.IO.Path.Combine(_h.ScreensDir, "dev-display.enabled")));
     private float _nextFpsCheck;
     private static readonly Vector3 FixedLobbyPos = new Vector3(-0.328f, 1.153f, -12.273f);
     private static readonly Vector3 FixedLobbyEuler = new Vector3(0f, 41.06f, 0f);
@@ -41,7 +43,8 @@ public class ModelSwapRuntime
         _cfg = host.Config;
         // No Unity calls in the constructor: the cosmetics module only reads its state file here
         // and loads the embedded asset pack on the first Update (main thread).
-        _cosmetics = new CosmeticsRuntime(host);
+        if (!AlterumModelSwap.DiagnosticsMode.Enabled)
+            _cosmetics = new CosmeticsRuntime(host);
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -104,6 +107,22 @@ public class ModelSwapRuntime
     private string[] _clicks;
     private int _clickIndex;
     private float _nextClickAt = -1f;
+
+    internal void DiagnosticsTick(float dt)
+    {
+        _t += dt;
+        _cfg = _h.Config;
+        EnforceFrameCap();
+        // Display controls are explicitly gated by dev mode and the instance config;
+        // they do not alter gameplay and are needed when the game restores fullscreen.
+        KeepQuiet();
+        string scene = SceneManager.GetActiveScene().name;
+        if (scene != _lastScene)
+        {
+            _lastScene = scene;
+            _h.LogInfo($"[scene] -> '{scene}' at t={_t:F1}");
+        }
+    }
 
     public void Update(float dt)
     {
@@ -310,6 +329,11 @@ public class ModelSwapRuntime
             // it must run before anything else that consumes inbound frames.
             try { Perf.W("remote", () => RemoteModels.Tick(log, dt)); }
             catch (Exception e) { log.LogError($"[swap:remote] tick threw: {e}"); }
+            // Results screen bodies: re-apply published/peer slugs to the models the game builds
+            // per ResultPlayer in the Results scene. Runs after the remote tick so peer states
+            // this frame are already resolved.
+            try { Perf.W("resultsbody", () => ResultsBodies.Tick(log, dt)); }
+            catch (Exception e) { log.LogWarning($"[results:body] tick threw: {e.Message}"); }
             // Identity/presentation resolver: the ONE canonical answer to "which row is this actor
             // wearing", used by the body decision, the bottom-right HUD portrait and the wardrobe's
             // remote occupancy. Edge-driven (selection/database/peer-state/UI attach); the display
@@ -923,6 +947,8 @@ public class ModelSwapRuntime
         // Remote players' rigged retargets: same rule again, against each remote skeleton, before
         // the mirror draws this frame.
         try { Perf.W("late.remote", () => RemoteModels.LateTick(_h)); } catch (Exception e) { _h.LogWarning($"[swap:remote:late] {e.Message}"); }
+        // Results rigged retargets, same ordering rule as the remote pass above.
+        try { Perf.W("late.resultsbody", () => ResultsBodies.LateTick(_h)); } catch (Exception e) { _h.LogWarning($"[results:body:late] {e.Message}"); }
         if (_mirrorRt != null) { try { Perf.W("late.mirror", () => _mirrorRt.Tick()); } catch (Exception e) { _h.LogError($"[mirror] tick failed: {e}"); } }
         Perf.W("late.emotebook", () => _emote?.LateUpdate());
         // A clip that ends inside the pose write (non-looping) is published here, not with the

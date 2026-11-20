@@ -168,6 +168,9 @@ internal static class SessionControl
         bool member = Steam.SteamLobbyManager.IsInLobby;
         ulong lobby = member ? (ulong)Steam.SteamLobbyManager.CurrentLobby.Id : 0;
         var identity = ModelPresentation.ResolveLocalReadOnly(host);
+        // Reported so a coordinator can tell a diagnostics-only peer (no custom roster registered)
+        // from one that merely failed to register its roster. Observation only; nothing here reads it.
+        bool diagnosticsOnly = AlterumModelSwap.DiagnosticsMode.Enabled;
         var players = new List<string>();
         foreach (var player in Find<Player>(null))
         {
@@ -186,6 +189,7 @@ internal static class SessionControl
             ",\"listening\":" + B(nm != null && nm.IsListening) + ",\"server\":" + B(nm != null && nm.IsServer) +
             ",\"connected\":" + B(nm != null && nm.IsConnectedClient) + ",\"clientId\":" + Q(nm == null ? "" : nm.LocalClientId.ToString()) +
             ",\"players\":[" + string.Join(",", players) + "],\"rosterReady\":" + B(SahurWardrobe.RosterReady) +
+            ",\"diagnosticsOnly\":" + B(diagnosticsOnly) +
             ",\"modelRow\":" + Q(identity?.AppliedRow ?? "") + ",\"modelDb\":" + (identity?.AppliedDb ?? -1) +
             ",\"modelSlug\":" + Q(identity?.CanonicalSlug ?? "") + ",\"modelReadiness\":" + Q(identity?.Readiness ?? "unknown") +
             ",\"bodyState\":" + Q(identity?.BodyState ?? "unknown") +

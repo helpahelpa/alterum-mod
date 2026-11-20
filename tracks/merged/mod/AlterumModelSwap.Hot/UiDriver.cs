@@ -94,6 +94,14 @@ internal static class UiDriver
         string key = (eq > 0 ? action.Substring(0, eq) : action).Trim().ToLowerInvariant();
         string val = eq > 0 ? action.Substring(eq + 1).Trim() : "";
 
+        // Diagnostics may inspect and operate native UI, but cannot activate mod gameplay paths.
+        if (AlterumModelSwap.DiagnosticsMode.Enabled &&
+            (key == "req" || key == "startmap" || key == "standat" || key == "seq"))
+        {
+            log.LogWarning($"[ui] '{key}' refused in diagnostics-only mode");
+            return;
+        }
+
         switch (key)
         {
             case "dump": Dump(log, false, false); return;

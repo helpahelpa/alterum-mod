@@ -11,6 +11,9 @@
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>
   <Import Project="../Alterum.References.props" />
+  <ItemGroup>
+    <Compile Include="../DiagnosticsMode.cs" Link="DiagnosticsMode.cs" />
+  </ItemGroup>
   <!-- After the import on purpose: this group derives from $(AlterumDataDir), which the import
        defines. The binary payload (apack/mset/rset/png) lives outside the repo, in the data tree
        at the mirrored path, and only the .cs/.csproj sources are tracked (see LAYOUT.md).
@@ -157,10 +160,18 @@
       <HintPath>$(RefsDir)Eflatun.SceneReference.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <!-- Contracts is provided by the host at runtime; never copy a second copy here. -->
-    <ProjectReference Include="../AlterumModelSwap.Contracts/AlterumModelSwap.Contracts.csproj">
+    <!-- Contracts is provided by the host at runtime; never copy a second copy here.
+         `-p:ContractsPath=<dll>` selects the explicit-DLL form below instead; use it to compile
+         against the contracts assembly the running host already loaded (the source keeps no
+         dependency on a member only the newer contracts has, so both forms build). -->
+    <ProjectReference Include="../AlterumModelSwap.Contracts/AlterumModelSwap.Contracts.csproj"
+                      Condition="'$(ContractsPath)' == ''">
       <Private>false</Private>
     </ProjectReference>
+    <Reference Include="AlterumModelSwap.Contracts" Condition="'$(ContractsPath)' != ''">
+      <HintPath>$(ContractsPath)</HintPath>
+      <Private>false</Private>
+    </Reference>
     <!-- PlayerModelSetuper._playerModelData is R3.ReactiveProperty<PlayerModelData>; reading its
          .Value is how the wardrobe selection is observed. Interop assembly, never copied. -->
     <Reference Include="R3">

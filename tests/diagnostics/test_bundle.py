@@ -4,6 +4,7 @@ import copy
 import importlib.util
 import json
 from pathlib import Path
+import re
 import tempfile
 import time
 import unittest
@@ -56,6 +57,28 @@ def state(role='main'):
 
 def report(*states):
     return dict(schema=d.SCHEMA, runId='fixture', findings=[], instances=list(states or [state()]), stages=[])
+
+
+# Shape captured from fresh evidence
+# /tmp/mixed-after-fixes/20261119T230217Z-7ef4f0a22c1d42d58f031994bccf2bde/main-after.manifest.txt:
+# a confirmed custom selection keeps the native `PlayerModelData` row (Female_2_Freya) as the
+# applied donor row while the live body and the visible HUD portrait are the custom model.
+DONOR_IDENTITY = ('actor=local wantedSlug=tc2-demoman advertisedSlug=- canonicalSlug=tc2-demoman '
+                  'canonicalLabel=TC2 Demoman resolvedDb=16 appliedRow=Female_2_Freya_PlayerModelData appliedDb=1 '
+                  'appliedSlug=- bodySlug=tc2-demoman hudRow=tc2-demoman '
+                  'provenance=wanted:confirm readiness=ready bodyState=live explicit=True')
+
+
+def donor_state(**overrides):
+    current = state()
+    identity = DONOR_IDENTITY
+    for field, replacement in overrides.items():
+        identity, replaced = re.subn(r'(?<= )' + field + r'=\S*', field + '=' + replacement, identity, count=1)
+        assert replaced == 1, field + ' not present in the donor identity fixture'
+    for snapshot in ('before', 'after'):
+        current[snapshot]['identity.local'] = identity
+        current[snapshot]['identity.localSlug'] = 'tc2-demoman'
+    return current
 
 
 def codes(rep):
@@ -116,6 +139,86 @@ class DiagnosticFixtures(unittest.TestCase):
         d.diagnose(rep)
         self.assertIn('model-mismatch', codes(rep))
         self.assertIn('presentation-mismatch', codes(rep))
+
+    def test_confirmed_custom_wanted_over_native_donor_is_not_model_mismatch(self):
+        current = donor_state()
+        rep = report(current)
+        d.diagnose(rep)
+        actor = current['actors'][0]
+        self.assertEqual(d.value(actor['applied']), '<native>')
+        self.assertEqual(d.value(actor['appliedRow']), 'Female_2_Freya_PlayerModelData')
+        self.assertEqual(d.value(actor['body']), 'tc2-demoman')
+        self.assertEqual(d.value(actor['appliedRole']), 'native-donor-row')
+        self.assertNotIn('model-mismatch', codes(rep))
+        self.assertNotIn('presentation-mismatch', codes(rep))
+        self.assertTrue(rep['complete'])
+        self.assertEqual(rep['health'], 'healthy')
+
+    def test_native_donor_hud_is_expected_to_present_the_confirmed_body(self):
+        # Live HUD showing the custom body is correct even though the applied row is the donor row.
+        current = donor_state()
+        self.assertEqual(d.hud_expectation(d.actor_observations(DONOR_IDENTITY, 'fixture', hud_measured=True)),
+                         ('tc2-demoman', 'confirmed body'))
+        rep = report(current)
+        d.diagnose(rep)
+        self.assertEqual(d.value(current['actors'][0]['hud']), 'tc2-demoman')
+        self.assertEqual(codes(rep), [])
+
+    def test_native_donor_hud_divergence_stays_a_presentation_finding(self):
+        cases = {
+            'donor row presented': dict(hudRow='Female_2_Freya_PlayerModelData'),
+            'unrelated sprite presented': dict(hudRow='peter-griffin'),
+        }
+        for label, overrides in cases.items():
+            with self.subTest(label):
+                current = donor_state(**overrides)
+                rep = report(current)
+                d.diagnose(rep)
+                # The donor row is only withheld as an applied identity; a HUD that does not show
+                # the confirmed body is still a real presentation conflict.
+                self.assertNotIn('model-mismatch', codes(rep))
+                self.assertIn('presentation-mismatch', codes(rep))
+                finding = next(f for f in rep['findings'] if f['code'] == 'presentation-mismatch')
+                self.assertIn('disagrees with confirmed body tc2-demoman', finding['message'])
+                self.assertEqual(rep['health'], 'findings')
+
+    def test_unconfirmed_native_donor_keeps_the_applied_row_as_hud_expectation(self):
+        current = donor_state(provenance='game:applied')
+        rep = report(current)
+        d.diagnose(rep)
+        actor = current['actors'][0]
+        self.assertEqual(d.value(actor['appliedRole']), 'applied-identity')
+        self.assertEqual(d.hud_expectation(actor), ('Female_2_Freya_PlayerModelData', 'applied row'))
+        self.assertIn('presentation-mismatch', codes(rep))
+        self.assertIn('model-mismatch', codes(rep))
+
+    def test_native_donor_never_suppresses_a_genuine_inconsistency(self):
+        cases = {
+            'body diverges from confirmed wanted': dict(bodySlug='peter-griffin'),
+            'canonical claim diverges': dict(canonicalSlug='peter-griffin'),
+            'provenance unconfirmed': dict(provenance='game:applied'),
+            'provenance unobserved': dict(provenance='-'),
+            'body not live': dict(bodyState='stale'),
+            'wanted unobserved': dict(wantedSlug='-'),
+            'advertised differs': dict(advertisedSlug='peter-griffin'),
+            'applied custom competes': dict(appliedSlug='tc2-demoman', bodySlug='peter-griffin'),
+        }
+        for label, overrides in cases.items():
+            with self.subTest(label):
+                current = donor_state(**overrides)
+                rep = report(current)
+                d.diagnose(rep)
+                self.assertIn('model-mismatch', codes(rep))
+                self.assertEqual(rep['health'], 'findings')
+        # A present custom applied slug is an identity claim, never the donor row.
+        current = donor_state()
+        current['after']['identity.local'] = current['after']['identity.local'].replace(
+            'appliedSlug=-', 'appliedSlug=tc2-demoman')
+        rep = report(current)
+        d.diagnose(rep)
+        self.assertEqual(d.value(current['actors'][0]['appliedRole']), 'applied-identity')
+        self.assertNotIn('model-mismatch', codes(rep))
+        self.assertTrue(rep['complete'])
 
     def test_missing_hud_never_synthesized_and_legacy_claim_not_trusted(self):
         for source, hud in [(None, 'tc2-spy'), ('visible-sprite-observer/1', '<unobserved>')]:
